@@ -8,7 +8,7 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { getFridgeIngredients, addIngredient, removeIngredient, clearFridge } from '../services/fridge';
 
-export default function FridgeScreen({ navigate, goBack }: NavProps) {
+export default function FridgeScreen({ navigate }: NavProps) {
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,9 +64,6 @@ export default function FridgeScreen({ navigate, goBack }: NavProps) {
 
       <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
         <View style={styles.heroOverlay}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 돌아가기</Text>
-          </TouchableOpacity>
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
           <Text style={styles.heroSub}>내 냉장고 🧊</Text>
         </View>
@@ -104,13 +101,22 @@ export default function FridgeScreen({ navigate, goBack }: NavProps) {
           </View>
         )}
 
-        <TouchableOpacity
-          style={styles.scanIngBtn}
-          onPress={() => navigate({ name: 'Camera', fridgeMode: true })}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.scanIngBtnText}>📸  재료 추가 스캔하기</Text>
-        </TouchableOpacity>
+        <View style={styles.scanRow}>
+          <TouchableOpacity
+            style={[styles.scanIngBtn, { flex: 1 }]}
+            onPress={() => navigate({ name: 'Camera', fridgeMode: true })}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.scanIngBtnText}>📸  재료 스캔</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.scanIngBtn, styles.receiptBtn]}
+            onPress={() => navigate({ name: 'Camera', receiptMode: true })}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.scanIngBtnText}>🧾  영수증 스캔</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={[styles.sectionHead, { marginTop: 24 }]}>직접 추가</Text>
         <View style={styles.inputRow}>
@@ -151,8 +157,7 @@ const styles = StyleSheet.create({
     flex: 1, paddingTop: 52, paddingHorizontal: 24, paddingBottom: 28,
     backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end',
   },
-  backBtn: { marginBottom: 10 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+
   heroLogo: { width: '100%', height: 52, marginBottom: 6 },
   heroSub: { fontSize: 13, color: Colors.textMid, textAlign: 'center' },
 
@@ -180,11 +185,13 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   chipX: { fontSize: 18, color: Colors.primaryMid, fontWeight: '800', lineHeight: 20 },
 
+  scanRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   scanIngBtn: {
     backgroundColor: Colors.cardGreen, borderRadius: 16,
-    paddingVertical: 15, alignItems: 'center', marginTop: 20, ...shadow.sm,
+    paddingVertical: 15, alignItems: 'center', ...shadow.sm,
     borderWidth: 1.5, borderColor: Colors.accentLight,
   },
+  receiptBtn: { backgroundColor: '#FFF8EE', borderColor: '#E8D0A0' },
   scanIngBtnText: { color: Colors.primary, fontWeight: '800', fontSize: 14 },
 
   inputRow: { flexDirection: 'row', gap: 10 },

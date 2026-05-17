@@ -89,7 +89,7 @@ interface Props extends NavProps {
   onResetPreferences?: () => void;
 }
 
-export default function SettingsScreen({ navigate, goBack, onResetPreferences }: Props) {
+export default function SettingsScreen({ navigate, onResetPreferences }: Props) {
   const [openModal, setOpenModal] = useState<InfoModal>(null);
 
   const handleFeedback = () => {
@@ -110,9 +110,6 @@ export default function SettingsScreen({ navigate, goBack, onResetPreferences }:
 
       <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
         <View style={styles.heroOverlay}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 돌아가기</Text>
-          </TouchableOpacity>
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
           <Text style={styles.heroSub}>설정 및 앱 정보</Text>
         </View>
@@ -221,8 +218,7 @@ const styles = StyleSheet.create({
     flex: 1, paddingTop: 56, paddingHorizontal: 24, paddingBottom: 28,
     backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end',
   },
-  backBtn: { marginBottom: 12 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+
   heroLogo: { width: '100%', height: 56, marginBottom: 6 },
   heroSub: { fontSize: 13, color: Colors.textMid, fontWeight: '500', textAlign: 'center' },
 

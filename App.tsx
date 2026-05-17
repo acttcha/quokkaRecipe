@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Dimensions,
+  Animated, PanResponder,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Rect, Line, Circle } from 'react-native-svg';
+import { Asset } from 'expo-asset';
 import { CurrentScreen } from './src/types';
 import { isOnboardingDone } from './src/services/preferences';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -11,89 +18,264 @@ import SavedScreen from './src/screens/SavedScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import FridgeScreen from './src/screens/FridgeScreen';
 import FridgeScanScreen from './src/screens/FridgeScanScreen';
+import ReceiptScanScreen from './src/screens/ReceiptScanScreen';
 
+const { width } = Dimensions.get('window');
+
+const TAB_SCREENS = ['Home', 'Fridge', 'Saved', 'Settings'] as const;
+type TabScreenName = typeof TAB_SCREENS[number];
+const TAB_LABELS: Record<TabScreenName, string> = { Home: '홈', Fridge: '냉장고', Saved: '레시피', Settings: '마이' };
+
+const C = {
+  cream:     '#FBEFD8',
+  creamLine: '#EAD5AC',
+  orange:    '#F2994A',
+  orangeDeep:'#E07B2B',
+  iconOff:   '#B79572',
+  textOff:   '#8B7558',
+};
+
+// ─── 탭 아이콘 ─────────────────────────────────────────────
+function IconHome({ active }: { active: boolean }) {
+  const c = active ? C.orange : C.iconOff;
+  return (
+    <Svg width={26} height={26} viewBox="0 0 26 26">
+      <Path d="M4 12.2 13 4.5l9 7.7v9a1.5 1.5 0 0 1-1.5 1.5h-4V16h-7v6.7h-4A1.5 1.5 0 0 1 4 21.2v-9Z"
+        fill={active ? C.orange : 'none'} stroke={active ? '#C8631F' : c} strokeWidth={1.5} strokeLinejoin="round" />
+      {active && <Path d="M11 16h4v6.7h-4z" fill="#FFE2C2" stroke="#C8631F" strokeWidth={1.3} />}
+    </Svg>
+  );
+}
+function IconFridge({ active }: { active: boolean }) {
+  const c = active ? C.orange : C.iconOff;
+  return (
+    <Svg width={26} height={26} viewBox="0 0 26 26">
+      <Rect x={6.5} y={3.5} width={13} height={19} rx={2.5} stroke={c} strokeWidth={1.6} fill="none" />
+      <Line x1={6.5} y1={11} x2={19.5} y2={11} stroke={c} strokeWidth={1.6} />
+      <Line x1={9} y1={7} x2={9} y2={9} stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+      <Line x1={9} y1={14} x2={9} y2={16} stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IconRecipe({ active }: { active: boolean }) {
+  const c = active ? C.orange : C.iconOff;
+  return (
+    <Svg width={26} height={26} viewBox="0 0 26 26">
+      <Path d="M3.5 6.5c2.7-1 5.7-1 8 .8v13c-2.3-1.8-5.3-1.8-8-.8v-13Z"
+        stroke={c} strokeWidth={1.6} fill="none" strokeLinejoin="round" />
+      <Path d="M22.5 6.5c-2.7-1-5.7-1-8 .8v13c2.3-1.8 5.3-1.8 8-.8v-13Z"
+        stroke={c} strokeWidth={1.6} fill="none" strokeLinejoin="round" />
+      <Path d="M11.5 7.3v13" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
+      <Line x1={6} y1={10} x2={9.5} y2={10} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
+      <Line x1={6} y1={13} x2={9.5} y2={13} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
+      <Line x1={16.5} y1={10} x2={20} y2={10} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
+      <Line x1={16.5} y1={13} x2={20} y2={13} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IconMy({ active }: { active: boolean }) {
+  const c = active ? C.orange : C.iconOff;
+  return (
+    <Svg width={26} height={26} viewBox="0 0 26 26">
+      <Circle cx={13} cy={9.5} r={4} stroke={c} strokeWidth={1.6} fill="none" />
+      <Path d="M5 22c.8-4.3 4-6.5 8-6.5s7.2 2.2 8 6.5" stroke={c} strokeWidth={1.6} strokeLinecap="round" fill="none" />
+    </Svg>
+  );
+}
+function IconPaw() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Circle cx={7}    cy={9}    r={2}   fill={C.orangeDeep} />
+      <Circle cx={12}   cy={6.5}  r={2}   fill={C.orangeDeep} />
+      <Circle cx={17}   cy={9}    r={2}   fill={C.orangeDeep} />
+      <Circle cx={19.5} cy={14}   r={1.6} fill={C.orangeDeep} />
+      <Path d="M12 11c-3 0-5.5 2.4-5.5 4.8 0 1.8 1.4 2.7 3 2.7 1 0 1.7-.4 2.5-.4s1.5.4 2.5.4c1.6 0 3-.9 3-2.7C17.5 13.4 15 11 12 11Z"
+        fill={C.orangeDeep} />
+    </Svg>
+  );
+}
+
+const TAB_ICON_MAP: Record<TabScreenName, React.ComponentType<{ active: boolean }>> = {
+  Home: IconHome, Fridge: IconFridge, Saved: IconRecipe, Settings: IconMy,
+};
+
+// ─── App ───────────────────────────────────────────────────
 type AppState = 'loading' | 'onboarding' | 'app';
 
 export default function App() {
-  const [appState, setAppState] = useState<AppState>('loading');
-  const [screen, setScreen] = useState<CurrentScreen>({ name: 'Home' });
+  const [appState, setAppState]   = useState<AppState>('loading');
+  const [tabIndex, setTabIndex]   = useState(0);
+  const [subScreen, setSubScreen] = useState<CurrentScreen | null>(null);
+
+  const slideAnim    = useRef(new Animated.Value(0)).current;
+  const tabIndexRef  = useRef(0);
+  const subScreenRef = useRef<CurrentScreen | null>(null);
 
   useEffect(() => {
-    isOnboardingDone().then(done => {
-      setAppState(done ? 'app' : 'onboarding');
-    });
+    Promise.all([
+      isOnboardingDone(),
+      Asset.loadAsync([
+        require('./assets/btnSetting.png'),
+        require('./assets/background.png'),
+        require('./assets/main_logo.png'),
+        require('./assets/quokka.png'),
+        require('./assets/refrigerator1.png'),
+        require('./assets/refrigerator2.png'),
+        require('./assets/refrigerator3.png'),
+        require('./assets/refrigerator4.png'),
+      ]),
+    ]).then(([done]) => setAppState(done ? 'app' : 'onboarding'));
   }, []);
 
+  const springTo = (index: number) =>
+    Animated.spring(slideAnim, { toValue: -index * width, useNativeDriver: true, tension: 120, friction: 20 }).start();
+
+  const goToTab = (index: number) => {
+    tabIndexRef.current = index;
+    subScreenRef.current = null;
+    setTabIndex(index);
+    setSubScreen(null);
+    springTo(index);
+  };
+
+  const navigate = (screen: CurrentScreen) => {
+    const tabIdx = TAB_SCREENS.indexOf(screen.name as TabScreenName);
+    if (tabIdx >= 0) { goToTab(tabIdx); }
+    else { subScreenRef.current = screen; setSubScreen(screen); }
+  };
+
+  const goBack = () => { subScreenRef.current = null; setSubScreen(null); };
+
+  const panResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) =>
+      !subScreenRef.current && Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+    onPanResponderRelease: (_, gs) => {
+      const cur = tabIndexRef.current;
+      if (gs.dx < -50 && cur < TAB_SCREENS.length - 1) {
+        const next = cur + 1; tabIndexRef.current = next; setTabIndex(next); springTo(next);
+      } else if (gs.dx > 50 && cur > 0) {
+        const prev = cur - 1; tabIndexRef.current = prev; setTabIndex(prev); springTo(prev);
+      }
+    },
+  })).current;
+
   if (appState === 'loading') return null;
+  if (appState === 'onboarding') return <OnboardingScreen onDone={() => setAppState('app')} />;
 
-  if (appState === 'onboarding') {
-    return <OnboardingScreen onDone={() => setAppState('app')} />;
-  }
-
-  const navigate = (next: CurrentScreen) => setScreen(next);
-  const goBack = () => setScreen({ name: 'Home' });
-
-  if (screen.name === 'Fridge') {
-    return <FridgeScreen navigate={navigate} goBack={goBack} />;
-  }
-  if (screen.name === 'FridgeRecipes') {
-    return (
-      <RecipeScreen
-        navigate={navigate}
-        goBack={goBack}
-        prefillIngredients={screen.ingredients}
-      />
-    );
-  }
-  if (screen.name === 'Saved') {
-    return <SavedScreen navigate={navigate} goBack={goBack} />;
-  }
-  if (screen.name === 'Profile') {
-    return (
-      <ProfileScreen
-        navigate={navigate}
-        goBack={goBack}
-        onResetPreferences={() => setAppState('onboarding')}
-      />
-    );
-  }
-  if (screen.name === 'Settings') {
-    return (
-      <SettingsScreen
-        navigate={navigate}
-        goBack={goBack}
-        onResetPreferences={() => setAppState('onboarding')}
-      />
-    );
-  }
-  if (screen.name === 'Camera') {
-    return <CameraScreen navigate={navigate} goBack={goBack} fridgeMode={screen.fridgeMode} />;
-  }
-  if (screen.name === 'FridgeScan') {
-    return (
-      <FridgeScanScreen
-        navigate={navigate}
-        goBack={goBack}
-        imageBase64={screen.imageBase64}
-        mimeType={screen.mimeType}
-      />
-    );
-  }
-  if (screen.name === 'Recipes') {
-    return (
-      <RecipeScreen
-        navigate={navigate}
-        goBack={goBack}
-        imageBase64={screen.imageBase64}
-        mimeType={screen.mimeType}
-      />
-    );
+  if (subScreen) {
+    if (subScreen.name === 'Camera')
+      return <CameraScreen navigate={navigate} goBack={goBack} fridgeMode={subScreen.fridgeMode} receiptMode={subScreen.receiptMode} />;
+    if (subScreen.name === 'FridgeScan')
+      return <FridgeScanScreen navigate={navigate} goBack={goBack} imageBase64={subScreen.imageBase64} mimeType={subScreen.mimeType} />;
+    if (subScreen.name === 'ReceiptScan')
+      return <ReceiptScanScreen navigate={navigate} goBack={goBack} imageBase64={subScreen.imageBase64} mimeType={subScreen.mimeType} />;
+    if (subScreen.name === 'Recipes')
+      return <RecipeScreen navigate={navigate} goBack={goBack} imageBase64={subScreen.imageBase64} mimeType={subScreen.mimeType} />;
+    if (subScreen.name === 'FridgeRecipes')
+      return <RecipeScreen navigate={navigate} goBack={goBack} prefillIngredients={subScreen.ingredients} />;
+    if (subScreen.name === 'Profile')
+      return <ProfileScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />;
   }
 
   return (
-    <>
-      <StatusBar style="light" />
-      <HomeScreen navigate={navigate} goBack={goBack} />
-    </>
+    <View style={styles.root} {...panResponder.panHandlers}>
+      <StatusBar style="dark" />
+
+      <Animated.View style={[styles.tabContainer, { transform: [{ translateX: slideAnim }] }]}>
+        <View style={styles.screen}><HomeScreen navigate={navigate} goBack={goBack} /></View>
+        <View style={styles.screen}><FridgeScreen navigate={navigate} goBack={goBack} /></View>
+        <View style={styles.screen}><SavedScreen navigate={navigate} goBack={goBack} /></View>
+        <View style={styles.screen}>
+          <SettingsScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />
+        </View>
+      </Animated.View>
+
+      {/* ── 탭바 영역 ── */}
+      <View style={styles.tabbarArea}>
+        {/* 위쪽 그라디언트 페이드 */}
+        <LinearGradient
+          colors={['rgba(251,239,216,0)', C.cream]}
+          style={styles.tabbarGradient}
+          pointerEvents="none"
+        />
+
+        <View style={styles.tabbarWrap}>
+          {/* 발바닥 노치 */}
+          <View style={styles.pawNotchWrap} pointerEvents="none">
+            <View style={styles.pawNotch}>
+              <IconPaw />
+            </View>
+          </View>
+
+          {/* 탭 pill */}
+          <View style={styles.tabbar}>
+            {TAB_SCREENS.map((name, i) => {
+              const active = tabIndex === i;
+              const Icon = TAB_ICON_MAP[name];
+              return (
+                <TouchableOpacity key={name} style={styles.tabItem} onPress={() => goToTab(i)} activeOpacity={0.75}>
+                  <View style={styles.tabIconWrap}>
+                    <Icon active={active} />
+                  </View>
+                  <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                    {TAB_LABELS[name]}
+                  </Text>
+                  <View style={[styles.tabDot, active && styles.tabDotActive]} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root:         { flex: 1, backgroundColor: C.cream },
+  tabContainer: { flex: 1, flexDirection: 'row', width: width * 4 },
+  screen:       { width, flex: 1 },
+
+  // 탭바 전체 영역
+  tabbarArea: { backgroundColor: C.cream },
+
+  // 콘텐츠 위쪽 그라디언트 페이드
+  tabbarGradient: { position: 'absolute', left: 0, right: 0, top: -28, height: 28 },
+
+  // 패딩 컨테이너 (노치 overflow 허용)
+  tabbarWrap: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 26 },
+
+  // 발바닥 노치
+  pawNotchWrap: {
+    position: 'absolute', top: -4, left: 0, right: 0,
+    alignItems: 'center', zIndex: 10,
+  },
+  pawNotch: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: C.cream,
+    borderWidth: 1.5, borderColor: C.creamLine,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#BE8232', shadowOpacity: 0.15, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 }, elevation: 4,
+  },
+
+  // 탭 pill
+  tabbar: {
+    flexDirection: 'row',
+    backgroundColor: C.cream,
+    borderWidth: 1.5, borderColor: C.creamLine,
+    borderRadius: 28,
+    paddingVertical: 8, paddingHorizontal: 6,
+    shadowColor: '#BE8232', shadowOpacity: 0.18, shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 }, elevation: 6,
+  },
+
+  // 개별 탭
+  tabItem:     { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
+  tabIconWrap: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  tabLabel:    { fontSize: 11, fontWeight: '600', color: C.textOff },
+  tabLabelActive: { color: C.orangeDeep, fontWeight: '700' },
+  tabDot:      { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent', marginTop: 1 },
+  tabDotActive:{ backgroundColor: C.orange },
+});

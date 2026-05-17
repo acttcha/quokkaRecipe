@@ -17,7 +17,7 @@ const DIFF = {
   Hard:   { label: '어려워요',  color: Colors.coral,   bg: Colors.coralLight },
 };
 
-export default function SavedScreen({ navigate, goBack }: NavProps) {
+export default function SavedScreen({ navigate }: NavProps) {
   const [recipes, setRecipes]   = useState<SavedRecipe[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -53,9 +53,6 @@ export default function SavedScreen({ navigate, goBack }: NavProps) {
         resizeMode="cover"
       >
         <View style={styles.heroOverlay}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 돌아가기</Text>
-          </TouchableOpacity>
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
           <Text style={styles.heroSub}>
             {recipes.length > 0 ? `저장된 레시피 ${recipes.length}개` : '아직 저장된 레시피가 없어요'}
@@ -192,8 +189,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.45)',
     justifyContent: 'flex-end',
   },
-  backBtn: { marginBottom: 10 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+
   heroLogo: { width: '100%', height: 52, marginBottom: 6 },
   heroSub: { fontSize: 13, color: Colors.textMid, textAlign: 'center' },
 

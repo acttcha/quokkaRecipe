@@ -7,9 +7,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 
-interface Props extends NavProps { fridgeMode?: boolean; }
+interface Props extends NavProps { fridgeMode?: boolean; receiptMode?: boolean; }
 
-export default function CameraScreen({ navigate, goBack, fridgeMode }: Props) {
+export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [capturing, setCapturing] = useState(false);
@@ -43,7 +43,9 @@ export default function CameraScreen({ navigate, goBack, fridgeMode }: Props) {
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.8 });
       if (photo?.base64) {
-        if (fridgeMode) {
+        if (receiptMode) {
+          navigate({ name: 'ReceiptScan', imageBase64: photo.base64, mimeType: 'image/jpeg' });
+        } else if (fridgeMode) {
           navigate({ name: 'FridgeScan', imageBase64: photo.base64, mimeType: 'image/jpeg' });
         } else {
           navigate({ name: 'Recipes', imageBase64: photo.base64, mimeType: 'image/jpeg' });
@@ -64,7 +66,9 @@ export default function CameraScreen({ navigate, goBack, fridgeMode }: Props) {
     });
     if (!result.canceled && result.assets[0]?.base64) {
       const b64 = result.assets[0].base64;
-      if (fridgeMode) {
+      if (receiptMode) {
+        navigate({ name: 'ReceiptScan', imageBase64: b64, mimeType: 'image/jpeg' });
+      } else if (fridgeMode) {
         navigate({ name: 'FridgeScan', imageBase64: b64, mimeType: 'image/jpeg' });
       } else {
         navigate({ name: 'Recipes', imageBase64: b64, mimeType: 'image/jpeg' });
@@ -82,7 +86,9 @@ export default function CameraScreen({ navigate, goBack, fridgeMode }: Props) {
               <Text style={styles.glassBtnText}>✕</Text>
             </TouchableOpacity>
             <View style={styles.hintChip}>
-              <Text style={styles.hintChipText}>재료가 잘 보이게 찍어요 🌿</Text>
+              <Text style={styles.hintChipText}>
+                {receiptMode ? '영수증 전체가 보이게 찍어요 🧾' : '재료가 잘 보이게 찍어요 🌿'}
+              </Text>
             </View>
             <TouchableOpacity style={styles.glassBtn} onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}>
               <Text style={styles.glassBtnText}>🔄</Text>

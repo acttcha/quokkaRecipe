@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, Alert, Image, ImageBackground, Dimensions, Animated, Easing,
+  StatusBar, Alert, Image, ImageBackground, Dimensions,
 } from 'react-native';
 import { NavProps } from '../types';
 import { MOCK_MODE } from '../services/claude';
-import { getSavedRecipes } from '../services/savedRecipes';
+import { getFridgeIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const FRIDGE_IMGS = [
   require('../../assets/refrigerator1.png'),
@@ -20,19 +20,12 @@ const FRIDGE_IMGS = [
 const HAS_API_KEY = !!process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 
 export default function HomeScreen({ navigate }: NavProps) {
-  const [savedCount, setSavedCount] = useState(0);
   const [fridgeFrame, setFridgeFrame] = useState(0);
-  const [fridgeTapping, setFridgeTapping] = useState(false);
+  const [fridgeCount, setFridgeCount] = useState(0);
 
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const overlayScale   = useRef(new Animated.Value(0.08)).current;
-
-  const loadData = useCallback(async () => {
-    const saved = await getSavedRecipes();
-    setSavedCount(saved.length);
+  useEffect(() => {
+    getFridgeIngredients().then(items => setFridgeCount(items.length));
   }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
 
   const handleScan = () => {
     if (!MOCK_MODE && !HAS_API_KEY) {
@@ -43,44 +36,14 @@ export default function HomeScreen({ navigate }: NavProps) {
   };
 
   const handleFridgeTap = () => {
-    if (fridgeTapping) return;
-    setFridgeTapping(true);
-
     setFridgeFrame(1);
-    setTimeout(() => setFridgeFrame(2), 140);
-    setTimeout(() => setFridgeFrame(3), 280);
-
-    Animated.sequence([
-      Animated.delay(280),
-      Animated.parallel([
-        Animated.timing(overlayOpacity, {
-          toValue: 1,
-          duration: 420,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.quad),
-        }),
-        Animated.timing(overlayScale, {
-          toValue: 1,
-          duration: 420,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-      ]),
-    ]).start(() => {
+    setTimeout(() => setFridgeFrame(2), 100);
+    setTimeout(() => setFridgeFrame(3), 200);
+    setTimeout(() => {
       navigate({ name: 'Fridge' });
-      setTimeout(() => {
-        setFridgeFrame(0);
-        setFridgeTapping(false);
-        overlayOpacity.setValue(0);
-        overlayScale.setValue(0.08);
-      }, 120);
-    });
+      setTimeout(() => setFridgeFrame(0), 150);
+    }, 200);
   };
-
-  const fridgeCenterX = width - 52;
-  const fridgeCenterY = height - 260;
-  const tx = fridgeCenterX - width / 2;
-  const ty = fridgeCenterY - height / 2;
 
   return (
     <ImageBackground
@@ -90,14 +53,12 @@ export default function HomeScreen({ navigate }: NavProps) {
     >
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* 설정 버튼 */}
-      <TouchableOpacity style={styles.settingsBtn} onPress={() => navigate({ name: 'Settings' })}>
-        <Text style={styles.settingsIcon}>⚙️</Text>
-      </TouchableOpacity>
-
-      {/* 로고 */}
+      {/* 로고 + 설정 버튼 */}
       <View style={styles.logoWrap}>
         <Image source={require('../../assets/main_logo.png')} style={styles.logo} resizeMode="contain" />
+        <TouchableOpacity style={styles.btnSetting} onPress={() => navigate({ name: 'Settings' })}>
+          <Image source={require('../../assets/btnSetting.png')} style={styles.settingsIcon} resizeMode="contain" />
+        </TouchableOpacity>
       </View>
 
       {/* 말풍선 */}
@@ -109,20 +70,20 @@ export default function HomeScreen({ navigate }: NavProps) {
         <View style={styles.bubbleTail} />
       </View>
 
-      {/* 쿼카 + 냉장고 */}
+      {/* 쿼카 + 냉장고 위젯 */}
       <View style={styles.charWrap}>
         <View style={styles.charArea}>
           <Image source={require('../../assets/quokka.png')} style={styles.quokka} resizeMode="contain" />
         </View>
 
-        <TouchableOpacity
-          style={styles.fridgeBtn}
-          onPress={handleFridgeTap}
-          activeOpacity={0.9}
-          disabled={fridgeTapping}
-        >
+        <TouchableOpacity style={styles.fridgeWidget} onPress={handleFridgeTap} activeOpacity={0.88}>
+          {fridgeCount > 0 && (
+            <View style={styles.fridgeBadge}>
+              <Text style={styles.fridgeBadgeText}>{fridgeCount}</Text>
+            </View>
+          )}
           <Image source={FRIDGE_IMGS[fridgeFrame]} style={styles.fridgeImg} resizeMode="contain" />
-          <Text style={styles.fridgeLabel}>냉장고</Text>
+          <Text style={styles.fridgeLabel}>내 냉장고</Text>
         </TouchableOpacity>
       </View>
 
@@ -141,46 +102,12 @@ export default function HomeScreen({ navigate }: NavProps) {
 
         <TouchableOpacity style={styles.scanBtn} onPress={handleScan} activeOpacity={0.82}>
           <Text style={styles.scanEmoji}>📸</Text>
-          <Text style={styles.scanTitle}>재료 스캔하기</Text>
-          <Text style={styles.scanSub}>카메라로 찍으면 레시피 완성!</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.savedBtn} onPress={() => navigate({ name: 'Saved' })} activeOpacity={0.82}>
-          <Text style={styles.savedBtnIcon}>♥</Text>
-          <View style={styles.savedBtnTexts}>
-            <Text style={styles.savedBtnTitle}>저장된 레시피</Text>
-            <Text style={styles.savedBtnSub}>
-              {savedCount > 0 ? `${savedCount}개의 레시피가 저장되어 있어요` : '아직 저장된 레시피가 없어요'}
-            </Text>
+          <View>
+            <Text style={styles.scanTitle}>재료 스캔하기</Text>
+            <Text style={styles.scanSub}>카메라로 찍으면 레시피 완성!</Text>
           </View>
-          <Text style={styles.savedBtnArrow}>›</Text>
         </TouchableOpacity>
       </View>
-
-      {/* 냉장고 진입 오버레이 */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          {
-            zIndex: 200,
-            opacity: overlayOpacity,
-            transform: [
-              { translateX: tx },
-              { translateY: ty },
-              { scale: overlayScale },
-              { translateX: -tx },
-              { translateY: -ty },
-            ],
-          },
-        ]}
-      >
-        <Image
-          source={require('../../assets/refrigerator4.png')}
-          style={{ width: '100%', height: '100%' }}
-          resizeMode="cover"
-        />
-      </Animated.View>
     </ImageBackground>
   );
 }
@@ -188,16 +115,11 @@ export default function HomeScreen({ navigate }: NavProps) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 
-  settingsBtn: {
-    position: 'absolute', top: 62, right: 22, zIndex: 10,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(27,58,45,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  settingsIcon: { fontSize: 20 },
+  btnSetting:   { position: 'absolute', right: 16, top: 62, zIndex: 10 },
+  settingsIcon: { width: 64, height: 64 },
 
-  logoWrap: { paddingTop: 62, paddingHorizontal: 32 },
-  logo: { width: '100%', height: 72, alignSelf: 'center' },
+  logoWrap: { paddingTop: 62, paddingHorizontal: 32, alignItems: 'center' },
+  logo:     { width: '100%', height: 72, alignSelf: 'center' },
 
   bubbleOuter: { alignItems: 'center', marginTop: 10 },
   bubble: {
@@ -206,52 +128,54 @@ const styles = StyleSheet.create({
     alignItems: 'center', ...shadow.md,
   },
   bubbleText: { fontSize: 17, fontWeight: '900', color: Colors.primary, marginBottom: 3 },
-  bubbleSub: { fontSize: 13, fontWeight: '600', color: Colors.textMid },
+  bubbleSub:  { fontSize: 13, fontWeight: '600', color: Colors.textMid },
   bubbleTail: {
     width: 0, height: 0,
-    borderLeftWidth: 10, borderLeftColor: 'transparent',
+    borderLeftWidth: 10,  borderLeftColor:  'transparent',
     borderRightWidth: 10, borderRightColor: 'transparent',
-    borderTopWidth: 12, borderTopColor: '#FFFFFF',
+    borderTopWidth: 12,   borderTopColor:   '#FFFFFF',
   },
 
   charWrap: { flex: 1 },
   charArea: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
-  quokka: { width: width * 0.88, height: 300 },
+  quokka:   { width: width * 0.88, height: 300 },
 
-  fridgeBtn: { position: 'absolute', right: 16, bottom: 16, alignItems: 'center' },
-  fridgeImg: { width: 72, height: 112 },
-  fridgeLabel: { fontSize: 10, fontWeight: '800', color: Colors.primary, marginTop: 4 },
+  fridgeWidget: {
+    position: 'absolute', right: 14, bottom: 14,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderRadius: 20,
+    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)',
+    ...shadow.md,
+  },
+  fridgeBadge: {
+    position: 'absolute', top: -8, right: -8, zIndex: 1,
+    backgroundColor: Colors.accent,
+    borderRadius: 12, minWidth: 24, height: 24,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2, borderColor: '#FFF',
+  },
+  fridgeBadgeText: { fontSize: 11, fontWeight: '900', color: '#FFF' },
+  fridgeImg:       { width: 58, height: 90 },
+  fridgeLabel:     { fontSize: 10, fontWeight: '800', color: Colors.primary, marginTop: 5 },
 
   panel: {
     backgroundColor: '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30,
-    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40, gap: 14, ...shadow.md,
+    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, gap: 14, ...shadow.md,
   },
-  testBadge: {
-    alignSelf: 'center', backgroundColor: Colors.yellow,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
-  },
+  testBadge:     { alignSelf: 'center', backgroundColor: Colors.yellow, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
   testBadgeText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
-  warnBanner: {
-    backgroundColor: 'rgba(255,107,107,0.1)', borderRadius: 14, padding: 13,
-    alignItems: 'center', borderWidth: 1.5, borderColor: Colors.coral,
-  },
-  warnText: { fontSize: 13, fontWeight: '700', color: Colors.coral },
+  warnBanner:    { backgroundColor: 'rgba(255,107,107,0.1)', borderRadius: 14, padding: 13, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.coral },
+  warnText:      { fontSize: 13, fontWeight: '700', color: Colors.coral },
 
   scanBtn: {
-    backgroundColor: Colors.accent, borderRadius: 26,
-    alignItems: 'center', paddingVertical: 22, ...shadow.md,
+    backgroundColor: Colors.accent, borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, paddingHorizontal: 22, gap: 12, ...shadow.md,
   },
-  scanEmoji: { fontSize: 38, marginBottom: 6 },
-  scanTitle: { fontSize: 20, fontWeight: '900', color: '#FFF', marginBottom: 4 },
-  scanSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-
-  savedBtn: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.cardGreen,
-    borderRadius: 20, paddingVertical: 14, paddingHorizontal: 18, gap: 12, ...shadow.sm,
-  },
-  savedBtnIcon: { fontSize: 22, color: Colors.coral },
-  savedBtnTexts: { flex: 1 },
-  savedBtnTitle: { fontSize: 15, fontWeight: '800', color: Colors.primary, marginBottom: 2 },
-  savedBtnSub: { fontSize: 12, color: Colors.primaryMid, fontWeight: '500' },
-  savedBtnArrow: { fontSize: 22, color: Colors.primaryMid, fontWeight: '300' },
+  scanEmoji: { fontSize: 28 },
+  scanTitle: { fontSize: 16, fontWeight: '900', color: '#FFF' },
+  scanSub:   { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '500', marginTop: 2 },
 });

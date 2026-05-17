@@ -98,6 +98,36 @@ export async function identifyIngredients(
   return extractJson<string[]>(text);
 }
 
+export async function identifyReceiptItems(
+  imageBase64: string,
+  mimeType: string = 'image/jpeg',
+): Promise<string[]> {
+  if (MOCK_MODE) {
+    await new Promise(r => setTimeout(r, 1500));
+    return ['계란', '우유', '버터', '양파', '당근', '닭가슴살', '브로콜리', '두부', '마늘', '파프리카'];
+  }
+  const text = await callClaude({
+    model: MODEL,
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
+        {
+          type: 'text',
+          text: `이것은 마트/슈퍼마켓 영수증 사진입니다. 영수증에서 식재료/식품 항목만 추출해주세요.
+한국어로 된 식재료 이름만 JSON 배열로 반환하세요. 다른 텍스트는 포함하지 마세요.
+- 세제·생활용품 등 식재료가 아닌 항목은 제외하세요
+- 브랜드명·용량·수량은 제거하고 핵심 재료명만 추출하세요 (예: "풀무원 국산콩두부 300g" → "두부")
+예시: ["계란", "우유", "양파", "닭가슴살"]
+식재료가 없으면: []`,
+        },
+      ],
+    }],
+  });
+  return extractJson<string[]>(text);
+}
+
 export async function generateRecipes(ingredients: string[]): Promise<Recipe[]> {
   if (MOCK_MODE) {
     await new Promise(r => setTimeout(r, 2000));

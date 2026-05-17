@@ -36,8 +36,9 @@ export type ScreenName = 'Home' | 'Camera' | 'Recipes' | 'Settings' | 'Saved';
 
 export type CurrentScreen =
   | { name: 'Home' }
-  | { name: 'Camera'; fridgeMode?: boolean }
+  | { name: 'Camera'; fridgeMode?: boolean; receiptMode?: boolean }
   | { name: 'FridgeScan'; imageBase64: string; mimeType: string }
+  | { name: 'ReceiptScan'; imageBase64: string; mimeType: string }
   | { name: 'Recipes'; imageBase64: string; mimeType: string }
   | { name: 'FridgeRecipes'; ingredients: string[] }
   | { name: 'Settings' }
