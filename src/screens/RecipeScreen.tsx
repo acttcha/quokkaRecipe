@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, TextInput, Image, ImageBackground,
   StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
 import { identifyIngredients, generateRecipes, askQuokka, MOCK_MODE } from '../services/claude';
 import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount } from '../services/youtube';
@@ -26,7 +27,6 @@ const DIFF = {
   Medium: { label: '보통이에요', color: '#D97706',      bg: Colors.yellowLight },
   Hard:   { label: '어려워요',  color: Colors.coral,   bg: Colors.coralLight },
 };
-const CARD_ACCENT = ['#FFD166', '#74C0FC', '#52B788', '#FF9F7F', '#C77DFF'];
 
 function getRecipeEmoji(name: string, ingredients: string[]): string {
   const t = (name + ' ' + ingredients.join(' ')).toLowerCase();
@@ -207,15 +207,13 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     return (
       <View style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <ImageBackground source={require('../../assets/background.png')} style={styles.reviewHero} resizeMode="cover">
-          <View style={styles.heroOverlay}>
-            <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-              <Text style={styles.backBtnText}>← 다시 찍기</Text>
-            </TouchableOpacity>
-            <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-            <Text style={styles.reviewSub}>탭하면 삭제돼요 · 재료 추가도 가능해요</Text>
-          </View>
-        </ImageBackground>
+        <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.reviewHero}>
+          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>← 다시 찍기</Text>
+          </TouchableOpacity>
+          <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
+          <Text style={styles.reviewSub}>탭하면 삭제돼요 · 재료 추가도 가능해요</Text>
+        </LinearGradient>
 
         <ScrollView style={styles.reviewBody} contentContainerStyle={styles.reviewContent}>
           <View style={styles.tagsWrap}>
@@ -255,17 +253,15 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <ImageBackground source={require('../../assets/background.png')} style={styles.resultsHero} resizeMode="cover">
-        <View style={styles.heroOverlay}>
-          <TouchableOpacity onPress={() => setStep('review')} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 재료 수정</Text>
-          </TouchableOpacity>
-          <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-          <Text style={styles.resultsSub} numberOfLines={1}>
-            {ingredients.slice(0, 3).join(' · ')}{ingredients.length > 3 ? ` +${ingredients.length - 3}개` : ''}
-          </Text>
-        </View>
-      </ImageBackground>
+      <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.resultsHero}>
+        <TouchableOpacity onPress={() => setStep('review')} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>← 재료 수정</Text>
+        </TouchableOpacity>
+        <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
+        <Text style={styles.resultsSub} numberOfLines={1}>
+          {ingredients.slice(0, 3).join(' · ')}{ingredients.length > 3 ? ` +${ingredients.length - 3}개` : ''}
+        </Text>
+      </LinearGradient>
 
       {/* 탭 */}
       <View style={styles.tabWrap}>
@@ -289,23 +285,12 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         {tab === 'ai' && recipes.map((r, idx) => {
           const open = expanded === idx;
           const diff = DIFF[r.difficulty];
-          const accent = CARD_ACCENT[idx % CARD_ACCENT.length];
           const isSaved = savedNames.has(r.name);
-          const missing = getMissingIngredients(r.ingredients);
           return (
             <View key={idx} style={styles.recipeCard}>
-              {/* 컬러 헤더 — 좌(이모지+expand) / 우(북마크) 분리로 터치 충돌 제거 */}
-              <View style={[styles.recipeHeader, { backgroundColor: accent }]}>
-                <TouchableOpacity
-                  style={styles.recipeHeaderLeft}
-                  onPress={() => setExpanded(open ? null : idx)}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.recipeHeaderEmoji}>{getRecipeEmoji(r.name, r.ingredients)}</Text>
-                  <View style={[styles.diffChip, { backgroundColor: 'rgba(255,255,255,0.9)' }]}>
-                    <Text style={[styles.diffText, { color: diff.color }]}>{diff.label}</Text>
-                  </View>
-                </TouchableOpacity>
+              {/* 상단 행: 이름 + 북마크 */}
+              <View style={styles.cardTopRow}>
+                <Text style={styles.recipeName}>{r.name}</Text>
                 <TouchableOpacity style={styles.bookmarkBtn} onPress={() => toggleSave(r)}>
                   <Text style={styles.bookmarkIcon}>{isSaved ? '♥' : '♡'}</Text>
                 </TouchableOpacity>
@@ -317,9 +302,11 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 onPress={() => setExpanded(open ? null : idx)}
                 activeOpacity={0.9}
               >
-                <Text style={styles.recipeName}>{r.name}</Text>
                 <Text style={styles.recipeDesc}>{r.description}</Text>
                 <View style={styles.metaRow}>
+                  <View style={[styles.diffChip, { backgroundColor: diff.bg }]}>
+                    <Text style={[styles.diffText, { color: diff.color }]}>{diff.label}</Text>
+                  </View>
                   <View style={styles.metaChip}><Text style={styles.metaChipText}>⏱ {r.cookTime}</Text></View>
                   <View style={styles.metaChip}><Text style={styles.metaChipText}>👥 {r.servings}인분</Text></View>
                   {r.nutrition && (
@@ -363,7 +350,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                     <Text style={[styles.detailHead, { marginTop: 16 }]}>👨‍🍳 만드는 법</Text>
                     {r.steps.map((s, n) => (
                       <View key={n} style={styles.stepRow}>
-                        <View style={[styles.stepNum, { backgroundColor: accent }]}>
+                        <View style={styles.stepNum}>
                           <Text style={styles.stepNumText}>{n + 1}</Text>
                         </View>
                         <Text style={styles.stepText}>{s}</Text>
@@ -514,140 +501,143 @@ const QUICK_QUESTIONS = [
 ];
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+  root: { flex: 1, backgroundColor: Colors.cream },
 
+  // 로딩/에러
   loadRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   loadQuokka: { width: 200, height: 200, marginBottom: 8 },
   loadCooking: { width: 300, height: 300, marginBottom: -16 },
-  loadCard: { backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 28, padding: 32, alignItems: 'center', width: '100%', ...shadow.md },
+  loadCard: { backgroundColor: 'rgba(255,249,236,0.92)', borderRadius: 28, padding: 32, alignItems: 'center', width: '100%', ...shadow.md },
   loadIcon: { fontSize: 40, marginBottom: 12 },
-  loadTitle: { fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 8 },
-  loadSub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
+  loadTitle: { fontSize: 20, fontWeight: '800', color: Colors.ink, marginBottom: 8 },
+  loadSub: { fontSize: 14, color: Colors.inkSoft, textAlign: 'center', lineHeight: 20 },
 
-  greenBtn: { backgroundColor: Colors.accent, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', marginTop: 16, ...shadow.sm },
+  greenBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', marginTop: 16, ...shadow.sm },
   greenBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   textBtn: { padding: 12, alignItems: 'center' },
-  textBtnText: { color: Colors.textMuted, fontSize: 14, fontWeight: '600' },
+  textBtnText: { color: Colors.inkMute, fontSize: 14, fontWeight: '600' },
 
-  reviewHero: { minHeight: 170 },
-  heroOverlay: { flex: 1, paddingTop: 52, paddingHorizontal: 24, paddingBottom: 28, backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end' },
-  heroLogo: { width: '100%', height: 52, marginBottom: 6 },
-  backBtn: { marginBottom: 10 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
-  reviewSub: { fontSize: 13, color: Colors.textMid, fontWeight: '500' },
+  // 재료 확인 화면
+  reviewHero: { paddingTop: 56, paddingHorizontal: 24, paddingBottom: 24 },
+  heroLogo: { width: '100%', height: 52, marginBottom: 8 },
+  backBtn: { marginBottom: 12 },
+  backBtnText: { color: Colors.ink, fontSize: 14, fontWeight: '700' },
+  reviewSub: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500' },
 
-  reviewBody: { flex: 1, backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20 },
+  reviewBody: { flex: 1, backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, ...shadow.sm },
   reviewContent: { padding: 20, paddingBottom: 48 },
 
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
-  ingTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.card, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5, borderColor: Colors.accentLight, ...shadow.sm },
-  ingTagText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  ingTagX: { fontSize: 14, color: Colors.textMuted, fontWeight: '700' },
-  emptyCard: { backgroundColor: Colors.yellowLight, borderRadius: 16, padding: 18, alignItems: 'center', marginBottom: 18 },
-  emptyCardText: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  ingTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.orangeSoft, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: '#F2994A50', ...shadow.sm },
+  ingTagText: { fontSize: 14, fontWeight: '700', color: Colors.ink },
+  ingTagX: { fontSize: 14, color: Colors.inkMute, fontWeight: '700' },
+  emptyCard: { backgroundColor: Colors.creamDark, borderRadius: 16, padding: 18, alignItems: 'center', marginBottom: 18 },
+  emptyCardText: { fontSize: 15, fontWeight: '700', color: Colors.ink },
   addRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  addInput: { flex: 1, backgroundColor: Colors.card, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: Colors.text },
-  addBtn: { backgroundColor: Colors.accent, borderRadius: 14, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+  addInput: { flex: 1, backgroundColor: Colors.creamSoft, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.line, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: Colors.ink },
+  addBtn: { backgroundColor: Colors.forest, borderRadius: 14, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
   addBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
 
-  resultsHero: { minHeight: 170 },
-  resultsSub: { fontSize: 13, color: Colors.textMid, textAlign: 'center' },
+  // 결과 화면
+  resultsHero: { paddingTop: 56, paddingHorizontal: 24, paddingBottom: 20 },
+  resultsSub: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500' },
 
-  tabWrap: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, backgroundColor: Colors.bg },
-  tab: { flex: 1, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.card, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border },
-  tabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  tabText: { fontSize: 14, fontWeight: '700', color: Colors.textMuted },
+  tabWrap: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8, backgroundColor: Colors.cream },
+  tab: { flex: 1, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.white, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.line },
+  tabActive: { backgroundColor: Colors.forest, borderColor: Colors.forest },
+  tabText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
   tabTextActive: { color: '#FFF', fontWeight: '800' },
 
   resultsContent: { paddingHorizontal: 20, paddingBottom: 48 },
 
-  recipeCard: { backgroundColor: Colors.card, borderRadius: 24, marginBottom: 18, overflow: 'hidden', ...shadow.md },
-  recipeHeader: { height: 100, flexDirection: 'row', alignItems: 'stretch' },
-  recipeHeaderLeft: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  recipeHeaderEmoji: { fontSize: 44 },
-  diffChip: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
-  diffText: { fontSize: 12, fontWeight: '800' },
-  bookmarkBtn: { width: 52, alignItems: 'center', justifyContent: 'center' },
+  // 레시피 카드
+  recipeCard: { backgroundColor: Colors.white, borderRadius: 24, marginBottom: 18, overflow: 'hidden', ...shadow.md },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 2 },
+  recipeName: { fontSize: 20, fontWeight: '900', color: Colors.ink, flex: 1, marginRight: 8 },
+  bookmarkBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   bookmarkIcon: { fontSize: 22, color: Colors.coral },
-  recipeBody: { padding: 18 },
-  recipeName: { fontSize: 20, fontWeight: '900', color: Colors.text, marginBottom: 6 },
-  recipeDesc: { fontSize: 13, color: Colors.textMuted, lineHeight: 19, marginBottom: 14 },
+  diffChip: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  diffText: { fontSize: 12, fontWeight: '800' },
+  recipeBody: { paddingHorizontal: 18, paddingBottom: 18, paddingTop: 8 },
+  recipeDesc: { fontSize: 13, color: Colors.inkSoft, lineHeight: 19, marginBottom: 14 },
   metaRow: { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  metaChip: { backgroundColor: '#F7F5F2', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
-  metaChipText: { fontSize: 12, color: Colors.textMid, fontWeight: '600' },
-  expandBtn: { marginLeft: 'auto' as any, backgroundColor: Colors.accentLight, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  expandBtnText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  metaChip: { backgroundColor: Colors.creamSoft, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  metaChipText: { fontSize: 12, color: Colors.inkSoft, fontWeight: '600' },
+  expandBtn: { marginLeft: 'auto' as any, backgroundColor: Colors.forestSoft, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  expandBtnText: { fontSize: 12, fontWeight: '800', color: Colors.forest },
 
   detail: { marginTop: 4 },
-  detailLine: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
-  detailHead: { fontSize: 13, fontWeight: '800', color: Colors.text, marginBottom: 10 },
+  detailLine: { height: 1, backgroundColor: Colors.line, marginVertical: 14 },
+  detailHead: { fontSize: 13, fontWeight: '800', color: Colors.ink, marginBottom: 10 },
 
-  nutritionBox: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#F7F5F2', borderRadius: 16, padding: 16, marginBottom: 16 },
+  nutritionBox: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: Colors.creamSoft, borderRadius: 16, padding: 16, marginBottom: 16 },
   nutritionItem: { alignItems: 'center', flex: 1 },
   nutritionVal: { fontSize: 15, fontWeight: '900', marginBottom: 4 },
-  nutritionLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
+  nutritionLabel: { fontSize: 11, color: Colors.inkMute, fontWeight: '600' },
 
   ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  ingredientChip: { backgroundColor: '#F7F5F2', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  ingredientChipText: { fontSize: 13, fontWeight: '600', color: Colors.textMid },
+  ingredientChip: { backgroundColor: Colors.creamSoft, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: Colors.line },
+  ingredientChipText: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft },
 
   stepRow: { flexDirection: 'row', gap: 12, marginBottom: 12, alignItems: 'flex-start' },
-  stepNum: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  stepNumText: { fontSize: 13, fontWeight: '900', color: Colors.primary },
-  stepText: { fontSize: 14, color: Colors.text, lineHeight: 22, flex: 1 },
+  stepNum: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: Colors.orangeSoft },
+  stepNumText: { fontSize: 13, fontWeight: '900', color: Colors.orangeDeep },
+  stepText: { fontSize: 14, color: Colors.ink, lineHeight: 22, flex: 1 },
 
-  askBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.cardGreen, borderRadius: 16, padding: 14, marginTop: 16, gap: 10 },
+  askBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.forestSoft, borderRadius: 16, padding: 14, marginTop: 16, gap: 10 },
   askBtnQuokka: { width: 40, height: 40 },
-  askBtnText: { fontSize: 14, fontWeight: '800', color: Colors.primary },
+  askBtnText: { fontSize: 14, fontWeight: '800', color: Colors.forestDeep },
 
+  // 유튜브
   ytHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 },
-  ytHeaderText: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  ytHeaderText: { fontSize: 16, fontWeight: '800', color: Colors.ink },
   ytMoreBtn: { backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
   ytMoreText: { fontSize: 12, fontWeight: '700', color: Colors.youtube },
-  videoCard: { backgroundColor: Colors.card, borderRadius: 18, flexDirection: 'row', marginBottom: 12, overflow: 'hidden', ...shadow.sm },
+  videoCard: { backgroundColor: Colors.white, borderRadius: 18, flexDirection: 'row', marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
   thumb: { width: 110, height: 86, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   thumbEmoji: { fontSize: 36 },
-  rankBadge: { position: 'absolute', top: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  rankBadge: { position: 'absolute', top: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   rankText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
   videoInfo: { flex: 1, padding: 12, justifyContent: 'center' },
-  videoTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, lineHeight: 19, marginBottom: 4 },
-  videoChannel: { fontSize: 12, color: Colors.textMuted },
-  viewBadge: { backgroundColor: Colors.coralLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 6 },
+  videoTitle: { fontSize: 14, fontWeight: '700', color: Colors.ink, lineHeight: 19, marginBottom: 4 },
+  videoChannel: { fontSize: 12, color: Colors.inkMute },
+  viewBadge: { backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 6 },
   viewText: { fontSize: 11, fontWeight: '700', color: Colors.youtube },
 
-  coupangBar: { backgroundColor: Colors.card, borderRadius: 22, padding: 18, marginBottom: 14, marginTop: 8, ...shadow.sm },
-  coupangBarLabel: { fontSize: 15, fontWeight: '800', color: Colors.text },
-  coupangBarSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  // 쿠팡
+  coupangBar: { backgroundColor: Colors.white, borderRadius: 22, padding: 18, marginBottom: 14, marginTop: 8, borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
+  coupangBarLabel: { fontSize: 15, fontWeight: '800', color: Colors.ink },
+  coupangBarSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 2 },
   coupangChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF5F5', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5, borderColor: '#FFD0D0' },
-  coupangChipText: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  coupangChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
   coupangChipIcon: { fontSize: 12, color: Colors.coupang, fontWeight: '800' },
 
-  homeBtn: { backgroundColor: Colors.card, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 12, borderWidth: 1, borderColor: Colors.border },
-  homeBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textMid },
+  homeBtn: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 12, borderWidth: 1, borderColor: Colors.line },
+  homeBtnText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
 
   // 모달
   modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 36, maxHeight: '85%' },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: 16 },
+  modalSheet: { backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 36, maxHeight: '85%' },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.line, alignSelf: 'center', marginBottom: 16 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
   modalQuokka: { width: 52, height: 52 },
   modalHeaderText: { flex: 1 },
-  modalTitle: { fontSize: 17, fontWeight: '900', color: Colors.primary },
-  modalSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  modalClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F7F5F2', alignItems: 'center', justifyContent: 'center' },
-  modalCloseText: { fontSize: 14, color: Colors.textMid, fontWeight: '700' },
+  modalTitle: { fontSize: 17, fontWeight: '900', color: Colors.ink },
+  modalSub: { fontSize: 12, color: Colors.inkMute, marginTop: 2 },
+  modalClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.creamSoft, alignItems: 'center', justifyContent: 'center' },
+  modalCloseText: { fontSize: 14, color: Colors.inkSoft, fontWeight: '700' },
 
-  answerBox: { backgroundColor: Colors.cardGreen, borderRadius: 18, padding: 16, marginBottom: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  answerLoading: { fontSize: 14, color: Colors.primaryMid, fontWeight: '600' },
-  answerText: { fontSize: 14, color: Colors.text, lineHeight: 22, flex: 1 },
+  answerBox: { backgroundColor: Colors.forestSoft, borderRadius: 18, padding: 16, marginBottom: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  answerLoading: { fontSize: 14, color: Colors.forest, fontWeight: '600' },
+  answerText: { fontSize: 14, color: Colors.ink, lineHeight: 22, flex: 1 },
 
   quickRow: { marginBottom: 12 },
-  quickChip: { backgroundColor: Colors.accentLight, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8 },
-  quickChipText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  quickChip: { backgroundColor: Colors.creamDark, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8 },
+  quickChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
   inputRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-end' },
-  modalInput: { flex: 1, backgroundColor: '#F7F5F2', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: Colors.text, maxHeight: 100 },
-  sendBtn: { backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 12 },
-  sendBtnDisabled: { backgroundColor: Colors.border },
+  modalInput: { flex: 1, backgroundColor: Colors.creamSoft, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: Colors.ink, maxHeight: 100 },
+  sendBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 12 },
+  sendBtnDisabled: { backgroundColor: Colors.line },
   sendBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
 });

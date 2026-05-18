@@ -39,17 +39,15 @@ export default function HomeScreen({ navigate }: NavProps) {
         </View>
       </View>
 
-      {/* 말풍선 */}
-      <View style={styles.bubbleOuter}>
-        <View style={styles.bubble}>
-          <Text style={styles.bubbleText}>오늘 뭐 드실 건가요? 🍽️</Text>
-          <Text style={styles.bubbleSub}>재료를 찍으면 레시피 뚝딱!</Text>
-        </View>
-        <View style={styles.bubbleTail} />
-      </View>
-
-      {/* 쿼카 */}
+      {/* 쿼카 + 말풍선 */}
       <View style={styles.charWrap}>
+        <View style={styles.bubbleOuter}>
+          <View style={styles.bubble}>
+            <Text style={styles.bubbleText}>오늘 뭐 드실 건가요? 🍽️</Text>
+            <Text style={styles.bubbleSub}>재료를 찍으면 레시피 뚝딱!</Text>
+          </View>
+          <View style={styles.bubbleTail} />
+        </View>
         <Image source={require('../../assets/quokka.png')} style={styles.quokka} resizeMode="contain" />
       </View>
 
@@ -88,39 +86,40 @@ const styles = StyleSheet.create({
   logo:      { flex: 1, height: 72 },
   btnSetting:{ marginLeft: 8 },
 
-  bubbleOuter: { alignItems: 'center', marginTop: 10 },
+  bubbleOuter: { alignItems: 'center', marginBottom: 8 },
   bubble: {
-    backgroundColor: '#FFFFFF', borderRadius: 22,
+    backgroundColor: Colors.creamSoft, borderRadius: 22,
     paddingHorizontal: 22, paddingVertical: 14,
-    alignItems: 'center', ...shadow.md,
+    alignItems: 'center', borderWidth: 1, borderColor: Colors.line, ...shadow.md,
   },
-  bubbleText: { fontSize: 17, fontWeight: '900', color: Colors.primary, marginBottom: 3 },
-  bubbleSub:  { fontSize: 13, fontWeight: '600', color: Colors.textMid },
+  bubbleText: { fontSize: 17, fontWeight: '900', color: Colors.ink, marginBottom: 3 },
+  bubbleSub:  { fontSize: 13, fontWeight: '600', color: Colors.inkSoft },
   bubbleTail: {
     width: 0, height: 0,
     borderLeftWidth: 10,  borderLeftColor:  'transparent',
     borderRightWidth: 10, borderRightColor: 'transparent',
-    borderTopWidth: 12,   borderTopColor:   '#FFFFFF',
+    borderTopWidth: 12,   borderTopColor:   Colors.creamSoft,
   },
 
   charWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
-  quokka:   { width: width * 0.88, height: 300 },
+  quokka:   { width: width * 0.90, height: 310 },
 
   panel: {
-    backgroundColor: '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30,
+    backgroundColor: Colors.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30,
+    borderTopWidth: 1, borderColor: Colors.line,
     paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, gap: 14, ...shadow.md,
   },
-  testBadge:     { alignSelf: 'center', backgroundColor: Colors.yellow, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
-  testBadgeText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
-  warnBanner:    { backgroundColor: 'rgba(255,107,107,0.1)', borderRadius: 14, padding: 13, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.coral },
+  testBadge:     { alignSelf: 'center', backgroundColor: Colors.orangeSoft, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
+  testBadgeText: { fontSize: 12, fontWeight: '800', color: Colors.orangeDeep },
+  warnBanner:    { backgroundColor: 'rgba(255,107,107,0.08)', borderRadius: 14, padding: 13, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.coral },
   warnText:      { fontSize: 13, fontWeight: '700', color: Colors.coral },
 
   scanBtn: {
-    backgroundColor: Colors.accent, borderRadius: 20,
+    backgroundColor: Colors.forest, borderRadius: 20,
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 14, paddingHorizontal: 22, gap: 12, ...shadow.md,
   },
   scanEmoji: { fontSize: 28 },
   scanTitle: { fontSize: 16, fontWeight: '900', color: '#FFF' },
-  scanSub:   { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '500', marginTop: 2 },
+  scanSub:   { fontSize: 12, color: 'rgba(255,255,255,0.80)', fontWeight: '500', marginTop: 2 },
 });

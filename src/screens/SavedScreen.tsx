@@ -12,31 +12,6 @@ import { CircleIconButton, SearchIcon } from '../components/ui';
 
 const { width } = Dimensions.get('window');
 
-const CARD_COLORS = ['#F5C18D', '#FFD891', '#B7D9A8', '#E8C386', '#FFB3C6', '#AED6F1'];
-
-function getRecipeEmoji(name: string, ingredients: string[]): string {
-  const t = (name + ' ' + ingredients.join(' ')).toLowerCase();
-  if (/비빔밥|덮밥/.test(t))             return '🍱';
-  if (/볶음밥|필라프/.test(t))            return '🍚';
-  if (/김치/.test(t))                    return '🥬';
-  if (/계란|달걀/.test(t))               return '🍳';
-  if (/찌개|전골/.test(t))               return '🍲';
-  if (/국|탕|스프|죽/.test(t))           return '🥣';
-  if (/면|국수|파스타|라면|우동/.test(t))  return '🍜';
-  if (/닭|치킨/.test(t))                 return '🍗';
-  if (/소고기|갈비|스테이크/.test(t))     return '🥩';
-  if (/돼지|삼겹|항정/.test(t))          return '🥓';
-  if (/새우/.test(t))                    return '🦐';
-  if (/생선|연어|참치|고등어|조기/.test(t)) return '🐟';
-  if (/카레/.test(t))                    return '🍛';
-  if (/샐러드/.test(t))                  return '🥗';
-  if (/전|부침/.test(t))                 return '🥞';
-  if (/볶음/.test(t))                    return '🥘';
-  if (/구이/.test(t))                    return '🍖';
-  if (/두부/.test(t))                    return '🫕';
-  if (/나물|무침/.test(t))               return '🥦';
-  return '🍽️';
-}
 
 function IconClock() {
   return (
@@ -64,24 +39,13 @@ function IconTrash() {
   );
 }
 
-function IconChevron({ open }: { open: boolean }) {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
-      <Path
-        d={open ? 'm4 11 5-5 5 5' : 'm4 7 5 5 5-5'}
-        stroke={Colors.inkSoft} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
 
 const DIFF_LABEL: Record<string, string> = {
   Easy: '쉬워요', Medium: '보통이에요', Hard: '어려워요',
 };
 
 export default function SavedScreen({ navigate }: NavProps) {
-  const [recipes, setRecipes]       = useState<SavedRecipe[]>([]);
-  const [expanded, setExpanded]     = useState<string | null>(null);
+  const [recipes, setRecipes]             = useState<SavedRecipe[]>([]);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery]     = useState('');
 
@@ -170,104 +134,54 @@ export default function SavedScreen({ navigate }: NavProps) {
             <Text style={styles.emptySub}>"{searchQuery}"와 일치하는 레시피가 없어요</Text>
           </View>
         ) : (
-          filtered.map((r, idx) => {
-            const open    = expanded === r.id;
-            const accent  = CARD_COLORS[idx % CARD_COLORS.length];
-            const emoji   = getRecipeEmoji(r.name, r.ingredients);
+          filtered.map((r) => {
             const diffLabel = DIFF_LABEL[r.difficulty] ?? r.difficulty;
+            const d = new Date(r.savedAt);
+            const savedDate = `${d.getFullYear()}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')}`;
 
             return (
-              <View key={r.id} style={styles.card}>
-                {/* 카드 메인 로우 */}
-                <TouchableOpacity
-                  style={styles.cardMain}
-                  onPress={() => setExpanded(open ? null : r.id)}
-                  activeOpacity={0.88}
-                >
-                  {/* 썸네일 */}
-                  <View style={[styles.thumb, { backgroundColor: accent }]}>
-                    <Text style={styles.thumbEmoji}>{emoji}</Text>
+              <TouchableOpacity
+                key={r.id}
+                style={styles.card}
+                onPress={() => navigate({ name: 'SavedRecipeDetail', recipe: r })}
+                activeOpacity={0.85}
+              >
+                <View style={styles.cardMain}>
+                  <View style={styles.cardTitleRow}>
+                    <Text style={styles.recipeName} numberOfLines={1}>{r.name}</Text>
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => handleDelete(r)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <IconTrash />
+                    </TouchableOpacity>
                   </View>
 
-                  {/* 정보 */}
-                  <View style={styles.cardInfo}>
-                    <View style={styles.cardTitleRow}>
-                      <Text style={styles.recipeName} numberOfLines={1}>{r.name}</Text>
-                      <TouchableOpacity
-                        style={styles.deleteBtn}
-                        onPress={() => handleDelete(r)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <IconTrash />
-                      </TouchableOpacity>
+                  <View style={styles.metaRow}>
+                    <View style={styles.metaItem}>
+                      <IconClock />
+                      <Text style={styles.metaText}>{r.cookTime}</Text>
                     </View>
-
-                    <View style={styles.metaRow}>
-                      <View style={styles.metaItem}>
-                        <IconClock />
-                        <Text style={styles.metaText}>{r.cookTime}</Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <IconFlame />
-                        <Text style={styles.metaText}>{diffLabel}</Text>
-                      </View>
+                    <View style={styles.metaItem}>
+                      <IconFlame />
+                      <Text style={styles.metaText}>{diffLabel}</Text>
                     </View>
-
-                    <View style={styles.tagRow}>
-                      {r.ingredients.slice(0, 3).map(ing => (
-                        <View key={ing} style={styles.tag}>
-                          <Text style={styles.tagText}>{ing}</Text>
-                        </View>
-                      ))}
-                      <View style={styles.expandToggle}>
-                        <IconChevron open={open} />
-                      </View>
-                    </View>
+                    <Text style={styles.savedDate}>{savedDate}</Text>
                   </View>
-                </TouchableOpacity>
 
-                {/* 확장 상세 */}
-                {open && (
-                  <View style={styles.detail}>
-                    <View style={styles.detailDivider} />
-
-                    {r.nutrition && (
-                      <View style={styles.nutritionRow}>
-                        {[
-                          { label: '칼로리', val: `${r.nutrition.calories}kcal`, color: '#FF9F7F' },
-                          { label: '단백질', val: `${r.nutrition.protein}g`,     color: '#74C0FC' },
-                          { label: '탄수화물', val: `${r.nutrition.carbs}g`,     color: '#FFD166' },
-                          { label: '지방',   val: `${r.nutrition.fat}g`,         color: '#C77DFF' },
-                        ].map(n => (
-                          <View key={n.label} style={styles.nutritionItem}>
-                            <Text style={[styles.nutritionVal, { color: n.color }]}>{n.val}</Text>
-                            <Text style={styles.nutritionLabel}>{n.label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    <Text style={styles.detailHead}>🧂 재료</Text>
-                    <View style={styles.ingredientGrid}>
-                      {r.ingredients.map((ing, n) => (
-                        <View key={n} style={styles.ingredientChip}>
-                          <Text style={styles.ingredientChipText}>{ing}</Text>
-                        </View>
-                      ))}
-                    </View>
-
-                    <Text style={[styles.detailHead, { marginTop: 16 }]}>👨‍🍳 만드는 법</Text>
-                    {r.steps.map((s, n) => (
-                      <View key={n} style={styles.stepRow}>
-                        <View style={[styles.stepNum, { backgroundColor: accent }]}>
-                          <Text style={styles.stepNumText}>{n + 1}</Text>
-                        </View>
-                        <Text style={styles.stepText}>{s}</Text>
+                  <View style={styles.tagRow}>
+                    {r.ingredients.slice(0, 4).map(ing => (
+                      <View key={ing} style={styles.tag}>
+                        <Text style={styles.tagText}>{ing}</Text>
                       </View>
                     ))}
+                    {r.ingredients.length > 4 && (
+                      <Text style={styles.tagMore}>+{r.ingredients.length - 4}</Text>
+                    )}
                   </View>
-                )}
-              </View>
+                </View>
+              </TouchableOpacity>
             );
           })
         )}
@@ -319,13 +233,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
     overflow: 'hidden',
   },
-  cardMain: { flexDirection: 'row', padding: 12, gap: 12, alignItems: 'center' },
-
-  thumb: {
-    width: 80, height: 80, borderRadius: 14, flexShrink: 0,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  thumbEmoji: { fontSize: 38 },
+  cardMain: { padding: 14 },
 
   cardInfo: { flex: 1, minWidth: 0 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 },
@@ -335,6 +243,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 12, color: Colors.inkSoft, fontWeight: '600' },
+  savedDate: { marginLeft: 'auto' as any, fontSize: 11, color: Colors.inkMute, fontWeight: '500' },
 
   tagRow: { flexDirection: 'row', gap: 4, alignItems: 'center', flexWrap: 'wrap' },
   tag: {
@@ -342,33 +251,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.creamSoft, borderWidth: 1, borderColor: Colors.line,
   },
   tagText: { fontSize: 11, fontWeight: '600', color: Colors.inkSoft },
-  expandToggle: { marginLeft: 'auto' as any },
-
-  detail: { paddingHorizontal: 14, paddingBottom: 14 },
-  detailDivider: { height: 1, backgroundColor: Colors.line, opacity: 0.4, marginBottom: 14 },
-  detailHead: { fontSize: 13, fontWeight: '800', color: Colors.ink, marginBottom: 10 },
-
-  nutritionRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    backgroundColor: Colors.creamSoft, borderRadius: 14, padding: 14, marginBottom: 14,
-  },
-  nutritionItem: { alignItems: 'center', flex: 1 },
-  nutritionVal: { fontSize: 14, fontWeight: '900', marginBottom: 3 },
-  nutritionLabel: { fontSize: 11, color: Colors.inkSoft, fontWeight: '600' },
-
-  ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 4 },
-  ingredientChip: {
-    backgroundColor: Colors.creamSoft, borderRadius: 999,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: Colors.line,
-  },
-  ingredientChipText: { fontSize: 12, fontWeight: '600', color: Colors.inkSoft },
-
-  stepRow: { flexDirection: 'row', gap: 10, marginBottom: 10, alignItems: 'flex-start' },
-  stepNum: {
-    width: 24, height: 24, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  stepNumText: { fontSize: 12, fontWeight: '900', color: Colors.ink },
-  stepText: { fontSize: 13, color: Colors.ink, lineHeight: 20, flex: 1 },
+  tagMore: { fontSize: 11, fontWeight: '600', color: Colors.inkMute },
 });

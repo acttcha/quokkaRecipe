@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Image, ImageBackground, Dimensions, TextInput,
+  StatusBar, Image, Dimensions, TextInput,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps } from '../types';
 import { getSavedRecipes } from '../services/savedRecipes';
 import { loadPreferences } from '../services/preferences';
@@ -60,15 +61,13 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
-        <View style={styles.heroOverlay}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 돌아가기</Text>
-          </TouchableOpacity>
-          <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-          <Text style={styles.heroSub}>내 정보</Text>
-        </View>
-      </ImageBackground>
+      <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.hero}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>← 돌아가기</Text>
+        </TouchableOpacity>
+        <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
+        <Text style={styles.heroSub}>내 정보</Text>
+      </LinearGradient>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
 
@@ -101,11 +100,11 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
 
         {/* 통계 */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: Colors.accentLight }]}>
+          <View style={[styles.statCard, { backgroundColor: Colors.forestSoft }]}>
             <Text style={styles.statValue}>{savedCount}</Text>
             <Text style={styles.statLabel}>저장된 레시피</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.yellowLight }]}>
+          <View style={[styles.statCard, { backgroundColor: Colors.orangeSoft }]}>
             <Text style={styles.statValue}>{scanCount}</Text>
             <Text style={styles.statLabel}>총 스캔 횟수</Text>
           </View>
@@ -134,56 +133,54 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+  root: { flex: 1, backgroundColor: Colors.cream },
 
-  hero: { minHeight: 170 },
-  heroOverlay: {
-    flex: 1, paddingTop: 52, paddingHorizontal: 24, paddingBottom: 28,
-    backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end',
-  },
+  hero: { minHeight: 170, paddingTop: 52, paddingHorizontal: 24, paddingBottom: 28, justifyContent: 'flex-end' },
   backBtn: { marginBottom: 10 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+  backBtnText: { color: Colors.forest, fontSize: 14, fontWeight: '700' },
   heroLogo: { width: '100%', height: 52, marginBottom: 6 },
-  heroSub: { fontSize: 13, color: Colors.textMid, textAlign: 'center' },
+  heroSub: { fontSize: 13, color: Colors.inkSoft, textAlign: 'center' },
 
-  body: { flex: 1, backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20 },
+  body: { flex: 1, backgroundColor: Colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20 },
   bodyContent: { padding: 20, paddingBottom: 48 },
 
   profileCard: {
-    backgroundColor: Colors.card, borderRadius: 24, padding: 24,
-    alignItems: 'center', marginBottom: 16, ...shadow.md,
+    backgroundColor: Colors.white, borderRadius: 24, padding: 24,
+    alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
   },
   profileQuokka: { width: width * 0.36, height: 130, marginBottom: 14 },
   nickRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  nickname: { fontSize: 22, fontWeight: '900', color: Colors.primary },
+  nickname: { fontSize: 22, fontWeight: '900', color: Colors.ink },
   nickEditIcon: { fontSize: 14 },
   nickEditRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   nickInput: {
-    fontSize: 18, fontWeight: '700', color: Colors.primary,
-    borderBottomWidth: 2, borderBottomColor: Colors.accent,
+    fontSize: 18, fontWeight: '700', color: Colors.ink,
+    borderBottomWidth: 2, borderBottomColor: Colors.forest,
     paddingVertical: 4, paddingHorizontal: 8, minWidth: 120,
   },
-  nickSaveBtn: { backgroundColor: Colors.accent, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
+  nickSaveBtn: { backgroundColor: Colors.forest, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
   nickSaveBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
-  profileSub: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+  profileSub: { fontSize: 13, color: Colors.inkMute, fontWeight: '600' },
 
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  statCard: { flex: 1, borderRadius: 20, padding: 20, alignItems: 'center', ...shadow.sm },
-  statValue: { fontSize: 36, fontWeight: '900', color: Colors.primary, marginBottom: 4 },
-  statLabel: { fontSize: 12, color: Colors.primaryMid, fontWeight: '700' },
+  statCard: { flex: 1, borderRadius: 20, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
+  statValue: { fontSize: 36, fontWeight: '900', color: Colors.ink, marginBottom: 4 },
+  statLabel: { fontSize: 12, color: Colors.inkSoft, fontWeight: '700' },
 
-  sectionHead: { fontSize: 15, fontWeight: '800', color: Colors.text, marginBottom: 12 },
+  sectionHead: { fontSize: 15, fontWeight: '800', color: Colors.ink, marginBottom: 12 },
 
-  prefCard: { backgroundColor: Colors.card, borderRadius: 20, marginBottom: 16, overflow: 'hidden', ...shadow.sm },
+  prefCard: { backgroundColor: Colors.white, borderRadius: 20, marginBottom: 16, overflow: 'hidden', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
   prefRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14 },
-  prefRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  prefRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.line },
   prefIcon: { fontSize: 18, width: 30 },
-  prefLabel: { fontSize: 14, fontWeight: '600', color: Colors.textMid, flex: 1 },
-  prefValue: { fontSize: 14, fontWeight: '700', color: Colors.text, maxWidth: '55%', textAlign: 'right' },
+  prefLabel: { fontSize: 14, fontWeight: '600', color: Colors.inkSoft, flex: 1 },
+  prefValue: { fontSize: 14, fontWeight: '700', color: Colors.ink, maxWidth: '55%', textAlign: 'right' },
 
   editPrefBtn: {
-    backgroundColor: Colors.cardGreen, borderRadius: 16,
-    paddingVertical: 16, alignItems: 'center', ...shadow.sm,
+    backgroundColor: Colors.forestSoft, borderRadius: 16,
+    paddingVertical: 16, alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.forest, ...shadow.sm,
   },
-  editPrefBtnText: { color: Colors.primary, fontWeight: '800', fontSize: 14 },
+  editPrefBtnText: { color: Colors.forestDeep, fontWeight: '800', fontSize: 14 },
 });

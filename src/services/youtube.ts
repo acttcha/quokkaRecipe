@@ -92,6 +92,11 @@ export function openYouTubeSearch(ingredients: string[]) {
   Linking.openURL(`https://www.youtube.com/results?search_query=${query}&sp=CAM%3D`);
 }
 
+export function openYouTubeByName(recipeName: string) {
+  const query = encodeURIComponent(recipeName + ' 레시피');
+  Linking.openURL(`https://www.youtube.com/results?search_query=${query}&sp=CAM%3D`);
+}
+
 export function openCoupang(ingredient: string) {
   Linking.openURL(`https://www.coupang.com/np/search?q=${encodeURIComponent(ingredient)}`);
 }

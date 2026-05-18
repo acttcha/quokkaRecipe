@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   Alert, ScrollView, Image, StatusBar, Modal, Linking,
+  Animated, PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
@@ -245,24 +246,85 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
       </ScrollView>
 
       {/* 정보 모달 */}
-      <Modal visible={!!openModal} transparent animationType="slide" onRequestClose={() => setOpenModal(null)}>
+      <Modal visible={!!openModal} transparent animationType="none" onRequestClose={() => setOpenModal(null)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>
-              {openModal ? MODAL_CONTENT[openModal].title : ''}
-            </Text>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
-              <Text style={styles.modalBody}>
-                {openModal ? MODAL_CONTENT[openModal].body : ''}
-              </Text>
-            </ScrollView>
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setOpenModal(null)}>
-              <Text style={styles.modalCloseBtnText}>닫기</Text>
-            </TouchableOpacity>
-          </View>
+          {openModal && (
+            <DraggableSheet
+              key={openModal}
+              onClose={() => setOpenModal(null)}
+              title={MODAL_CONTENT[openModal].title}
+              body={MODAL_CONTENT[openModal].body}
+            />
+          )}
         </View>
       </Modal>
+    </View>
+  );
+}
+
+function DraggableSheet({ onClose, title, body }: {
+  onClose: () => void; title: string; body: string;
+}) {
+  const translateY     = useRef(new Animated.Value(600)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+
+  // 열릴 때 시트 + 오버레이 동시 진입
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(translateY,     { toValue: 0,    useNativeDriver: true, tension: 80, friction: 18 }),
+      Animated.timing(overlayOpacity, { toValue: 0.45, useNativeDriver: true, duration: 280 }),
+    ]).start();
+  }, []);
+
+  const dismiss = () => {
+    Animated.parallel([
+      Animated.timing(translateY,     { toValue: 800, useNativeDriver: true, duration: 220 }),
+      Animated.timing(overlayOpacity, { toValue: 0,   useNativeDriver: true, duration: 220 }),
+    ]).start(onClose);
+  };
+
+  const pan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+    onPanResponderMove: (_, gs) => {
+      if (gs.dy > 0) {
+        translateY.setValue(gs.dy);
+        // 드래그 거리에 비례해 오버레이도 함께 흐려짐
+        overlayOpacity.setValue(Math.max(0, 0.45 * (1 - gs.dy / 350)));
+      }
+    },
+    onPanResponderRelease: (_, gs) => {
+      if (gs.dy > 120 || gs.vy > 0.8) {
+        dismiss();
+      } else {
+        Animated.parallel([
+          Animated.spring(translateY,     { toValue: 0,    useNativeDriver: true, tension: 120, friction: 20 }),
+          Animated.timing(overlayOpacity, { toValue: 0.45, useNativeDriver: true, duration: 150 }),
+        ]).start();
+      }
+    },
+  })).current;
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      {/* 오버레이 — 시트와 opacity 동기화 */}
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: overlayOpacity }]} />
+
+      <View style={styles.modalOverlay}>
+        <Animated.View style={[styles.modalSheet, { transform: [{ translateY }] }]}>
+          {/* 드래그 핸들 영역만 pan 적용 — 스크롤과 충돌 방지 */}
+          <View style={styles.modalDragZone} {...pan.panHandlers}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{title}</Text>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+            <Text style={styles.modalBody}>{body}</Text>
+          </ScrollView>
+          <TouchableOpacity style={styles.modalCloseBtn} onPress={dismiss}>
+            <Text style={styles.modalCloseBtnText}>닫기</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -379,13 +441,14 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   modalSheet: {
     backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 24, paddingTop: 20, paddingBottom: 36, maxHeight: '80%',
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 36, maxHeight: '80%',
   },
+  modalDragZone: { alignItems: 'center', paddingBottom: 14 },
   modalHandle: {
     width: 40, height: 4, borderRadius: 2,
-    backgroundColor: Colors.line, alignSelf: 'center', marginBottom: 20,
+    backgroundColor: Colors.line, marginBottom: 16,
   },
-  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.ink, marginBottom: 14 },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.ink, marginBottom: 14, alignSelf: 'flex-start' },
   modalScroll: { marginBottom: 16 },
   modalBody: { fontSize: 14, color: Colors.ink, lineHeight: 24 },
   modalCloseBtn: {

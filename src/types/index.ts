@@ -44,7 +44,8 @@ export type CurrentScreen =
   | { name: 'Settings' }
   | { name: 'Saved' }
   | { name: 'Profile' }
-  | { name: 'Fridge' };
+  | { name: 'Fridge' }
+  | { name: 'SavedRecipeDetail'; recipe: SavedRecipe };
 
 export interface NavProps {
   navigate: (screen: CurrentScreen) => void;

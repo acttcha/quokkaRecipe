@@ -19,6 +19,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import FridgeScreen from './src/screens/FridgeScreen';
 import FridgeScanScreen from './src/screens/FridgeScanScreen';
 import ReceiptScanScreen from './src/screens/ReceiptScanScreen';
+import SavedRecipeDetailScreen from './src/screens/SavedRecipeDetailScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -175,6 +176,8 @@ export default function App() {
       return <RecipeScreen navigate={navigate} goBack={goBack} prefillIngredients={subScreen.ingredients} />;
     if (subScreen.name === 'Profile')
       return <ProfileScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />;
+    if (subScreen.name === 'SavedRecipeDetail')
+      return <SavedRecipeDetailScreen navigate={navigate} goBack={goBack} recipe={subScreen.recipe} />;
   }
 
   return (
