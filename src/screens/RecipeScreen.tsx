@@ -26,8 +26,31 @@ const DIFF = {
   Medium: { label: '보통이에요', color: '#D97706',      bg: Colors.yellowLight },
   Hard:   { label: '어려워요',  color: Colors.coral,   bg: Colors.coralLight },
 };
-const CARD_ACCENT  = ['#FFD166', '#74C0FC', '#52B788', '#FF9F7F', '#C77DFF'];
-const FOOD_EMOJIS  = ['🍳', '🥘', '🍜', '🥗', '🍱'];
+const CARD_ACCENT = ['#FFD166', '#74C0FC', '#52B788', '#FF9F7F', '#C77DFF'];
+
+function getRecipeEmoji(name: string, ingredients: string[]): string {
+  const t = (name + ' ' + ingredients.join(' ')).toLowerCase();
+  if (/비빔밥|덮밥/.test(t))            return '🍱';
+  if (/볶음밥|필라프/.test(t))           return '🍚';
+  if (/김치/.test(t))                   return '🥬';
+  if (/계란|달걀/.test(t))              return '🍳';
+  if (/찌개|전골/.test(t))              return '🍲';
+  if (/국|탕|스프|죽/.test(t))          return '🥣';
+  if (/면|국수|파스타|라면|우동/.test(t)) return '🍜';
+  if (/닭|치킨/.test(t))                return '🍗';
+  if (/소고기|갈비|스테이크/.test(t))    return '🥩';
+  if (/돼지|삼겹|항정/.test(t))         return '🥓';
+  if (/새우/.test(t))                   return '🦐';
+  if (/생선|연어|참치|고등어|조기/.test(t)) return '🐟';
+  if (/카레/.test(t))                   return '🍛';
+  if (/샐러드/.test(t))                 return '🥗';
+  if (/전|부침/.test(t))                return '🥞';
+  if (/볶음/.test(t))                   return '🥘';
+  if (/구이/.test(t))                   return '🍖';
+  if (/두부/.test(t))                   return '🫕';
+  if (/나물|무침/.test(t))              return '🥦';
+  return '🍽️';
+}
 
 export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients }: Props) {
   const [step, setStep]             = useState<Step>('identifying');
@@ -278,7 +301,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                   onPress={() => setExpanded(open ? null : idx)}
                   activeOpacity={0.9}
                 >
-                  <Text style={styles.recipeHeaderEmoji}>{FOOD_EMOJIS[idx % FOOD_EMOJIS.length]}</Text>
+                  <Text style={styles.recipeHeaderEmoji}>{getRecipeEmoji(r.name, r.ingredients)}</Text>
                   <View style={[styles.diffChip, { backgroundColor: 'rgba(255,255,255,0.9)' }]}>
                     <Text style={[styles.diffText, { color: diff.color }]}>{diff.label}</Text>
                   </View>

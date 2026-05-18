@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Alert, ScrollView, Image, ImageBackground, StatusBar, Modal, Linking,
+  Alert, ScrollView, Image, StatusBar, Modal, Linking,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { resetOnboarding } from '../services/preferences';
@@ -85,6 +87,71 @@ AI가 생성한 레시피로 인한 건강 문제에 대해 책임을 지지 않
   },
 };
 
+// ── SVG 아이콘 ──────────────────────────────────────────
+function IcBook() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 5.5c2.8-1 5.5-1 8 .8v13.5c-2.5-1.8-5.2-1.8-8-.8V5.5Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M20 5.5c-2.8-1-5.5-1-8 .8v13.5c2.5-1.8 5.2-1.8 8-.8V5.5Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+function IcChat() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H10l-4 3.5V16.5H4.5A1.5 1.5 0 0 1 3 15V7a1.5 1.5 0 0 1 1.5-1.5Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+function IcNoads() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={8.5} stroke={Colors.inkSoft} strokeWidth={1.6} />
+      <Path d="m6.5 6.5 11 11" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcSpark() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M5.6 5.6l2.5 2.5M15.9 15.9l2.5 2.5M5.6 18.4l2.5-2.5M15.9 8.1l2.5-2.5" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinecap="round" />
+      <Circle cx={12} cy={12} r={3} stroke={Colors.inkSoft} strokeWidth={1.6} />
+    </Svg>
+  );
+}
+function IcDoc() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 3.5h9l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M15 3.5V8h4" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+      <Line x1={8} y1={13} x2={16} y2={13} stroke={Colors.inkSoft} strokeWidth={1.4} strokeLinecap="round" />
+      <Line x1={8} y1={16.5} x2={14} y2={16.5} stroke={Colors.inkSoft} strokeWidth={1.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcShield() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3 4 5.5v6c0 4.7 3.3 8 8 9.5 4.7-1.5 8-4.8 8-9.5v-6L12 3Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+function IcRefresh() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 7.5A8 8 0 0 0 5.5 9M4 16.5A8 8 0 0 0 18.5 15" stroke={Colors.orangeDeep} strokeWidth={1.6} strokeLinecap="round" />
+      <Path d="M20 3v4.5h-4.5M4 21v-4.5h4.5" stroke={Colors.orangeDeep} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+function IcChevron() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+      <Path d="m7 4 5 5-5 5" stroke={Colors.inkMute} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 interface Props extends NavProps {
   onResetPreferences?: () => void;
 }
@@ -108,56 +175,69 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
-        <View style={styles.heroOverlay}>
-          <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-          <Text style={styles.heroSub}>설정 및 앱 정보</Text>
+      {/* Header */}
+      <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>설정</Text>
+          <Text style={styles.headerSub}>앱 환경과 내 정보를 관리해요</Text>
         </View>
-      </ImageBackground>
+        <View style={styles.headerHairline} />
+      </LinearGradient>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
 
-        {/* 내 정보 */}
-        <TouchableOpacity style={styles.profileRow} onPress={() => navigate({ name: 'Profile' })} activeOpacity={0.85}>
-          <Image source={require('../../assets/quokka.png')} style={styles.profileRowQuokka} resizeMode="contain" />
-          <View style={styles.profileRowTexts}>
-            <Text style={styles.profileRowTitle}>내 정보</Text>
-            <Text style={styles.profileRowSub}>닉네임, 통계, 선호도 확인</Text>
+        {/* 프로필 카드 */}
+        <TouchableOpacity style={styles.profileCard} onPress={() => navigate({ name: 'Profile' })} activeOpacity={0.85}>
+          <View style={styles.profileAvatar}>
+            <Image source={require('../../assets/quokka.png')} style={styles.profileImg} resizeMode="contain" />
           </View>
-          <Text style={styles.rowArrow}>›</Text>
+          <View style={styles.profileTexts}>
+            <Text style={styles.profileName}>요리 초보 쿼카</Text>
+            <Text style={styles.profileSub}>내 정보 · 통계 · 선호도 확인</Text>
+          </View>
+          <IcChevron />
         </TouchableOpacity>
 
         {/* 선호도 리셋 */}
         <TouchableOpacity
-          style={styles.menuRow}
+          style={styles.resetCard}
           onPress={async () => { await resetOnboarding(); onResetPreferences?.(); }}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={styles.menuRowIcon}>🔄</Text>
-          <View style={styles.menuRowTexts}>
-            <Text style={styles.menuRowTitle}>선호도 다시 설정</Text>
-            <Text style={styles.menuRowSub}>알레르기, 맵기, 조리 시간 등 다시 설정해요</Text>
-          </View>
-          <Text style={styles.rowArrow}>›</Text>
+          <LinearGradient
+            colors={[Colors.orangeSoft, '#FFE9D0']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            style={styles.resetGradient}
+          >
+            <View style={styles.resetIconWrap}>
+              <IcRefresh />
+            </View>
+            <View style={styles.resetTexts}>
+              <Text style={styles.resetTitle}>선호도 다시 설정</Text>
+              <Text style={styles.resetSub}>알레르기·매운맛·조리 시간을 새로 설정해요</Text>
+            </View>
+            <IcChevron />
+          </LinearGradient>
         </TouchableOpacity>
 
         {/* 앱 안내 */}
-        <Text style={styles.sectionHead}>앱 안내</Text>
-        <View style={styles.menuCard}>
-          <MenuRow icon="📖" label="이용 방법"    onPress={() => setOpenModal('guide')} />
-          <MenuRow icon="💬" label="의견 보내기"  onPress={handleFeedback}             divider />
-          <MenuRow icon="🚫" label="배너 광고 제거" onPress={handleRemoveAds}           divider />
-          <MenuRow icon="🆕" label="업데이트 노트" onPress={() => setOpenModal('update')} divider />
+        <Text style={styles.sectionLabel}>앱 안내</Text>
+        <View style={styles.listCard}>
+          <ListRow icon={<IcBook />}   label="이용 방법"     onPress={() => setOpenModal('guide')} />
+          <ListRow icon={<IcChat />}   label="의견 보내기"   onPress={handleFeedback}               divider />
+          <ListRow icon={<IcNoads />}  label="배너 광고 제거" onPress={handleRemoveAds}             divider meta="PRO" />
+          <ListRow icon={<IcSpark />}  label="업데이트 노트" onPress={() => setOpenModal('update')} divider meta="NEW" />
         </View>
 
         {/* 법적 고지 */}
-        <Text style={styles.sectionHead}>법적 고지</Text>
-        <View style={styles.menuCard}>
-          <MenuRow icon="📋" label="이용약관"         onPress={() => setOpenModal('terms')}   />
-          <MenuRow icon="🔐" label="개인정보처리방침"  onPress={() => setOpenModal('privacy')} divider />
+        <Text style={styles.sectionLabel}>법적 고지</Text>
+        <View style={styles.listCard}>
+          <ListRow icon={<IcDoc />}    label="이용약관"          onPress={() => setOpenModal('terms')}   />
+          <ListRow icon={<IcShield />} label="개인정보처리방침"   onPress={() => setOpenModal('privacy')} divider />
           <View style={styles.versionRow}>
-            <Text style={styles.versionIcon}>ℹ️</Text>
-            <Text style={styles.versionLabel}>앱 버전</Text>
+            <View style={styles.listIconWrap}><Text style={{ fontSize: 14 }}>ℹ️</Text></View>
+            <Text style={styles.listLabel}>앱 버전</Text>
             <Text style={styles.versionValue}>1.0.0</Text>
           </View>
         </View>
@@ -187,84 +267,129 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
   );
 }
 
-function MenuRow({ icon, label, onPress, divider }: {
-  icon: string; label: string; onPress: () => void; divider?: boolean;
+function ListRow({
+  icon, label, onPress, divider, meta,
+}: {
+  icon: React.ReactNode; label: string; onPress: () => void;
+  divider?: boolean; meta?: string;
 }) {
   return (
     <>
-      {divider && <View style={menuRowStyles.divider} />}
-      <TouchableOpacity style={menuRowStyles.row} onPress={onPress} activeOpacity={0.7}>
-        <Text style={menuRowStyles.icon}>{icon}</Text>
-        <Text style={menuRowStyles.label}>{label}</Text>
-        <Text style={menuRowStyles.arrow}>›</Text>
+      {divider && <View style={listStyles.divider} />}
+      <TouchableOpacity style={listStyles.row} onPress={onPress} activeOpacity={0.7}>
+        <View style={listStyles.iconWrap}>{icon}</View>
+        <Text style={listStyles.label}>{label}</Text>
+        {meta && (
+          <View style={[listStyles.metaBadge, meta === 'PRO' && listStyles.metaBadgePro]}>
+            <Text style={[listStyles.metaText, meta === 'PRO' && listStyles.metaTextPro]}>{meta}</Text>
+          </View>
+        )}
+        <IcChevron />
       </TouchableOpacity>
     </>
   );
 }
 
-const menuRowStyles = StyleSheet.create({
-  row:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15 },
-  divider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 18 },
-  icon:    { fontSize: 18, width: 30 },
-  label:   { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
-  arrow:   { fontSize: 20, color: Colors.textMuted },
+const listStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  divider: { height: 1, backgroundColor: Colors.creamSoft, marginHorizontal: 0 },
+  iconWrap: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: Colors.creamSoft,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  label: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.ink },
+  metaBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
+    backgroundColor: Colors.orangeSoft,
+  },
+  metaBadgePro: { backgroundColor: Colors.ink },
+  metaText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: Colors.orangeDeep },
+  metaTextPro: { color: Colors.cream },
 });
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+  root: { flex: 1, backgroundColor: Colors.cream },
 
-  hero: { minHeight: 180 },
-  heroOverlay: {
-    flex: 1, paddingTop: 56, paddingHorizontal: 24, paddingBottom: 28,
-    backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end',
-  },
+  header: { height: 170 },
+  headerSpacer: { flex: 1 },
+  headerContent: { paddingHorizontal: 22, paddingBottom: 14 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.ink, letterSpacing: -0.6 },
+  headerSub: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500', marginTop: 4 },
+  headerHairline: { height: 1, backgroundColor: Colors.line, opacity: 0.5 },
 
-  heroLogo: { width: '100%', height: 56, marginBottom: 6 },
-  heroSub: { fontSize: 13, color: Colors.textMid, fontWeight: '500', textAlign: 'center' },
+  body: { flex: 1 },
+  bodyContent: { padding: 22, paddingBottom: 120, gap: 12 },
 
-  body: { flex: 1, backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20 },
-  bodyContent: { padding: 20, paddingBottom: 48 },
-
-  profileRow: {
+  profileCard: {
+    backgroundColor: Colors.white, borderRadius: 22,
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.card, borderRadius: 20, padding: 16,
-    marginBottom: 14, ...shadow.sm,
+    padding: 16,
+    borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
   },
-  profileRowQuokka: { width: 52, height: 52 },
-  profileRowTexts: { flex: 1 },
-  profileRowTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
-  profileRowSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-
-  menuRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.card, borderRadius: 20, padding: 18,
-    marginBottom: 14, ...shadow.sm,
+  profileAvatar: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.creamDark,
+    borderWidth: 2, borderColor: Colors.line,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    overflow: 'hidden',
   },
-  menuRowIcon: { fontSize: 22, marginRight: 14 },
-  menuRowTexts: { flex: 1 },
-  menuRowTitle: { fontSize: 15, fontWeight: '800', color: Colors.text },
-  menuRowSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  rowArrow: { fontSize: 22, color: Colors.textMuted, fontWeight: '300' },
+  profileImg: { width: 52, height: 52 },
+  profileTexts: { flex: 1, minWidth: 0 },
+  profileName: { fontSize: 15, fontWeight: '800', color: Colors.ink, letterSpacing: -0.3 },
+  profileSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 3 },
 
-  sectionHead: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, marginBottom: 8, marginTop: 4, letterSpacing: 0.5 },
-  menuCard: { backgroundColor: Colors.card, borderRadius: 20, marginBottom: 14, overflow: 'hidden', ...shadow.sm },
+  resetCard: { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: '#F2994A40', ...shadow.sm },
+  resetGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  resetIconWrap: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.white,
+    borderWidth: 1, borderColor: '#F2994A40',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  resetTexts: { flex: 1, minWidth: 0 },
+  resetTitle: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  resetSub: { fontSize: 11, color: Colors.inkSoft, marginTop: 2 },
 
-  versionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15 },
-  versionIcon: { fontSize: 18, width: 30 },
-  versionLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
-  versionValue: { fontSize: 14, fontWeight: '700', color: Colors.textMuted },
+  sectionLabel: {
+    fontSize: 12, fontWeight: '700', color: Colors.inkSoft,
+    letterSpacing: 0.4, textTransform: 'uppercase', paddingLeft: 4,
+  },
+  listCard: {
+    backgroundColor: Colors.white, borderRadius: 22,
+    borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
+    overflow: 'hidden',
+  },
+  listIconWrap: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: Colors.creamSoft,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  listLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.ink },
+  versionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderTopWidth: 1, borderTopColor: Colors.creamSoft,
+  },
+  versionValue: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
   modalSheet: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 24, paddingTop: 20, paddingBottom: 36, maxHeight: '80%',
   },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.primary, marginBottom: 14 },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.line, alignSelf: 'center', marginBottom: 20,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.ink, marginBottom: 14 },
   modalScroll: { marginBottom: 16 },
-  modalBody: { fontSize: 14, color: Colors.text, lineHeight: 24 },
+  modalBody: { fontSize: 14, color: Colors.ink, lineHeight: 24 },
   modalCloseBtn: {
-    backgroundColor: Colors.accent, borderRadius: 14,
+    backgroundColor: Colors.forest, borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',
   },
   modalCloseBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15 },

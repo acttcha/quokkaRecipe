@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Recipe, SavedRecipe } from '../types';
 
 const FILE_PATH = FileSystem.documentDirectory + 'saved_recipes.json';

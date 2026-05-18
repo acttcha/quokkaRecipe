@@ -1,13 +1,30 @@
 export const Colors = {
+  // ── New design tokens ──────────────────────────────
+  cream:        '#FBEFD8',
+  creamSoft:    '#FFF9EC',
+  creamDark:    '#F0DDB5',
+  line:         '#EAD5AC',
+  lineSoft:     'rgba(190, 130, 50, 0.14)' as string,
+  ink:          '#3A2810',
+  inkSoft:      '#8B7558',
+  inkMute:      '#B79572',
+  forest:       '#3D8B5E',
+  forestDeep:   '#2D6F47',
+  forestSoft:   '#EAF3EC',
+  orange:       '#F2994A',
+  orangeDeep:   '#E07B2B',
+  orangeSoft:   '#FDE2C5',
+  white:        '#FFFDF8',
+  danger:       '#D9534F',
+
+  // ── Legacy (kept for non-redesigned screens) ───────
   primary:      '#1B3A2D',
   primaryMid:   '#2D5A3D',
   accent:       '#52B788',
   accentLight:  '#D8F3E3',
-
   bg:           '#F5F3EF',
   card:         '#FFFFFF',
   cardGreen:    '#EAF5EE',
-
   yellow:       '#FFD166',
   yellowLight:  '#FFF8E1',
   coral:        '#FF6B6B',
@@ -16,26 +33,24 @@ export const Colors = {
   skyLight:     '#EAF4FF',
   peach:        '#FFB347',
   peachLight:   '#FFF3E0',
-
   text:         '#1A1A1A',
   textMid:      '#4A4A4A',
   textMuted:    '#9A9A9A',
   border:       '#EBEBEB',
-
   youtube:      '#FF0000',
   coupang:      '#E1001A',
 };
 
 export const shadow = {
   sm: {
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
+    shadowColor: '#78501E',
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: '#78501E',
     shadowOpacity: 0.10,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },

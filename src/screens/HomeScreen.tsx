@@ -1,48 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   StatusBar, Alert, Image, ImageBackground, Dimensions,
 } from 'react-native';
 import { NavProps } from '../types';
 import { MOCK_MODE } from '../services/claude';
-import { getFridgeIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
+import { CircleIconButton, SettingsIcon } from '../components/ui';
 
 const { width } = Dimensions.get('window');
-
-const FRIDGE_IMGS = [
-  require('../../assets/refrigerator1.png'),
-  require('../../assets/refrigerator2.png'),
-  require('../../assets/refrigerator3.png'),
-  require('../../assets/refrigerator4.png'),
-];
 
 const HAS_API_KEY = !!process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 
 export default function HomeScreen({ navigate }: NavProps) {
-  const [fridgeFrame, setFridgeFrame] = useState(0);
-  const [fridgeCount, setFridgeCount] = useState(0);
-
-  useEffect(() => {
-    getFridgeIngredients().then(items => setFridgeCount(items.length));
-  }, []);
-
   const handleScan = () => {
     if (!MOCK_MODE && !HAS_API_KEY) {
       Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
       return;
     }
     navigate({ name: 'Camera' });
-  };
-
-  const handleFridgeTap = () => {
-    setFridgeFrame(1);
-    setTimeout(() => setFridgeFrame(2), 100);
-    setTimeout(() => setFridgeFrame(3), 200);
-    setTimeout(() => {
-      navigate({ name: 'Fridge' });
-      setTimeout(() => setFridgeFrame(0), 150);
-    }, 200);
   };
 
   return (
@@ -56,9 +32,11 @@ export default function HomeScreen({ navigate }: NavProps) {
       {/* 로고 + 설정 버튼 */}
       <View style={styles.logoWrap}>
         <Image source={require('../../assets/main_logo.png')} style={styles.logo} resizeMode="contain" />
-        <TouchableOpacity style={styles.btnSetting} onPress={() => navigate({ name: 'Settings' })}>
-          <Image source={require('../../assets/btnSetting.png')} style={styles.settingsIcon} resizeMode="contain" />
-        </TouchableOpacity>
+        <View style={styles.btnSetting}>
+          <CircleIconButton onPress={() => navigate({ name: 'Settings' })}>
+            <SettingsIcon size={20} />
+          </CircleIconButton>
+        </View>
       </View>
 
       {/* 말풍선 */}
@@ -70,21 +48,9 @@ export default function HomeScreen({ navigate }: NavProps) {
         <View style={styles.bubbleTail} />
       </View>
 
-      {/* 쿼카 + 냉장고 위젯 */}
+      {/* 쿼카 */}
       <View style={styles.charWrap}>
-        <View style={styles.charArea}>
-          <Image source={require('../../assets/quokka.png')} style={styles.quokka} resizeMode="contain" />
-        </View>
-
-        <TouchableOpacity style={styles.fridgeWidget} onPress={handleFridgeTap} activeOpacity={0.88}>
-          {fridgeCount > 0 && (
-            <View style={styles.fridgeBadge}>
-              <Text style={styles.fridgeBadgeText}>{fridgeCount}</Text>
-            </View>
-          )}
-          <Image source={FRIDGE_IMGS[fridgeFrame]} style={styles.fridgeImg} resizeMode="contain" />
-          <Text style={styles.fridgeLabel}>내 냉장고</Text>
-        </TouchableOpacity>
+        <Image source={require('../../assets/quokka.png')} style={styles.quokka} resizeMode="contain" />
       </View>
 
       {/* 하단 패널 */}
@@ -115,11 +81,12 @@ export default function HomeScreen({ navigate }: NavProps) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 
-  btnSetting:   { position: 'absolute', right: 16, top: 62, zIndex: 10 },
-  settingsIcon: { width: 64, height: 64 },
-
-  logoWrap: { paddingTop: 62, paddingHorizontal: 32, alignItems: 'center' },
-  logo:     { width: '100%', height: 72, alignSelf: 'center' },
+  logoWrap: {
+    paddingTop: 62, paddingHorizontal: 32,
+    alignItems: 'center', flexDirection: 'row',
+  },
+  logo:      { flex: 1, height: 72 },
+  btnSetting:{ marginLeft: 8 },
 
   bubbleOuter: { alignItems: 'center', marginTop: 10 },
   bubble: {
@@ -136,30 +103,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 12,   borderTopColor:   '#FFFFFF',
   },
 
-  charWrap: { flex: 1 },
-  charArea: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
+  charWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
   quokka:   { width: width * 0.88, height: 300 },
-
-  fridgeWidget: {
-    position: 'absolute', right: 14, bottom: 14,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 20,
-    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)',
-    ...shadow.md,
-  },
-  fridgeBadge: {
-    position: 'absolute', top: -8, right: -8, zIndex: 1,
-    backgroundColor: Colors.accent,
-    borderRadius: 12, minWidth: 24, height: 24,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 6,
-    borderWidth: 2, borderColor: '#FFF',
-  },
-  fridgeBadgeText: { fontSize: 11, fontWeight: '900', color: '#FFF' },
-  fridgeImg:       { width: 58, height: 90 },
-  fridgeLabel:     { fontSize: 10, fontWeight: '800', color: Colors.primary, marginTop: 5 },
 
   panel: {
     backgroundColor: '#FFFFFF', borderTopLeftRadius: 30, borderTopRightRadius: 30,

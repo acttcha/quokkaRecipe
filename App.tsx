@@ -50,7 +50,7 @@ function IconFridge({ active }: { active: boolean }) {
   const c = active ? C.orange : C.iconOff;
   return (
     <Svg width={26} height={26} viewBox="0 0 26 26">
-      <Rect x={6.5} y={3.5} width={13} height={19} rx={2.5} stroke={c} strokeWidth={1.6} fill="none" />
+      <Rect x={6.5} y={3.5} width={13} height={19} rx={2.5} stroke={c} strokeWidth={1.6} fill={active ? '#FDE2C5' : 'none'} />
       <Line x1={6.5} y1={11} x2={19.5} y2={11} stroke={c} strokeWidth={1.6} />
       <Line x1={9} y1={7} x2={9} y2={9} stroke={c} strokeWidth={1.6} strokeLinecap="round" />
       <Line x1={9} y1={14} x2={9} y2={16} stroke={c} strokeWidth={1.6} strokeLinecap="round" />
@@ -62,9 +62,9 @@ function IconRecipe({ active }: { active: boolean }) {
   return (
     <Svg width={26} height={26} viewBox="0 0 26 26">
       <Path d="M3.5 6.5c2.7-1 5.7-1 8 .8v13c-2.3-1.8-5.3-1.8-8-.8v-13Z"
-        stroke={c} strokeWidth={1.6} fill="none" strokeLinejoin="round" />
+        stroke={c} strokeWidth={1.6} fill={active ? '#FDE2C5' : 'none'} strokeLinejoin="round" />
       <Path d="M22.5 6.5c-2.7-1-5.7-1-8 .8v13c2.3-1.8 5.3-1.8 8-.8v-13Z"
-        stroke={c} strokeWidth={1.6} fill="none" strokeLinejoin="round" />
+        stroke={c} strokeWidth={1.6} fill={active ? '#FDE2C5' : 'none'} strokeLinejoin="round" />
       <Path d="M11.5 7.3v13" stroke={c} strokeWidth={1.6} strokeLinecap="round" />
       <Line x1={6} y1={10} x2={9.5} y2={10} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
       <Line x1={6} y1={13} x2={9.5} y2={13} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
@@ -77,7 +77,7 @@ function IconMy({ active }: { active: boolean }) {
   const c = active ? C.orange : C.iconOff;
   return (
     <Svg width={26} height={26} viewBox="0 0 26 26">
-      <Circle cx={13} cy={9.5} r={4} stroke={c} strokeWidth={1.6} fill="none" />
+      <Circle cx={13} cy={9.5} r={4} stroke={c} strokeWidth={1.6} fill={active ? '#FDE2C5' : 'none'} />
       <Path d="M5 22c.8-4.3 4-6.5 8-6.5s7.2 2.2 8 6.5" stroke={c} strokeWidth={1.6} strokeLinecap="round" fill="none" />
     </Svg>
   );
@@ -115,7 +115,6 @@ export default function App() {
     Promise.all([
       isOnboardingDone(),
       Asset.loadAsync([
-        require('./assets/btnSetting.png'),
         require('./assets/background.png'),
         require('./assets/main_logo.png'),
         require('./assets/quokka.png'),
