@@ -264,7 +264,7 @@ export default function OnboardingScreen({ onDone }: Props) {
         </View>
         {/* 쿼카 */}
         <Image
-          source={require('../../assets/quokka.png')}
+          source={require('../../assets/quokka_question.png')}
           style={styles.quokka}
           resizeMode="contain"
         />
@@ -345,8 +345,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 12, borderTopColor: '#FFFFFF',
   },
   quokka: {
-    width: width * 0.62,
-    height: 200,
+    width: width * 0.90,
+    height: 310,
   },
 
   panel: {

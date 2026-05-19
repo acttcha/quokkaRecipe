@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, TextInput, Alert,
+  StatusBar, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { getFridgeIngredients, addIngredient, removeIngredient, clearFridge } from '../services/fridge';
+import { haptic } from '../services/haptics';
+import { POPULAR_INGREDIENTS } from '../constants/ingredients';
 
 function IconCamera() {
   return (
@@ -71,10 +73,23 @@ export default function FridgeScreen({ navigate }: NavProps) {
   const handleAdd = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
+    haptic.light();
     await addIngredient(trimmed);
     setInput('');
     await load();
   };
+
+  const handleAddDirect = async (item: string) => {
+    haptic.light();
+    setInput('');
+    await addIngredient(item);
+    await load();
+  };
+
+  const suggestions = input.trim().length > 0
+    ? POPULAR_INGREDIENTS
+        .filter(item => !ingredients.includes(item) && item.includes(input.trim()))
+    : [];
 
   const handleRemove = async (item: string) => {
     await removeIngredient(item);
@@ -115,7 +130,43 @@ export default function FridgeScreen({ navigate }: NavProps) {
         <View style={styles.headerHairline} />
       </LinearGradient>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+
+        {/* 직접 추가 */}
+        <Text style={styles.addLabel}>직접 추가</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="예: 두부, 파, 된장..."
+            placeholderTextColor={Colors.inkMute}
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+          />
+          <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.85}>
+            <IconPlus />
+            <Text style={styles.addBtnText}>추가</Text>
+          </TouchableOpacity>
+        </View>
+        {suggestions.length > 0 && (
+          <View style={styles.suggestWrap}>
+            {suggestions.map(item => (
+              <TouchableOpacity
+                key={item}
+                style={styles.suggestChip}
+                onPress={() => handleAddDirect(item)}
+              >
+                <Text style={styles.suggestChipText}>+ {item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* 재료 카드 */}
         <View style={styles.card}>
@@ -185,24 +236,6 @@ export default function FridgeScreen({ navigate }: NavProps) {
               <Text style={styles.tileTitle}>영수증 스캔</Text>
               <Text style={styles.tileSub}>영수증으로 추가</Text>
             </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* 직접 추가 */}
-        <Text style={styles.addLabel}>직접 추가</Text>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            placeholder="예: 두부, 파, 된장..."
-            placeholderTextColor={Colors.inkMute}
-            returnKeyType="done"
-            onSubmitEditing={handleAdd}
-          />
-          <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.85}>
-            <IconPlus />
-            <Text style={styles.addBtnText}>추가</Text>
           </TouchableOpacity>
         </View>
 
@@ -286,7 +319,7 @@ const styles = StyleSheet.create({
   tileTitle: { fontSize: 13, fontWeight: '700', color: Colors.ink },
   tileSub: { fontSize: 11, color: Colors.inkSoft, fontWeight: '500', marginTop: 1 },
 
-  addLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  addLabel: { fontSize: 13, fontWeight: '700', color: Colors.ink, marginBottom: 8 },
   inputRow: { flexDirection: 'row', gap: 8 },
   input: {
     flex: 1, height: 42, backgroundColor: Colors.white,
@@ -298,6 +331,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 5,
   },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  suggestWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, marginBottom: 4 },
+  suggestChip: {
+    backgroundColor: Colors.forestSoft,
+    borderRadius: 999,
+    borderWidth: 1, borderColor: '#3D8B5E40',
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  suggestChipText: { fontSize: 12, fontWeight: '700', color: Colors.forestDeep },
 
   footer: { paddingHorizontal: 22, paddingTop: 12, paddingBottom: 16, backgroundColor: Colors.cream },
   ctaBtn: {

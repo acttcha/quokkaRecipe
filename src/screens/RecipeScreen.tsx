@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, TextInput, Image, ImageBackground,
-  StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions,
+  StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions, Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
@@ -13,6 +13,7 @@ import { incrementScanCount } from '../services/stats';
 import { addIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
+import { POPULAR_INGREDIENTS } from '../constants/ingredients';
 
 const { width } = Dimensions.get('window');
 
@@ -120,6 +121,39 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     setNewIng('');
   };
 
+  const addIngDirect = (item: string) => {
+    if (!ingredients.includes(item)) {
+      haptic.light();
+      setIngredients(p => [...p, item]);
+      setNewIng('');
+    }
+  };
+
+  const shareRecipe = async (r: Recipe) => {
+    haptic.light();
+    const diffLabel = DIFF[r.difficulty]?.label ?? r.difficulty;
+    const text = [
+      `🍽 ${r.name}`,
+      '',
+      r.description,
+      '',
+      `⏱ ${r.cookTime}  |  👥 ${r.servings}인분  |  ${diffLabel}`,
+      '',
+      '🧂 재료',
+      r.ingredients.join(', '),
+      '',
+      '👨‍🍳 만드는 법',
+      ...r.steps.map((s, i) => `${i + 1}. ${s}`),
+      '',
+      '🐾 쿼카레시피 앱으로 만들었어요',
+    ].join('\n');
+    try { await Share.share({ message: text }); } catch {}
+  };
+
+  const reviewSuggestions = newIng.trim().length > 0
+    ? POPULAR_INGREDIENTS.filter(item => !ingredients.includes(item) && item.includes(newIng.trim()))
+    : [];
+
   const toggleSave = async (r: Recipe) => {
     const wasSaved = savedNames.has(r.name);
     wasSaved ? haptic.light() : haptic.success();
@@ -219,7 +253,30 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           <Text style={styles.reviewSub}>탭하면 삭제돼요 · 재료 추가도 가능해요</Text>
         </LinearGradient>
 
-        <ScrollView style={styles.reviewBody} contentContainerStyle={styles.reviewContent}>
+        <ScrollView style={styles.reviewBody} contentContainerStyle={styles.reviewContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.addRow}>
+            <TextInput
+              style={styles.addInput} value={newIng} onChangeText={setNewIng}
+              placeholder="예) 두부, 된장, 파..." placeholderTextColor={Colors.textMuted}
+              onSubmitEditing={addIng} returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.addBtn} onPress={addIng}>
+              <Text style={styles.addBtnText}>추가</Text>
+            </TouchableOpacity>
+          </View>
+          {reviewSuggestions.length > 0 && (
+            <View style={styles.suggestWrap}>
+              {reviewSuggestions.map(item => (
+                <TouchableOpacity
+                  key={item}
+                  style={styles.suggestChip}
+                  onPress={() => addIngDirect(item)}
+                >
+                  <Text style={styles.suggestChipText}>+ {item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <View style={styles.tagsWrap}>
             {ingredients.map(ing => (
               <TouchableOpacity
@@ -234,16 +291,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           {ingredients.length === 0 && (
             <View style={styles.emptyCard}><Text style={styles.emptyCardText}>😅 재료를 직접 추가해보세요!</Text></View>
           )}
-          <View style={styles.addRow}>
-            <TextInput
-              style={styles.addInput} value={newIng} onChangeText={setNewIng}
-              placeholder="예) 두부, 된장, 파..." placeholderTextColor={Colors.textMuted}
-              onSubmitEditing={addIng} returnKeyType="done"
-            />
-            <TouchableOpacity style={styles.addBtn} onPress={addIng}>
-              <Text style={styles.addBtnText}>추가</Text>
-            </TouchableOpacity>
-          </View>
           <TouchableOpacity style={styles.greenBtn} onPress={handleGetRecipes}>
             <Text style={styles.greenBtnText}>👨‍🍳  레시피 추천받기</Text>
           </TouchableOpacity>
@@ -292,9 +339,12 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           const isSaved = savedNames.has(r.name);
           return (
             <View key={idx} style={styles.recipeCard}>
-              {/* 상단 행: 이름 + 북마크 */}
+              {/* 상단 행: 이름 + 공유 + 북마크 */}
               <View style={styles.cardTopRow}>
                 <Text style={styles.recipeName}>{r.name}</Text>
+                <TouchableOpacity style={styles.shareBtn} onPress={() => shareRecipe(r)}>
+                  <Text style={styles.shareBtnText}>공유 ↗</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.bookmarkBtn} onPress={() => toggleSave(r)}>
                   <Text style={styles.bookmarkIcon}>{isSaved ? '♥' : '♡'}</Text>
                 </TouchableOpacity>
@@ -537,7 +587,7 @@ const styles = StyleSheet.create({
   ingTagX: { fontSize: 14, color: Colors.inkMute, fontWeight: '700' },
   emptyCard: { backgroundColor: Colors.creamDark, borderRadius: 16, padding: 18, alignItems: 'center', marginBottom: 18 },
   emptyCardText: { fontSize: 15, fontWeight: '700', color: Colors.ink },
-  addRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  addRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   addInput: { flex: 1, backgroundColor: Colors.creamSoft, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.line, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: Colors.ink },
   addBtn: { backgroundColor: Colors.forest, borderRadius: 14, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
   addBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
@@ -615,6 +665,17 @@ const styles = StyleSheet.create({
   coupangChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF5F5', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5, borderColor: '#FFD0D0' },
   coupangChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
   coupangChipIcon: { fontSize: 12, color: Colors.coupang, fontWeight: '800' },
+
+  suggestWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  suggestChip: {
+    backgroundColor: Colors.forestSoft, borderRadius: 999,
+    borderWidth: 1, borderColor: '#3D8B5E40',
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  suggestChipText: { fontSize: 12, fontWeight: '700', color: Colors.forestDeep },
+
+  shareBtn: { backgroundColor: Colors.creamSoft, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 4 },
+  shareBtnText: { fontSize: 12, fontWeight: '700', color: Colors.inkSoft },
 
   homeBtn: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 12, borderWidth: 1, borderColor: Colors.line },
   homeBtnText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },

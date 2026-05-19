@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   StatusBar, Image, Modal, KeyboardAvoidingView, Platform,
-  TextInput, ActivityIndicator, Alert,
+  TextInput, ActivityIndicator, Alert, Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -106,6 +106,27 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
     }
   };
 
+  const handleShare = async () => {
+    haptic.light();
+    const diffLabel = diff.label;
+    const text = [
+      `🍽 ${r.name}`,
+      '',
+      r.description,
+      '',
+      `⏱ ${r.cookTime}  |  👥 ${r.servings}인분  |  ${diffLabel}`,
+      '',
+      '🧂 재료',
+      r.ingredients.join(', '),
+      '',
+      '👨‍🍳 만드는 법',
+      ...r.steps.map((s, i) => `${i + 1}. ${s}`),
+      '',
+      '🐾 쿼카레시피 앱으로 만들었어요',
+    ].join('\n');
+    try { await Share.share({ message: text }); } catch {}
+  };
+
   const handleDeleteQA = (entryId: string) => {
     haptic.warning();
     Alert.alert('삭제할까요?', '이 질문 기록을 삭제해요.', [
@@ -126,9 +147,14 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
 
       {/* 헤더 */}
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.85]} style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-          <Text style={styles.backBtnText}>← 돌아가기</Text>
-        </TouchableOpacity>
+        <View style={styles.headerNav}>
+          <TouchableOpacity onPress={goBack}>
+            <Text style={styles.backBtnText}>← 돌아가기</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+            <Text style={styles.shareBtnText}>공유 ↗</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerTitle} numberOfLines={2}>{r.name}</Text>
         <View style={styles.chipRow}>
           <View style={[styles.diffChip, { backgroundColor: diff.bg }]}>
@@ -363,8 +389,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
 
   header: { paddingTop: 56, paddingHorizontal: 22, paddingBottom: 18 },
-  backBtn: { marginBottom: 10 },
+  headerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   backBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  shareBtn: { backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  shareBtnText: { fontSize: 12, fontWeight: '700', color: Colors.inkSoft },
   headerTitle: { fontSize: 26, fontWeight: '900', color: Colors.ink, letterSpacing: -0.6, marginBottom: 12 },
   chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   diffChip: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },

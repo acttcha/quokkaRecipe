@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\work\\\\recipe\\\\quokkaRecipe\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)",
+      "Bash(ls -la /c/work/recipe/quokkaRecipe/ 2>/dev/null || ls -la /mnt/c/work/recipe/quokkaRecipe/ 2>/dev/null || find . -maxdepth 2 -type d 2>/dev/null | head -20)",
+      "Read(//mnt/c/work/recipe/**)"
+    ]
+  }
+}
