@@ -7,6 +7,7 @@ import { NavProps } from '../types';
 import { MOCK_MODE } from '../services/claude';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
+import { haptic } from '../services/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -15,9 +16,11 @@ const HAS_API_KEY = !!process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 export default function HomeScreen({ navigate }: NavProps) {
   const handleScan = () => {
     if (!MOCK_MODE && !HAS_API_KEY) {
+      haptic.error();
       Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
       return;
     }
+    haptic.medium();
     navigate({ name: 'Camera' });
   };
 

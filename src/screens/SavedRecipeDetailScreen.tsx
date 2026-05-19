@@ -11,6 +11,7 @@ import { askQuokka } from '../services/claude';
 import { openCoupang, openYouTubeByName } from '../services/youtube';
 import { getMemo, saveMemo, getQAHistory, addQAEntry, deleteQAEntry, QAEntry } from '../services/recipeNotes';
 import { Colors, shadow } from '../constants/colors';
+import { haptic } from '../services/haptics';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
   Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
@@ -82,26 +83,31 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
     await saveMemo(r.id, memoInput.trim());
     setMemo(memoInput.trim());
     setEditingMemo(false);
+    haptic.success();
   };
 
   const handleAsk = async () => {
     if (!question.trim()) return;
+    haptic.light();
     setAsking(true);
     setAnswer('');
     try {
       const res = await askQuokka(r, question.trim());
       setAnswer(res);
+      haptic.success();
       await addQAEntry(r.id, question.trim(), res);
       const updated = await getQAHistory(r.id);
       setQaHistory(updated);
     } catch {
       setAnswer('앗, 오류가 생겼어요. 다시 시도해주세요 🙏');
+      haptic.error();
     } finally {
       setAsking(false);
     }
   };
 
   const handleDeleteQA = (entryId: string) => {
+    haptic.warning();
     Alert.alert('삭제할까요?', '이 질문 기록을 삭제해요.', [
       { text: '취소', style: 'cancel' },
       {

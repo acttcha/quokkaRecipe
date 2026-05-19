@@ -6,6 +6,7 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
+import { haptic } from '../services/haptics';
 
 interface Props extends NavProps { fridgeMode?: boolean; receiptMode?: boolean; }
 
@@ -39,6 +40,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
 
   const handleCapture = async () => {
     if (!cameraRef.current || capturing) return;
+    haptic.medium();
     setCapturing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.8 });
@@ -65,6 +67,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
       mediaTypes: ['images'], quality: 0.8, base64: true,
     });
     if (!result.canceled && result.assets[0]?.base64) {
+      haptic.success();
       const b64 = result.assets[0].base64;
       if (receiptMode) {
         navigate({ name: 'ReceiptScan', imageBase64: b64, mimeType: 'image/jpeg' });

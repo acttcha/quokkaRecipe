@@ -12,6 +12,7 @@ import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../ser
 import { incrementScanCount } from '../services/stats';
 import { addIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
+import { haptic } from '../services/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -120,8 +121,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   };
 
   const toggleSave = async (r: Recipe) => {
-    // 낙관적 업데이트: 파일 쓰기 전에 UI 먼저 반응
     const wasSaved = savedNames.has(r.name);
+    wasSaved ? haptic.light() : haptic.success();
     setSavedNames(prev => {
       const next = new Set(prev);
       if (wasSaved) next.delete(r.name); else next.add(r.name);
@@ -144,13 +145,16 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
   const handleAsk = async () => {
     if (!askModal || !question.trim()) return;
+    haptic.light();
     setAsking(true);
     setAnswer('');
     try {
       const res = await askQuokka(askModal, question.trim());
       setAnswer(res);
+      haptic.success();
     } catch {
       setAnswer('앗, 오류가 생겼어요. 다시 시도해주세요 🙏');
+      haptic.error();
     } finally {
       setAsking(false);
     }
@@ -272,7 +276,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           <TouchableOpacity
             key={t.id}
             style={[styles.tab, tab === t.id && styles.tabActive]}
-            onPress={() => setTab(t.id)}
+            onPress={() => { haptic.light(); setTab(t.id); }}
           >
             <Text style={[styles.tabText, tab === t.id && styles.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
@@ -299,7 +303,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
               {/* 카드 본문 */}
               <TouchableOpacity
                 style={styles.recipeBody}
-                onPress={() => setExpanded(open ? null : idx)}
+                onPress={() => { haptic.light(); setExpanded(open ? null : idx); }}
                 activeOpacity={0.9}
               >
                 <Text style={styles.recipeDesc}>{r.description}</Text>

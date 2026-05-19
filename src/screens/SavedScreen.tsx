@@ -9,6 +9,7 @@ import { NavProps, SavedRecipe } from '../types';
 import { getSavedRecipes, removeRecipe } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SearchIcon } from '../components/ui';
+import { haptic } from '../services/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -66,6 +67,7 @@ export default function SavedScreen({ navigate }: NavProps) {
     : recipes;
 
   const handleDelete = (r: SavedRecipe) => {
+    haptic.warning();
     Alert.alert('삭제할까요?', `"${r.name}"을 저장 목록에서 삭제해요.`, [
       { text: '취소', style: 'cancel' },
       {

@@ -10,6 +10,7 @@ import { loadPreferences } from '../services/preferences';
 import { getNickname, saveNickname, getScanCount } from '../services/stats';
 import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
+import { haptic } from '../services/haptics';
 
 const { width } = Dimensions.get('window');
 
@@ -46,6 +47,7 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
     await saveNickname(trimmed);
     setNickname(trimmed);
     setEditingNick(false);
+    haptic.success();
   };
 
   const PREF_ROWS = [
