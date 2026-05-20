@@ -31,6 +31,10 @@ export interface SavedRecipe extends Recipe {
   savedAt: string;
   sourceIngredients: string[];
   folderId?: string;
+  source?: 'ai' | 'youtube';
+  youtubeVideoId?: string;
+  youtubeThumbnail?: string;
+  youtubeTitle?: string;
 }
 
 export interface Folder {

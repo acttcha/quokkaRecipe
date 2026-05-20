@@ -14,16 +14,21 @@ export async function getSavedRecipes(): Promise<SavedRecipe[]> {
   }
 }
 
-export async function saveRecipe(recipe: Recipe, sourceIngredients: string[]): Promise<void> {
+export async function saveRecipe(
+  recipe: Recipe,
+  sourceIngredients: string[],
+  meta?: { source?: 'ai' | 'youtube'; youtubeVideoId?: string; youtubeThumbnail?: string; youtubeTitle?: string },
+): Promise<void> {
   const saved = await getSavedRecipes();
   const existing = saved.find(r => r.name === recipe.name);
-  if (existing) return; // 이미 저장됨
+  if (existing) return;
 
   const newEntry: SavedRecipe = {
     ...recipe,
     id: `${Date.now()}_${recipe.name}`,
     savedAt: new Date().toISOString(),
     sourceIngredients,
+    ...meta,
   };
   await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify([newEntry, ...saved]));
 }
@@ -39,6 +44,12 @@ export async function moveRecipeToFolder(recipeId: string, folderId: string | nu
     if (r.id !== recipeId) return r;
     return folderId === null ? { ...r, folderId: undefined } : { ...r, folderId };
   });
+  await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify(updated));
+}
+
+export async function updateRecipe(id: string, updates: Partial<Recipe>): Promise<void> {
+  const saved = await getSavedRecipes();
+  const updated = saved.map(r => r.id === id ? { ...r, ...updates } : r);
   await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify(updated));
 }
 

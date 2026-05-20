@@ -122,13 +122,18 @@ export default function YoutubeRecipeScreen({ goBack, recipeName }: Props) {
     haptic.success();
     await saveRecipe({
       name: result.recipeName,
-      description: selected ? `유튜브 "${selected.title}" 영상에서 추출한 레시피` : '유튜브 영상에서 추출한 레시피',
+      description: result.recipeName,
       cookTime: result.cookTime,
       servings: result.servings,
       difficulty: result.difficulty,
       ingredients: result.ingredients,
       steps: result.steps,
-    }, []);
+    }, [], {
+      source: 'youtube',
+      youtubeVideoId: selected?.videoId,
+      youtubeThumbnail: selected?.thumbnail,
+      youtubeTitle: selected?.title,
+    });
     setSaved(true);
   };
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   StatusBar, Image, Modal, KeyboardAvoidingView, Platform,
-  TextInput, ActivityIndicator, Alert, Share,
+  TextInput, ActivityIndicator, Alert, Share, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -12,7 +12,7 @@ import { openCoupang, openYouTubeByName } from '../services/youtube';
 import { getMemo, saveMemo, getQAHistory, addQAEntry, deleteQAEntry, QAEntry } from '../services/recipeNotes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
-import { moveRecipeToFolder } from '../services/savedRecipes';
+import { moveRecipeToFolder, updateRecipe } from '../services/savedRecipes';
 import { getFolders, createFolder } from '../services/folders';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
@@ -69,7 +69,8 @@ function formatTime(iso: string) {
 
 type Props = NavProps & { recipe: SavedRecipe };
 
-export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }: Props) {
+export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: initialRecipe }: Props) {
+  const [r, setR] = useState(initialRecipe);
   const [memo, setMemo]               = useState('');
   const [editingMemo, setEditingMemo] = useState(false);
   const [memoInput, setMemoInput]     = useState('');
@@ -83,6 +84,15 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }:
   const [currentFolderId, setCurrentFolderId]   = useState<string | undefined>(r.folderId);
   const [showNewFolderInDetail, setShowNewFolderInDetail] = useState(false);
   const [newFolderNameInDetail, setNewFolderNameInDetail] = useState('');
+
+  const [editVisible, setEditVisible]         = useState(false);
+  const [editName, setEditName]               = useState('');
+  const [editDesc, setEditDesc]               = useState('');
+  const [editCookTime, setEditCookTime]       = useState('');
+  const [editServings, setEditServings]       = useState('');
+  const [editDifficulty, setEditDifficulty]   = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
+  const [editIngredients, setEditIngredients] = useState<string[]>([]);
+  const [editSteps, setEditSteps]             = useState<string[]>([]);
 
   const diff = DIFF[r.difficulty] ?? DIFF.Medium;
 
@@ -183,6 +193,35 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }:
 
   const currentDetailFolder = detailFolders.find(f => f.id === currentFolderId);
 
+  const openEdit = () => {
+    setEditName(r.name);
+    setEditDesc(r.description);
+    setEditCookTime(r.cookTime);
+    setEditServings(String(r.servings));
+    setEditDifficulty(r.difficulty);
+    setEditIngredients([...r.ingredients]);
+    setEditSteps([...r.steps]);
+    setEditVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    const name = editName.trim();
+    if (!name) return;
+    haptic.success();
+    const updates = {
+      name,
+      description: editDesc.trim(),
+      cookTime: editCookTime.trim() || r.cookTime,
+      servings: parseInt(editServings) || r.servings,
+      difficulty: editDifficulty,
+      ingredients: editIngredients.map(s => s.trim()).filter(Boolean),
+      steps: editSteps.map(s => s.trim()).filter(Boolean),
+    };
+    await updateRecipe(r.id, updates);
+    setR(prev => ({ ...prev, ...updates }));
+    setEditVisible(false);
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -193,9 +232,14 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }:
           <TouchableOpacity onPress={goBack}>
             <Text style={styles.backBtnText}>← 돌아가기</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-            <Text style={styles.shareBtnText}>공유 ↗</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={styles.editHeaderBtn} onPress={openEdit}>
+              <Text style={styles.editHeaderBtnText}>수정</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+              <Text style={styles.shareBtnText}>공유 ↗</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerTitle} numberOfLines={2}>{r.name}</Text>
         <View style={styles.chipRow}>
@@ -210,10 +254,43 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }:
             </Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.savedAt}>{formatDate(r.savedAt)}</Text>
+        <View style={styles.savedAtRow}>
+          <Text style={styles.savedAt}>{formatDate(r.savedAt)}</Text>
+          <Text style={styles.savedAtDivider}>·</Text>
+          {r.source === 'youtube' ? (
+            <View style={styles.sourceBadgeYt}>
+              <Text style={styles.sourceBadgeYtText}>유튜브에서 가져온 레시피</Text>
+            </View>
+          ) : (
+            <View style={styles.sourceBadgeAi}>
+              <Text style={styles.sourceBadgeAiText}>쿼카가 알려준 레시피</Text>
+            </View>
+          )}
+        </View>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {/* 유튜브 원본 영상 카드 */}
+        {r.source === 'youtube' && r.youtubeVideoId && (
+          <TouchableOpacity
+            style={styles.ytSourceCard}
+            onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${r.youtubeVideoId}`)}
+            activeOpacity={0.85}
+          >
+            <Image
+              source={{ uri: r.youtubeThumbnail ?? `https://img.youtube.com/vi/${r.youtubeVideoId}/mqdefault.jpg` }}
+              style={styles.ytSourceThumb}
+            />
+            <View style={styles.ytSourceInfo}>
+              <Text style={styles.ytSourceBadge}>원본 영상</Text>
+              <Text style={styles.ytSourceTitle} numberOfLines={2}>
+                {r.youtubeTitle ?? '유튜브 영상'}
+              </Text>
+              <Text style={styles.ytSourceAction}>유튜브에서 보기 →</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* 설명 */}
         <Text style={styles.desc}>{r.description}</Text>
@@ -430,6 +507,132 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }:
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* ── 레시피 수정 모달 ── */}
+      <Modal visible={editVisible} animationType="slide" onRequestClose={() => setEditVisible(false)}>
+        <View style={styles.editRoot}>
+          <View style={styles.editNavBar}>
+            <View style={[styles.editNavSide, { alignItems: 'flex-start' }]}>
+              <TouchableOpacity
+                style={styles.editNavCancel}
+                onPress={() => setEditVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.editNavCancelText}>취소</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.editNavTitle}>레시피 수정</Text>
+            <View style={[styles.editNavSide, { alignItems: 'flex-end' }]}>
+              <TouchableOpacity onPress={handleSaveEdit} style={styles.editNavSave}>
+                <Text style={styles.editNavSaveText}>저장</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView contentContainerStyle={styles.editContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+              {/* 기본 정보 */}
+              <Text style={styles.editSectionLabel}>기본 정보</Text>
+              <View style={styles.editCard}>
+                <Text style={styles.editFieldLabel}>요리 이름</Text>
+                <TextInput style={styles.editInput} value={editName} onChangeText={setEditName} placeholder="요리 이름" placeholderTextColor={Colors.inkMute} />
+                <View style={styles.editDivider} />
+                <Text style={styles.editFieldLabel}>설명</Text>
+                <TextInput style={[styles.editInput, styles.editInputMulti]} value={editDesc} onChangeText={setEditDesc} placeholder="요리 설명" placeholderTextColor={Colors.inkMute} multiline />
+              </View>
+
+              {/* 조리 정보 */}
+              <Text style={styles.editSectionLabel}>조리 정보</Text>
+              <View style={styles.editCard}>
+                <View style={styles.editRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.editFieldLabel}>조리 시간</Text>
+                    <TextInput style={styles.editInput} value={editCookTime} onChangeText={setEditCookTime} placeholder="예: 30분" placeholderTextColor={Colors.inkMute} />
+                  </View>
+                  <View style={styles.editRowDivider} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.editFieldLabel}>인분</Text>
+                    <TextInput style={styles.editInput} value={editServings} onChangeText={setEditServings} placeholder="2" placeholderTextColor={Colors.inkMute} keyboardType="number-pad" />
+                  </View>
+                </View>
+                <View style={styles.editDivider} />
+                <Text style={styles.editFieldLabel}>난이도</Text>
+                <View style={styles.diffRow}>
+                  {(['Easy', 'Medium', 'Hard'] as const).map(d => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.diffPill, editDifficulty === d && styles.diffPillActive]}
+                      onPress={() => setEditDifficulty(d)}
+                    >
+                      <Text style={[styles.diffPillText, editDifficulty === d && styles.diffPillTextActive]}>
+                        {DIFF[d].label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* 재료 */}
+              <Text style={styles.editSectionLabel}>재료</Text>
+              <View style={styles.editCard}>
+                {editIngredients.map((ing, i) => (
+                  <View key={i} style={styles.editListRow}>
+                    <TextInput
+                      style={[styles.editInput, { flex: 1 }]}
+                      value={ing}
+                      onChangeText={v => setEditIngredients(prev => prev.map((x, j) => j === i ? v : x))}
+                      placeholder={`재료 ${i + 1}`}
+                      placeholderTextColor={Colors.inkMute}
+                    />
+                    <TouchableOpacity
+                      style={styles.editListRemove}
+                      onPress={() => setEditIngredients(prev => prev.filter((_, j) => j !== i))}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.editListRemoveText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.editAddBtn} onPress={() => setEditIngredients(prev => [...prev, ''])}>
+                  <Text style={styles.editAddBtnText}>+ 재료 추가</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* 만드는 법 */}
+              <Text style={styles.editSectionLabel}>만드는 법</Text>
+              <View style={styles.editCard}>
+                {editSteps.map((step, i) => (
+                  <View key={i} style={styles.editListRow}>
+                    <View style={styles.editStepNum}>
+                      <Text style={styles.editStepNumText}>{i + 1}</Text>
+                    </View>
+                    <TextInput
+                      style={[styles.editInput, { flex: 1 }]}
+                      value={step}
+                      onChangeText={v => setEditSteps(prev => prev.map((x, j) => j === i ? v : x))}
+                      placeholder={`${i + 1}단계`}
+                      placeholderTextColor={Colors.inkMute}
+                      multiline
+                    />
+                    <TouchableOpacity
+                      style={styles.editListRemove}
+                      onPress={() => setEditSteps(prev => prev.filter((_, j) => j !== i))}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.editListRemoveText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.editAddBtn} onPress={() => setEditSteps(prev => [...prev, ''])}>
+                  <Text style={styles.editAddBtnText}>+ 단계 추가</Text>
+                </TouchableOpacity>
+              </View>
+
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
       {/* 폴더 이동 모달 */}
       <Modal visible={folderPickerVisible} transparent animationType="slide" onRequestClose={() => setFolderPickerVisible(false)}>
         <TouchableOpacity style={styles.fpOverlay} activeOpacity={1} onPress={() => setFolderPickerVisible(false)}>
@@ -502,15 +705,43 @@ const styles = StyleSheet.create({
   header: { paddingTop: 56, paddingHorizontal: 22, paddingBottom: 18 },
   headerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   backBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
-  shareBtn: { backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  shareBtnText: { fontSize: 12, fontWeight: '700', color: Colors.inkSoft },
+  shareBtn: {
+    backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 6,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  shareBtnText: { fontSize: 12, fontWeight: '700', color: Colors.inkSoft, lineHeight: 16 },
   headerTitle: { fontSize: 26, fontWeight: '900', color: Colors.ink, letterSpacing: -0.6, marginBottom: 12 },
   chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   diffChip: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },
   diffText: { fontSize: 12, fontWeight: '800' },
   metaChip: { backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },
   metaChipText: { fontSize: 12, color: Colors.inkSoft, fontWeight: '600' },
-  savedAt: { fontSize: 11, color: Colors.inkMute, fontWeight: '500', marginTop: 10 },
+  savedAtRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  savedAt: { fontSize: 11, color: Colors.inkMute, fontWeight: '500' },
+  savedAtDivider: { fontSize: 11, color: Colors.inkMute },
+  sourceBadgeYt: {
+    backgroundColor: 'rgba(255,0,0,0.1)', borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  sourceBadgeYtText: { fontSize: 10, fontWeight: '700', color: '#CC0000' },
+  sourceBadgeAi: {
+    backgroundColor: 'rgba(61,139,94,0.12)', borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  sourceBadgeAiText: { fontSize: 10, fontWeight: '700', color: Colors.forestDeep },
+
+  ytSourceCard: {
+    flexDirection: 'row', backgroundColor: Colors.white,
+    borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
+    marginBottom: 16,
+  },
+  ytSourceThumb: { width: 110, height: 80 },
+  ytSourceInfo: { flex: 1, padding: 10, justifyContent: 'space-between' },
+  ytSourceBadge: { fontSize: 9, fontWeight: '800', color: '#CC0000', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 3 },
+  ytSourceTitle: { fontSize: 12, fontWeight: '700', color: Colors.ink, lineHeight: 16, flex: 1 },
+  ytSourceAction: { fontSize: 11, fontWeight: '700', color: Colors.inkMute, marginTop: 4 },
 
   content: { padding: 22, paddingBottom: 60 },
 
@@ -634,6 +865,68 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(61,139,94,0.3)',
   },
   folderChipText: { fontSize: 11, fontWeight: '700', color: Colors.forestDeep },
+
+  editHeaderBtn: {
+    backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 6,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  editHeaderBtnText: { fontSize: 12, fontWeight: '700', color: Colors.forestDeep, lineHeight: 16 },
+
+  editRoot: { flex: 1, backgroundColor: Colors.cream },
+  editNavBar: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingTop: 56, paddingHorizontal: 18, paddingBottom: 14,
+    backgroundColor: Colors.cream, borderBottomWidth: 1, borderBottomColor: Colors.line,
+  },
+  editNavSide: { width: 72, justifyContent: 'center' },
+  editNavCancel: {
+    width: 60, height: 34,
+    borderWidth: 1.5, borderColor: Colors.line, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  editNavCancelText: { fontSize: 14, fontWeight: '800', color: Colors.inkSoft },
+  editNavTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: Colors.ink, textAlign: 'center' },
+  editNavSave: {
+    width: 60, height: 34,
+    backgroundColor: Colors.forest, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  editNavSaveText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+  editContent: { padding: 20, paddingBottom: 60, gap: 8 },
+  editSectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 8, marginBottom: 6, paddingHorizontal: 2 },
+  editCard: { backgroundColor: Colors.white, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
+  editFieldLabel: { fontSize: 11, fontWeight: '700', color: Colors.inkMute, marginBottom: 6 },
+  editInput: {
+    fontSize: 14, color: Colors.ink, paddingVertical: 6,
+    borderBottomWidth: 1, borderBottomColor: Colors.line,
+  },
+  editInputMulti: { minHeight: 60, textAlignVertical: 'top', lineHeight: 20 },
+  editDivider: { height: 1, backgroundColor: Colors.line, opacity: 0.5, marginVertical: 14 },
+  editRow: { flexDirection: 'row', gap: 12 },
+  editRowDivider: { width: 1, backgroundColor: Colors.line, opacity: 0.5, marginHorizontal: 4 },
+
+  diffRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  diffPill: {
+    flex: 1, paddingVertical: 8, borderRadius: 12,
+    backgroundColor: Colors.creamSoft, borderWidth: 1, borderColor: Colors.line,
+    alignItems: 'center',
+  },
+  diffPillActive: { backgroundColor: Colors.forest, borderColor: Colors.forest },
+  diffPillText: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft },
+  diffPillTextActive: { color: '#fff' },
+
+  editListRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  editListRemove: { padding: 4 },
+  editListRemoveText: { fontSize: 22, color: Colors.inkMute, lineHeight: 24 },
+  editStepNum: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: Colors.orangeSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  editStepNumText: { fontSize: 12, fontWeight: '900', color: Colors.orangeDeep },
+  editAddBtn: { paddingVertical: 10, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: Colors.inkMute, marginTop: 4 },
+  editAddBtnText: { fontSize: 13, fontWeight: '700', color: Colors.inkMute },
 
   fpOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   fpSheet: {
