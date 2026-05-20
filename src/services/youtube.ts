@@ -102,3 +102,118 @@ export function openCoupang(ingredient: string) {
 }
 
 export { formatViewCount };
+
+export function extractYouTubeVideoId(input: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+  for (const p of patterns) {
+    const m = input.trim().match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// ─── 유튜브 레시피 분석용 ─────────────────────────────────────
+
+export interface YTSearchResult {
+  videoId: string;
+  title: string;
+  channelTitle: string;
+  thumbnail: string;
+  viewCount: number;
+}
+
+export async function searchYoutubeForRecipe(recipeName: string): Promise<YTSearchResult[]> {
+  if (!YT_API_KEY) throw new Error('YouTube API 키가 없어요 (.env 확인)');
+
+  const q = encodeURIComponent(`${recipeName} 레시피`);
+  const searchRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&maxResults=12&order=relevance&regionCode=KR&relevanceLanguage=ko&key=${YT_API_KEY}`
+  );
+  const searchData = await searchRes.json();
+
+  if (searchData.error) {
+    const msg = searchData.error.errors?.[0]?.reason || searchData.error.message || 'YouTube API 오류';
+    throw new Error(`YouTube 오류: ${msg}`);
+  }
+  if (!searchData.items?.length) return [];
+
+  const ids = searchData.items.map((i: any) => i.id.videoId).join(',');
+  const statsRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids}&key=${YT_API_KEY}`
+  );
+  const statsData = await statsRes.json();
+  const statsMap: Record<string, number> = {};
+  for (const item of statsData.items || []) {
+    statsMap[item.id] = parseInt(item.statistics.viewCount || '0', 10);
+  }
+
+  return searchData.items
+    .map((item: any) => ({
+      videoId: item.id.videoId,
+      title: item.snippet.title,
+      channelTitle: item.snippet.channelTitle,
+      thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url || '',
+      viewCount: statsMap[item.id.videoId] || 0,
+    }))
+    .sort((a: YTSearchResult, b: YTSearchResult) => b.viewCount - a.viewCount);
+}
+
+export async function getVideoDescription(videoId: string): Promise<string> {
+  const res = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${YT_API_KEY}`
+  );
+  const data = await res.json();
+  return data.items?.[0]?.snippet?.description || '';
+}
+
+export async function fetchVideoTranscript(videoId: string): Promise<string> {
+  try {
+    const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: { 'Accept-Language': 'ko-KR,ko;q=0.9' },
+    });
+    const html = await pageRes.text();
+
+    // captionTracks 위치 찾기
+    const idx = html.indexOf('"captionTracks":');
+    if (idx === -1) return '';
+
+    const start = html.indexOf('[', idx);
+    if (start === -1) return '';
+
+    // 중괄호 깊이로 배열 끝 찾기
+    let depth = 0;
+    let end = start;
+    for (let i = start; i < Math.min(start + 100000, html.length); i++) {
+      const c = html[i];
+      if (c === '[' || c === '{') depth++;
+      else if (c === ']' || c === '}') { depth--; if (depth === 0) { end = i; break; } }
+    }
+
+    let tracks: any[];
+    try { tracks = JSON.parse(html.slice(start, end + 1)); } catch { return ''; }
+
+    // 한국어 수동 자막 > 한국어 자동 자막 > 첫 번째 트랙 순으로 시도
+    const track =
+      tracks.find(t => t.languageCode === 'ko' && t.kind !== 'asr') ||
+      tracks.find(t => t.languageCode === 'ko') ||
+      tracks.find(t => t.languageCode?.startsWith('ko')) ||
+      tracks[0];
+    if (!track?.baseUrl) return '';
+
+    const captionRes = await fetch(`${track.baseUrl}&fmt=json3`);
+    const captionData = await captionRes.json();
+
+    return (captionData.events || [])
+      .filter((e: any) => e.segs)
+      .map((e: any) => e.segs.map((s: any) => (s.utf8 || '').replace(/\n/g, ' ')).join(''))
+      .filter((s: string) => s.trim())
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch {
+    return '';
+  }
+}

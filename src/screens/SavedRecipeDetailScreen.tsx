@@ -69,7 +69,7 @@ function formatTime(iso: string) {
 
 type Props = NavProps & { recipe: SavedRecipe };
 
-export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
+export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: r }: Props) {
   const [memo, setMemo]               = useState('');
   const [editingMemo, setEditingMemo] = useState(false);
   const [memoInput, setMemoInput]     = useState('');
@@ -256,21 +256,17 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
           </View>
         ))}
 
-        {/* ── 내 메모 ── */}
-        <View style={styles.sectionBox}>
-          <View style={styles.sectionBoxHeader}>
-            <Text style={styles.sectionBoxTitle}>📝 내 메모</Text>
+        {/* ── 메모 카드 ── */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>📝 내 메모</Text>
             {!editingMemo && (
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => { setMemoInput(memo); setEditingMemo(true); }}
-              >
+              <TouchableOpacity style={styles.editBtn} onPress={() => { setMemoInput(memo); setEditingMemo(true); }}>
                 <IconEdit />
                 <Text style={styles.editBtnText}>{memo ? '수정' : '추가'}</Text>
               </TouchableOpacity>
             )}
           </View>
-
           {editingMemo ? (
             <>
               <TextInput
@@ -300,19 +296,24 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
           )}
         </View>
 
-        {/* ── 쿼카에게 질문하기 ── */}
-        <TouchableOpacity
-          style={styles.askBtn}
-          onPress={() => { setAskVisible(true); setQuestion(''); setAnswer(''); }}
-          activeOpacity={0.85}
-        >
-          <Image source={require('../../assets/quokka_question_mini.png')} style={styles.askQuokka} resizeMode="contain" />
-          <Text style={styles.askBtnText}>쿼카에게 질문하기 🐾</Text>
-        </TouchableOpacity>
+        {/* ── 쿼카 카드 (질문하기 + 기록) ── */}
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.quokkaRow}
+            onPress={() => { setAskVisible(true); setQuestion(''); setAnswer(''); }}
+            activeOpacity={0.82}
+          >
+            <Image source={require('../../assets/quokka_question_mini.png')} style={styles.askQuokka} resizeMode="contain" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>쿼카에게 질문하기</Text>
+              <Text style={styles.cardSub}>레시피에 대해 뭐든 물어보세요 🐾</Text>
+            </View>
+            <Text style={styles.rowArrow}>›</Text>
+          </TouchableOpacity>
 
-        {/* ── 쿼카 질문 기록 ── */}
-        <View style={styles.sectionBox}>
-          <Text style={styles.sectionBoxTitle}>🐾 질문 기록</Text>
+          <View style={styles.cardDivider} />
+
+          <Text style={styles.cardSectionLabel}>질문 기록</Text>
           {qaHistory.length === 0 ? (
             <Text style={styles.qaEmpty}>아직 질문 기록이 없어요</Text>
           ) : (
@@ -320,10 +321,7 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
               <View key={entry.id} style={styles.qaEntry}>
                 <View style={styles.qaEntryHeader}>
                   <Text style={styles.qaTime}>{formatTime(entry.askedAt)}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteQA(entry.id)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
+                  <TouchableOpacity onPress={() => handleDeleteQA(entry.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <IconTrash />
                   </TouchableOpacity>
                 </View>
@@ -340,25 +338,28 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
           )}
         </View>
 
-        {/* ── 유튜브 ── */}
-        <TouchableOpacity
-          style={styles.ytBtn}
-          onPress={() => openYouTubeByName(r.name)}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ytEmoji}>📺</Text>
-          <View>
-            <Text style={styles.ytTitle}>유튜브에서 레시피 보기</Text>
-            <Text style={styles.ytSub}>영상으로 더 쉽게 따라해보세요</Text>
-          </View>
-        </TouchableOpacity>
+        {/* ── 외부 링크 카드 (유튜브 + 쿠팡) ── */}
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.linkRow} onPress={() => openYouTubeByName(r.name)} activeOpacity={0.82}>
+            <Text style={styles.linkEmoji}>📺</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkTitle}>유튜브에서 레시피 보기</Text>
+              <Text style={styles.linkSub}>영상으로 더 쉽게 따라해보세요</Text>
+            </View>
+            <Text style={styles.rowArrow}>›</Text>
+          </TouchableOpacity>
 
-        {/* ── 쿠팡 구매 ── */}
-        <View style={styles.coupangBox}>
-          <Text style={styles.coupangLabel}>🛒 재료 바로 구매</Text>
-          <Text style={styles.coupangSub}>필요한 재료를 쿠팡에서 바로 주문해요</Text>
+          <View style={styles.cardDivider} />
+
+          <View style={styles.linkRowStatic}>
+            <Text style={styles.linkEmoji}>🛒</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkTitle}>재료 바로 구매</Text>
+              <Text style={styles.linkSub}>쿠팡에서 필요한 재료를 주문해요</Text>
+            </View>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 2 }}>
               {r.ingredients.map(ing => (
                 <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
                   <Text style={styles.coupangChipText}>{ing.split(' ')[0]}</Text>
@@ -543,13 +544,17 @@ const styles = StyleSheet.create({
   stepNumText: { fontSize: 13, fontWeight: '900', color: Colors.orangeDeep },
   stepText: { fontSize: 14, color: Colors.ink, lineHeight: 22, flex: 1 },
 
-  // 공통 섹션 박스
-  sectionBox: {
+  // 공통 카드
+  card: {
     backgroundColor: Colors.white, borderRadius: 20, padding: 18,
-    marginTop: 20, ...shadow.sm,
+    marginTop: 16, borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
   },
-  sectionBoxHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sectionBoxTitle: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  cardSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 2 },
+  cardDivider: { height: 1, backgroundColor: Colors.line, opacity: 0.6, marginVertical: 14 },
+  cardSectionLabel: { fontSize: 11, fontWeight: '700', color: Colors.inkMute, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 10 },
+  rowArrow: { fontSize: 22, color: Colors.inkMute, fontWeight: '300', lineHeight: 26 },
 
   // 메모
   editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 },
@@ -567,21 +572,13 @@ const styles = StyleSheet.create({
   memoSaveBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12, backgroundColor: Colors.forest },
   memoSaveText: { fontSize: 13, fontWeight: '800', color: '#FFF' },
 
-  // 쿼카 질문 버튼
-  askBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.cardGreen, borderRadius: 20, padding: 16,
-    marginTop: 20, ...shadow.sm,
-  },
-  askQuokka: { width: 44, height: 44 },
-  askBtnText: { fontSize: 15, fontWeight: '800', color: Colors.primary },
+  // 쿼카 질문 행
+  quokkaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  askQuokka: { width: 42, height: 42 },
 
   // 질문 기록
   qaEmpty: { fontSize: 13, color: Colors.inkMute, fontStyle: 'italic' },
-  qaEntry: {
-    borderTopWidth: 1, borderTopColor: Colors.line,
-    paddingTop: 14, marginTop: 14,
-  },
+  qaEntry: { borderTopWidth: 1, borderTopColor: Colors.line, paddingTop: 14, marginTop: 14 },
   qaEntryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   qaTime: { fontSize: 11, color: Colors.inkMute, fontWeight: '500' },
   qaQ: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginBottom: 8 },
@@ -591,28 +588,19 @@ const styles = StyleSheet.create({
   qaALabel: { fontSize: 12, fontWeight: '900', color: Colors.forest, width: 16, paddingTop: 1 },
   qaAText: { flex: 1, fontSize: 13, color: Colors.inkSoft, lineHeight: 19 },
 
-  // 유튜브
-  ytBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#FEE2E2', borderRadius: 20, padding: 18,
-    marginTop: 12, ...shadow.sm,
-  },
-  ytEmoji: { fontSize: 30 },
-  ytTitle: { fontSize: 15, fontWeight: '800', color: '#C0392B' },
-  ytSub: { fontSize: 12, color: '#E57373', marginTop: 2 },
+  // 외부 링크 행
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  linkRowStatic: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  linkEmoji: { fontSize: 26, width: 34, textAlign: 'center' },
+  linkTitle: { fontSize: 14, fontWeight: '700', color: Colors.ink },
+  linkSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 2 },
 
-  // 쿠팡
-  coupangBox: {
-    backgroundColor: Colors.white, borderRadius: 20, padding: 18,
-    marginTop: 12, ...shadow.sm,
-  },
-  coupangLabel: { fontSize: 15, fontWeight: '800', color: Colors.ink },
-  coupangSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 2 },
+  // 쿠팡 칩
   coupangChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF5F5', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 9,
-    borderWidth: 1.5, borderColor: '#FFD0D0',
+    backgroundColor: Colors.creamSoft, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.line,
   },
   coupangChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
   coupangArrow: { fontSize: 12, color: Colors.coupang, fontWeight: '800' },

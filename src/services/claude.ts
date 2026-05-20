@@ -195,3 +195,76 @@ ${question}`,
   });
   return text.trim();
 }
+
+// ─── 유튜브 영상 분석 ──────────────────────────────────────────
+
+export interface YoutubeRecipeAnalysis {
+  recipeName: string;
+  cookTime: string;
+  servings: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  ingredients: string[];
+  steps: string[];
+  tips: string[];
+}
+
+export async function analyzeYoutubeRecipe(
+  videoTitle: string,
+  channelTitle: string,
+  description: string,
+  transcript: string,
+): Promise<YoutubeRecipeAnalysis> {
+  const hasDescription = description.trim().length >= 80;
+  const hasTranscript  = transcript.trim().length >= 80;
+
+  if (!hasDescription && !hasTranscript) {
+    throw new Error(
+      '영상의 자막 및 설명 데이터가 제공되지 않아 조리 방법을 특정하기 어렵습니다.\n다른 영상을 선택해주세요.'
+    );
+  }
+
+  const parts = [
+    `유튜브 영상 제목: ${videoTitle}`,
+    `채널명: ${channelTitle}`,
+    hasDescription ? `\n영상 설명:\n${description.slice(0, 2000)}` : '',
+    hasTranscript  ? `\n자막 내용:\n${transcript.slice(0, 4000)}` : '',
+  ].filter(Boolean).join('\n');
+
+  const text = await callClaude({
+    model: MODEL,
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: `다음 유튜브 요리 영상 정보를 분석해서 레시피를 추출해주세요.
+
+${parts}
+
+자막이 있다면 자막의 실제 조리 흐름을 중심으로, 영상 설명의 재료 정보를 함께 활용해서 최대한 정확하고 상세하게 작성해주세요. 자막이 없다면 영상 설명과 제목만으로 최선을 다해 추출해주세요.
+
+반드시 다음 JSON 형식으로만 응답하세요 (JSON 이외의 텍스트 없이):
+{
+  "recipeName": "요리 이름",
+  "cookTime": "예: 30분",
+  "servings": 2,
+  "difficulty": "Easy 또는 Medium 또는 Hard",
+  "ingredients": ["재료1 (양)", "재료2 (양)"],
+  "steps": ["1단계 상세 설명", "2단계 상세 설명"],
+  "tips": ["팁1", "팁2"]
+}`,
+    }],
+  });
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('레시피 분석에 실패했어요');
+
+  const p = JSON.parse(jsonMatch[0]);
+  return {
+    recipeName: p.recipeName || videoTitle,
+    cookTime: p.cookTime || '?분',
+    servings: typeof p.servings === 'number' ? p.servings : 2,
+    difficulty: ['Easy', 'Medium', 'Hard'].includes(p.difficulty) ? p.difficulty : 'Medium',
+    ingredients: Array.isArray(p.ingredients) ? p.ingredients : [],
+    steps: Array.isArray(p.steps) ? p.steps : [],
+    tips: Array.isArray(p.tips) ? p.tips : [],
+  };
+}

@@ -229,7 +229,20 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.header}>
         <View style={styles.headerSpacer} />
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>저장한 레시피</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>저장한 레시피</Text>
+            <TouchableOpacity
+              style={styles.ytAnalyzeBtn}
+              onPress={() => { haptic.light(); navigate({ name: 'YoutubeRecipe' }); }}
+              activeOpacity={0.8}
+            >
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.97C5.12 20 12 20 12 20s6.88 0 8.59-.45a2.78 2.78 0 0 0 1.95-1.97A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58Z" fill="#FF0000" />
+                <Path d="m9.75 15.02 5.75-3.02-5.75-3.02v6.04Z" fill="#fff" />
+              </Svg>
+              <Text style={styles.ytAnalyzeBtnText}>유튜브 레시피 분석</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerSub}>
             {recipes.length > 0 ? `${recipes.length}개의 레시피를 보관 중이에요` : '아직 저장된 레시피가 없어요'}
           </Text>
@@ -546,11 +559,19 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
 
-  header: { height: 170 },
+  header: { height: 185 },
   headerSpacer: { flex: 1 },
   headerContent: { paddingHorizontal: 22, paddingBottom: 14 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.ink, letterSpacing: -0.6 },
   headerSub: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500', marginTop: 4 },
+  ytAnalyzeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,0,0,0.08)',
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: 'rgba(255,0,0,0.15)',
+  },
+  ytAnalyzeBtnText: { fontSize: 12, fontWeight: '700', color: '#CC0000' },
   headerHairline: { height: 1, backgroundColor: Colors.line, opacity: 0.5 },
   headerSearchBtn: { position: 'absolute', top: 60, right: 18 },
 
