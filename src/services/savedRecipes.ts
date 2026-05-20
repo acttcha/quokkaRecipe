@@ -33,6 +33,15 @@ export async function removeRecipe(id: string): Promise<void> {
   await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify(saved.filter(r => r.id !== id)));
 }
 
+export async function moveRecipeToFolder(recipeId: string, folderId: string | null): Promise<void> {
+  const saved = await getSavedRecipes();
+  const updated = saved.map(r => {
+    if (r.id !== recipeId) return r;
+    return folderId === null ? { ...r, folderId: undefined } : { ...r, folderId };
+  });
+  await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify(updated));
+}
+
 export async function isRecipeSaved(name: string): Promise<boolean> {
   const saved = await getSavedRecipes();
   return saved.some(r => r.name === name);

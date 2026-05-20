@@ -30,6 +30,13 @@ export interface SavedRecipe extends Recipe {
   id: string;
   savedAt: string;
   sourceIngredients: string[];
+  folderId?: string;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 export type ScreenName = 'Home' | 'Camera' | 'Recipes' | 'Settings' | 'Saved';

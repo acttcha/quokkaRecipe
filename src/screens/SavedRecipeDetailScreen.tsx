@@ -6,12 +6,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { NavProps, SavedRecipe } from '../types';
+import { NavProps, SavedRecipe, Folder } from '../types';
 import { askQuokka } from '../services/claude';
 import { openCoupang, openYouTubeByName } from '../services/youtube';
 import { getMemo, saveMemo, getQAHistory, addQAEntry, deleteQAEntry, QAEntry } from '../services/recipeNotes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
+import { moveRecipeToFolder } from '../services/savedRecipes';
+import { getFolders, createFolder } from '../services/folders';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
   Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
@@ -34,6 +36,14 @@ function IconEdit() {
         stroke={Colors.inkSoft} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"
         stroke={Colors.inkSoft} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 12l5 5L19 7" stroke={Colors.forest} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -67,7 +77,12 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
   const [question, setQuestion]       = useState('');
   const [answer, setAnswer]           = useState('');
   const [asking, setAsking]           = useState(false);
-  const [askVisible, setAskVisible]   = useState(false);
+  const [askVisible, setAskVisible]             = useState(false);
+  const [folderPickerVisible, setFolderPickerVisible] = useState(false);
+  const [detailFolders, setDetailFolders]       = useState<Folder[]>([]);
+  const [currentFolderId, setCurrentFolderId]   = useState<string | undefined>(r.folderId);
+  const [showNewFolderInDetail, setShowNewFolderInDetail] = useState(false);
+  const [newFolderNameInDetail, setNewFolderNameInDetail] = useState('');
 
   const diff = DIFF[r.difficulty] ?? DIFF.Medium;
 
@@ -77,7 +92,10 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
     setQaHistory(qa);
   }, [r.id]);
 
-  useEffect(() => { loadNotes(); }, [loadNotes]);
+  useEffect(() => {
+    loadNotes();
+    getFolders().then(setDetailFolders);
+  }, [loadNotes]);
 
   const handleSaveMemo = async () => {
     await saveMemo(r.id, memoInput.trim());
@@ -141,6 +159,30 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
     ]);
   };
 
+  const handleMoveFolderInDetail = async (folderId: string | null) => {
+    haptic.light();
+    await moveRecipeToFolder(r.id, folderId);
+    setCurrentFolderId(folderId ?? undefined);
+    setFolderPickerVisible(false);
+    setShowNewFolderInDetail(false);
+    setNewFolderNameInDetail('');
+  };
+
+  const handleCreateFolderInDetail = async () => {
+    const name = newFolderNameInDetail.trim();
+    if (!name) return;
+    haptic.success();
+    const folder = await createFolder(name);
+    setDetailFolders(prev => [...prev, folder]);
+    await moveRecipeToFolder(r.id, folder.id);
+    setCurrentFolderId(folder.id);
+    setFolderPickerVisible(false);
+    setShowNewFolderInDetail(false);
+    setNewFolderNameInDetail('');
+  };
+
+  const currentDetailFolder = detailFolders.find(f => f.id === currentFolderId);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -162,6 +204,11 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
           </View>
           <View style={styles.metaChip}><Text style={styles.metaChipText}>⏱ {r.cookTime}</Text></View>
           <View style={styles.metaChip}><Text style={styles.metaChipText}>👥 {r.servings}인분</Text></View>
+          <TouchableOpacity style={styles.folderChip} onPress={() => setFolderPickerVisible(true)}>
+            <Text style={styles.folderChipText}>
+              {currentDetailFolder ? `📁 ${currentDetailFolder.name}` : '📂 폴더 지정'}
+            </Text>
+          </TouchableOpacity>
         </View>
         <Text style={styles.savedAt}>{formatDate(r.savedAt)}</Text>
       </LinearGradient>
@@ -259,7 +306,7 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
           onPress={() => { setAskVisible(true); setQuestion(''); setAnswer(''); }}
           activeOpacity={0.85}
         >
-          <Image source={require('../../assets/quokka.png')} style={styles.askQuokka} resizeMode="contain" />
+          <Image source={require('../../assets/quokka_question_mini.png')} style={styles.askQuokka} resizeMode="contain" />
           <Text style={styles.askBtnText}>쿼카에게 질문하기 🐾</Text>
         </TouchableOpacity>
 
@@ -380,6 +427,69 @@ export default function SavedRecipeDetailScreen({ goBack, recipe: r }: Props) {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 폴더 이동 모달 */}
+      <Modal visible={folderPickerVisible} transparent animationType="slide" onRequestClose={() => setFolderPickerVisible(false)}>
+        <TouchableOpacity style={styles.fpOverlay} activeOpacity={1} onPress={() => setFolderPickerVisible(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+              <View style={styles.fpSheet}>
+                <View style={styles.fpHandle} />
+                <Text style={styles.fpTitle}>폴더 이동</Text>
+                <Text style={styles.fpSub} numberOfLines={1}>{r.name}</Text>
+
+                <TouchableOpacity
+                  style={[styles.fpOption, !currentFolderId && styles.fpOptionActive]}
+                  onPress={() => handleMoveFolderInDetail(null)}
+                >
+                  <Text style={styles.fpOptionIcon}>📂</Text>
+                  <Text style={[styles.fpOptionText, !currentFolderId && styles.fpOptionTextActive]}>분류 없음</Text>
+                  {!currentFolderId && <IconCheck />}
+                </TouchableOpacity>
+
+                {detailFolders.map(folder => (
+                  <TouchableOpacity
+                    key={folder.id}
+                    style={[styles.fpOption, currentFolderId === folder.id && styles.fpOptionActive]}
+                    onPress={() => handleMoveFolderInDetail(folder.id)}
+                  >
+                    <Text style={styles.fpOptionIcon}>📁</Text>
+                    <Text style={[styles.fpOptionText, currentFolderId === folder.id && styles.fpOptionTextActive]}>
+                      {folder.name}
+                    </Text>
+                    {currentFolderId === folder.id && <IconCheck />}
+                  </TouchableOpacity>
+                ))}
+
+                {showNewFolderInDetail ? (
+                  <View style={styles.fpNewRow}>
+                    <TextInput
+                      style={styles.fpNewInput}
+                      value={newFolderNameInDetail}
+                      onChangeText={setNewFolderNameInDetail}
+                      placeholder="새 폴더 이름"
+                      placeholderTextColor={Colors.inkMute}
+                      autoFocus
+                      returnKeyType="done"
+                      onSubmitEditing={handleCreateFolderInDetail}
+                    />
+                    <TouchableOpacity
+                      style={[styles.fpNewBtn, !newFolderNameInDetail.trim() && styles.fpNewBtnDisabled]}
+                      onPress={handleCreateFolderInDetail}
+                    >
+                      <Text style={styles.fpNewBtnText}>만들기</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.fpOptionAdd} onPress={() => setShowNewFolderInDetail(true)}>
+                    <Text style={styles.fpOptionAddText}>+ 새 폴더 만들기</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -529,4 +639,43 @@ const styles = StyleSheet.create({
   sendBtn: { backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 12 },
   sendBtnDisabled: { backgroundColor: Colors.border },
   sendBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+
+  folderChip: {
+    backgroundColor: 'rgba(255,255,255,0.65)',
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: 'rgba(61,139,94,0.3)',
+  },
+  folderChipText: { fontSize: 11, fontWeight: '700', color: Colors.forestDeep },
+
+  fpOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  fpSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40,
+  },
+  fpHandle: { width: 40, height: 4, backgroundColor: Colors.line, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+  fpTitle: { fontSize: 17, fontWeight: '800', color: Colors.ink, marginBottom: 4 },
+  fpSub: { fontSize: 13, color: Colors.inkSoft, marginBottom: 16 },
+  fpOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 13, paddingHorizontal: 12, borderRadius: 14, marginBottom: 4,
+  },
+  fpOptionActive: { backgroundColor: Colors.forestSoft },
+  fpOptionIcon: { fontSize: 18 },
+  fpOptionText: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.ink },
+  fpOptionTextActive: { color: Colors.forestDeep },
+  fpOptionAdd: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12 },
+  fpOptionAddText: { fontSize: 15, fontWeight: '700', color: Colors.forest },
+  fpNewRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  fpNewInput: {
+    flex: 1, height: 44, backgroundColor: Colors.creamSoft,
+    borderRadius: 12, paddingHorizontal: 12, fontSize: 14, color: Colors.ink,
+    borderWidth: 1, borderColor: Colors.line,
+  },
+  fpNewBtn: {
+    height: 44, backgroundColor: Colors.forest, borderRadius: 12,
+    paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center',
+  },
+  fpNewBtnDisabled: { backgroundColor: Colors.inkMute },
+  fpNewBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

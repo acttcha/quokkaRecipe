@@ -108,9 +108,10 @@ export default function App() {
   const [tabIndex, setTabIndex]   = useState(0);
   const [subScreen, setSubScreen] = useState<CurrentScreen | null>(null);
 
-  const slideAnim    = useRef(new Animated.Value(0)).current;
-  const tabIndexRef  = useRef(0);
-  const subScreenRef = useRef<CurrentScreen | null>(null);
+  const slideAnim       = useRef(new Animated.Value(0)).current;
+  const tabIndexRef     = useRef(0);
+  const subScreenRef    = useRef<CurrentScreen | null>(null);
+  const swipeBlockedRef = useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -149,7 +150,10 @@ export default function App() {
   const panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (_, gs) =>
-      !subScreenRef.current && Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+      !subScreenRef.current &&
+      !swipeBlockedRef.current &&
+      Math.abs(gs.dx) > 12 &&
+      Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
     onPanResponderRelease: (_, gs) => {
       const cur = tabIndexRef.current;
       if (gs.dx < -50 && cur < TAB_SCREENS.length - 1) {
@@ -187,7 +191,13 @@ export default function App() {
       <Animated.View style={[styles.tabContainer, { transform: [{ translateX: slideAnim }] }]}>
         <View style={styles.screen}><HomeScreen navigate={navigate} goBack={goBack} /></View>
         <View style={styles.screen}><FridgeScreen navigate={navigate} goBack={goBack} /></View>
-        <View style={styles.screen}><SavedScreen navigate={navigate} goBack={goBack} /></View>
+        <View style={styles.screen}>
+          <SavedScreen
+            navigate={navigate}
+            goBack={goBack}
+            onFolderBarScroll={(scrolling) => { swipeBlockedRef.current = scrolling; }}
+          />
+        </View>
         <View style={styles.screen}>
           <SettingsScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />
         </View>
