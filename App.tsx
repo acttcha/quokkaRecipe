@@ -9,7 +9,9 @@ import Svg, { Path, Rect, Line, Circle } from 'react-native-svg';
 import { Asset } from 'expo-asset';
 import { CurrentScreen } from './src/types';
 import { isOnboardingDone } from './src/services/preferences';
+import { isFridgeSetupDone } from './src/services/fridge';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import FridgeSetupScreen from './src/screens/FridgeSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import CameraScreen from './src/screens/CameraScreen';
 import RecipeScreen from './src/screens/RecipeScreen';
@@ -102,11 +104,12 @@ const TAB_ICON_MAP: Record<TabScreenName, React.ComponentType<{ active: boolean 
 };
 
 // ─── App ───────────────────────────────────────────────────
-type AppState = 'loading' | 'onboarding' | 'app';
+type AppState = 'loading' | 'onboarding' | 'fridge_setup' | 'app';
 
 export default function App() {
-  const [appState, setAppState]   = useState<AppState>('loading');
-  const [tabIndex, setTabIndex]   = useState(0);
+  const [appState, setAppState]       = useState<AppState>('loading');
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const [tabIndex, setTabIndex]       = useState(0);
   const [subScreen, setSubScreen] = useState<CurrentScreen | null>(null);
 
   const slideAnim       = useRef(new Animated.Value(0)).current;
@@ -117,6 +120,7 @@ export default function App() {
   useEffect(() => {
     Promise.all([
       isOnboardingDone(),
+      isFridgeSetupDone(),
       Asset.loadAsync([
         require('./assets/background.png'),
         require('./assets/main_logo.png'),
@@ -126,7 +130,13 @@ export default function App() {
         require('./assets/refrigerator3.png'),
         require('./assets/refrigerator4.png'),
       ]),
-    ]).then(([done]) => setAppState(done ? 'app' : 'onboarding'));
+    ]).then(([onboarded, fridgeDone]) => {
+      console.log('[App] onboarded:', onboarded, 'fridgeDone:', fridgeDone);
+      setOnboardingDone(onboarded);
+      if (!fridgeDone) setAppState('fridge_setup');
+      else if (!onboarded) setAppState('onboarding');
+      else setAppState('app');
+    });
   }, []);
 
   const springTo = (index: number) =>
@@ -166,6 +176,7 @@ export default function App() {
   })).current;
 
   if (appState === 'loading') return null;
+  if (appState === 'fridge_setup') return <FridgeSetupScreen onDone={() => setAppState(onboardingDone ? 'app' : 'onboarding')} />;
   if (appState === 'onboarding') return <OnboardingScreen onDone={() => setAppState('app')} />;
 
   if (subScreen) {

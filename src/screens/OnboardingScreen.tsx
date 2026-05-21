@@ -11,6 +11,7 @@ interface Props { onDone: () => void }
 
 const { width } = Dimensions.get('window');
 
+
 // ── 질문 데이터 ──────────────────────────────────────────────────
 const STEPS = [
   {

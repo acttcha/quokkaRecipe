@@ -10,7 +10,7 @@ import { identifyIngredients, generateRecipes, askQuokka, MOCK_MODE } from '../s
 import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount } from '../services/youtube';
 import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
-import { addIngredients } from '../services/fridge';
+import { addIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { POPULAR_INGREDIENTS } from '../constants/ingredients';
@@ -194,11 +194,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     }
   };
 
-  // 없는 재료만 필터 (레시피 재료 중 스캔 재료에 없는 것)
-  const getMissingIngredients = (recipeIngredients: string[]) =>
-    recipeIngredients.filter(ri =>
-      !ingredients.some(s => ri.toLowerCase().includes(s.toLowerCase()))
-    );
 
   // ── 로딩 ──
   if (step === 'identifying' || step === 'generating') {
@@ -366,6 +361,12 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                   {r.nutrition && (
                     <View style={styles.metaChip}><Text style={styles.metaChipText}>🔥 {r.nutrition.calories}kcal</Text></View>
                   )}
+                  {(() => {
+                    const missing = getMissingIngredients(ingredients, r.ingredients).length;
+                    return missing === 0
+                      ? <View style={styles.ingOkChip}><Text style={styles.ingOkText}>재료 완비 ✓</Text></View>
+                      : <View style={styles.ingMissingChip}><Text style={styles.ingMissingText}>{missing}개 부족</Text></View>;
+                  })()}
                   <View style={styles.expandBtn}>
                     <Text style={styles.expandBtnText}>{open ? '접기 ▲' : '레시피 보기 ▼'}</Text>
                   </View>
@@ -394,11 +395,16 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
                     <Text style={styles.detailHead}>🧂 재료</Text>
                     <View style={styles.ingredientGrid}>
-                      {r.ingredients.map((ing, n) => (
-                        <View key={n} style={styles.ingredientChip}>
-                          <Text style={styles.ingredientChipText}>{ing}</Text>
-                        </View>
-                      ))}
+                      {r.ingredients.map((ing, n) => {
+                        const have = matchesFridge(ingredients, ing);
+                        return (
+                          <View key={n} style={[styles.ingredientChip, have ? styles.ingredientChipHave : styles.ingredientChipMissing]}>
+                            <Text style={[styles.ingredientChipText, have ? styles.ingredientChipTextHave : styles.ingredientChipTextMissing]}>
+                              {have ? '✓ ' : '✗ '}{ing}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
 
                     <Text style={[styles.detailHead, { marginTop: 16 }]}>👨‍🍳 만드는 법</Text>
@@ -456,7 +462,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
         {/* 쿠팡 — 없는 재료만 */}
         {tab === 'ai' && (() => {
-          const allMissing = [...new Set(recipes.flatMap(r => getMissingIngredients(r.ingredients)))];
+          const allMissing = [...new Set(recipes.flatMap(r => getMissingIngredients(ingredients, r.ingredients)))];
           if (allMissing.length === 0) return null;
           return (
             <View style={styles.coupangBar}>
@@ -630,8 +636,17 @@ const styles = StyleSheet.create({
   nutritionLabel: { fontSize: 11, color: Colors.inkMute, fontWeight: '600' },
 
   ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  ingredientChip: { backgroundColor: Colors.creamSoft, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: Colors.line },
-  ingredientChipText: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft },
+  ingredientChip: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
+  ingredientChipHave: { backgroundColor: '#F0FFF4', borderColor: '#86EFAC' },
+  ingredientChipMissing: { backgroundColor: '#FFF5F5', borderColor: '#FCA5A5' },
+  ingredientChipText: { fontSize: 13, fontWeight: '600' },
+  ingredientChipTextHave: { color: '#166534' },
+  ingredientChipTextMissing: { color: '#991B1B' },
+
+  ingOkChip: { backgroundColor: '#DCFCE7', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  ingOkText: { fontSize: 12, fontWeight: '800', color: '#166534' },
+  ingMissingChip: { backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  ingMissingText: { fontSize: 12, fontWeight: '800', color: '#991B1B' },
 
   stepRow: { flexDirection: 'row', gap: 12, marginBottom: 12, alignItems: 'flex-start' },
   stepNum: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: Colors.orangeSoft },

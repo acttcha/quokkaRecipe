@@ -9,6 +9,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { NavProps, SavedRecipe, Folder } from '../types';
 import { getSavedRecipes, removeRecipe, moveRecipeToFolder } from '../services/savedRecipes';
 import { getFolders, createFolder, deleteFolder } from '../services/folders';
+import { getFridgeIngredients, getMissingIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SearchIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
@@ -122,10 +123,15 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
   const [tabModalVisible, setTabModalVisible]   = useState(false);
   const [tabModalName, setTabModalName]         = useState('');
 
+  const [fridgeItems, setFridgeItems] = useState<string[]>([]);
+
   const load = useCallback(async () => {
-    const [recipeData, folderData] = await Promise.all([getSavedRecipes(), getFolders()]);
+    const [recipeData, folderData, fridgeData] = await Promise.all([
+      getSavedRecipes(), getFolders(), getFridgeIngredients(),
+    ]);
     setRecipes(recipeData);
     setFolders(folderData);
+    setFridgeItems(fridgeData);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -414,6 +420,12 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                       <IconFlame />
                       <Text style={styles.metaText}>{diffLabel}</Text>
                     </View>
+                    {fridgeItems.length > 0 && (() => {
+                      const missing = getMissingIngredients(fridgeItems, r.ingredients).length;
+                      return missing === 0
+                        ? <Text style={styles.ingOkBadge}>재료 완비 ✓</Text>
+                        : <Text style={styles.ingMissingBadge}>{missing}개 부족</Text>;
+                    })()}
                     <Text style={styles.savedDate}>{savedDate}</Text>
                   </View>
 
@@ -755,4 +767,15 @@ const styles = StyleSheet.create({
   },
   newFolderModalConfirmText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   btnDisabled: { backgroundColor: Colors.inkMute },
+
+  ingOkBadge: {
+    fontSize: 10, fontWeight: '700', color: Colors.forestDeep,
+    backgroundColor: Colors.forestSoft,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+  },
+  ingMissingBadge: {
+    fontSize: 10, fontWeight: '700', color: '#B91C1C',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+  },
 });

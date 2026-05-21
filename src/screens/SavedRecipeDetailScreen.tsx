@@ -14,6 +14,7 @@ import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { moveRecipeToFolder, updateRecipe } from '../services/savedRecipes';
 import { getFolders, createFolder } from '../services/folders';
+import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
   Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
@@ -85,6 +86,8 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
   const [showNewFolderInDetail, setShowNewFolderInDetail] = useState(false);
   const [newFolderNameInDetail, setNewFolderNameInDetail] = useState('');
 
+  const [fridgeItems, setFridgeItems] = useState<string[]>([]);
+
   const [editVisible, setEditVisible]         = useState(false);
   const [editName, setEditName]               = useState('');
   const [editDesc, setEditDesc]               = useState('');
@@ -105,7 +108,10 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
   useEffect(() => {
     loadNotes();
     getFolders().then(setDetailFolders);
+    getFridgeIngredients().then(setFridgeItems);
   }, [loadNotes]);
+
+  const hasIngredient = (recipeIng: string) => matchesFridge(fridgeItems, recipeIng);
 
   const handleSaveMemo = async () => {
     await saveMemo(r.id, memoInput.trim());
@@ -313,13 +319,38 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
         )}
 
         {/* 재료 */}
-        <Text style={styles.sectionHead}>🧂 재료</Text>
+        <View style={styles.sectionHeadRow}>
+          <Text style={styles.sectionHead}>🧂 재료</Text>
+          {fridgeItems.length > 0 && (() => {
+            const missing = r.ingredients.filter(i => !hasIngredient(i)).length;
+            return missing > 0
+              ? <Text style={styles.ingredientMissingBadge}>재료 {missing}개 부족</Text>
+              : <Text style={styles.ingredientOkBadge}>재료 모두 보유 ✓</Text>;
+          })()}
+        </View>
         <View style={styles.ingredientGrid}>
-          {r.ingredients.map((ing, n) => (
-            <View key={n} style={styles.ingredientChip}>
-              <Text style={styles.ingredientChipText}>{ing}</Text>
-            </View>
-          ))}
+          {r.ingredients.map((ing, n) => {
+            const have = fridgeItems.length > 0 && hasIngredient(ing);
+            const checked = fridgeItems.length > 0;
+            return (
+              <View key={n} style={[
+                styles.ingredientChip,
+                checked && have  && styles.ingredientChipHave,
+                checked && !have && styles.ingredientChipMissing,
+              ]}>
+                {checked && (
+                  <Text style={have ? styles.ingredientDotHave : styles.ingredientDotMissing}>
+                    {have ? '✓' : '✗'}
+                  </Text>
+                )}
+                <Text style={[
+                  styles.ingredientChipText,
+                  checked && have  && styles.ingredientChipTextHave,
+                  checked && !have && styles.ingredientChipTextMissing,
+                ]}>{ing}</Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* 만드는 법 */}
@@ -428,23 +459,40 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
 
           <View style={styles.cardDivider} />
 
-          <View style={styles.linkRowStatic}>
-            <Text style={styles.linkEmoji}>🛒</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.linkTitle}>재료 바로 구매</Text>
-              <Text style={styles.linkSub}>쿠팡에서 필요한 재료를 주문해요</Text>
-            </View>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 2 }}>
-              {r.ingredients.map(ing => (
-                <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
-                  <Text style={styles.coupangChipText}>{ing.split(' ')[0]}</Text>
-                  <Text style={styles.coupangArrow}>→</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+          {(() => {
+            const missing = fridgeItems.length > 0
+              ? getMissingIngredients(fridgeItems, r.ingredients)
+              : r.ingredients;
+            return (
+              <>
+                <View style={styles.linkRowStatic}>
+                  <Text style={styles.linkEmoji}>🛒</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.linkTitle}>재료 바로 구매</Text>
+                    <Text style={styles.linkSub}>
+                      {fridgeItems.length > 0
+                        ? missing.length === 0
+                          ? '모든 재료를 보유하고 있어요 🎉'
+                          : `부족한 재료 ${missing.length}개 · 쿠팡에서 바로 주문해요`
+                        : '쿠팡에서 필요한 재료를 주문해요'}
+                    </Text>
+                  </View>
+                </View>
+                {missing.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 2 }}>
+                      {missing.map(ing => (
+                        <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
+                          <Text style={styles.coupangChipText}>{ing.split(' ')[0]}</Text>
+                          <Text style={styles.coupangArrow}>→</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                )}
+              </>
+            );
+          })()}
         </View>
 
       </ScrollView>
@@ -756,15 +804,25 @@ const styles = StyleSheet.create({
   nutritionVal: { fontSize: 15, fontWeight: '900', marginBottom: 3 },
   nutritionLabel: { fontSize: 11, color: Colors.inkSoft, fontWeight: '600' },
 
-  sectionHead: { fontSize: 14, fontWeight: '800', color: Colors.ink, marginBottom: 12 },
+  sectionHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sectionHead: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  ingredientMissingBadge: { fontSize: 11, fontWeight: '700', color: '#C0392B', backgroundColor: '#FEE2E2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  ingredientOkBadge: { fontSize: 11, fontWeight: '700', color: Colors.forestDeep, backgroundColor: Colors.forestSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
 
   ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   ingredientChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: Colors.white, borderRadius: 999,
     paddingHorizontal: 12, paddingVertical: 6,
     borderWidth: 1, borderColor: Colors.line,
   },
+  ingredientChipHave: { backgroundColor: Colors.forestSoft, borderColor: Colors.forest },
+  ingredientChipMissing: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  ingredientDotHave: { fontSize: 11, fontWeight: '900', color: Colors.forest },
+  ingredientDotMissing: { fontSize: 11, fontWeight: '900', color: '#EF4444' },
   ingredientChipText: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft },
+  ingredientChipTextHave: { color: Colors.forestDeep },
+  ingredientChipTextMissing: { color: '#B91C1C' },
 
   stepRow: { flexDirection: 'row', gap: 12, marginBottom: 12, alignItems: 'flex-start' },
   stepNum: {
