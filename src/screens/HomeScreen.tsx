@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { NavProps } from '../types';
 import { MOCK_MODE } from '../services/claude';
+import { getFridgeIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
@@ -14,14 +15,15 @@ const { width } = Dimensions.get('window');
 const HAS_API_KEY = !!process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 
 export default function HomeScreen({ navigate }: NavProps) {
-  const handleScan = () => {
+  const handleRecommend = async () => {
     if (!MOCK_MODE && !HAS_API_KEY) {
       haptic.error();
       Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
       return;
     }
     haptic.medium();
-    navigate({ name: 'Camera' });
+    const ingredients = await getFridgeIngredients();
+    navigate({ name: 'FridgeRecipes', ingredients });
   };
 
   return (
@@ -47,7 +49,7 @@ export default function HomeScreen({ navigate }: NavProps) {
         <View style={styles.bubbleOuter}>
           <View style={styles.bubble}>
             <Text style={styles.bubbleText}>오늘 뭐 드실 건가요? 🍽️</Text>
-            <Text style={styles.bubbleSub}>재료를 찍으면 레시피 뚝딱!</Text>
+            <Text style={styles.bubbleSub}>냉장고 재료로 레시피 뚝딱!</Text>
           </View>
           <View style={styles.bubbleTail} />
         </View>
@@ -67,11 +69,11 @@ export default function HomeScreen({ navigate }: NavProps) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.scanBtn} onPress={handleScan} activeOpacity={0.82}>
-          <Text style={styles.scanEmoji}>📸</Text>
+        <TouchableOpacity style={styles.scanBtn} onPress={handleRecommend} activeOpacity={0.82}>
+          <Text style={styles.scanEmoji}>🍳</Text>
           <View>
-            <Text style={styles.scanTitle}>재료 스캔하기</Text>
-            <Text style={styles.scanSub}>카메라로 찍으면 레시피 완성!</Text>
+            <Text style={styles.scanTitle}>레시피 추천받기</Text>
+            <Text style={styles.scanSub}>냉장고 재료로 만들 수 있는 요리!</Text>
           </View>
         </TouchableOpacity>
       </View>

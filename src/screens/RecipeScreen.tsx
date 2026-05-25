@@ -10,7 +10,7 @@ import { identifyIngredients, generateRecipes, askQuokka, MOCK_MODE } from '../s
 import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount } from '../services/youtube';
 import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
-import { addIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
+import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { POPULAR_INGREDIENTS } from '../constants/ingredients';
@@ -57,6 +57,7 @@ function getRecipeEmoji(name: string, ingredients: string[]): string {
 export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients }: Props) {
   const [step, setStep]             = useState<Step>('identifying');
   const [ingredients, setIngredients] = useState<string[]>([]);
+  const [fridgeItems, setFridgeItems] = useState<string[]>([]);
   const [recipes, setRecipes]       = useState<Recipe[]>([]);
   const [videos, setVideos]         = useState<YouTubeVideo[]>([]);
   const [newIng, setNewIng]         = useState('');
@@ -79,6 +80,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   const identify = useCallback(async () => {
     if (prefillIngredients) {
       setIngredients(prefillIngredients);
+      setFridgeItems(await getFridgeIngredients());
       setStep('review');
       return;
     }
@@ -87,6 +89,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       const found = await identifyIngredients(imageBase64!, mimeType!);
       await addIngredients(found);
       setIngredients(found);
+      setFridgeItems(await getFridgeIngredients());
       await incrementScanCount();
       setStep('review');
     } catch (e: unknown) {
@@ -176,6 +179,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       Alert.alert('저장 오류', String(e));
     }
   };
+
+  const availableIngredients = Array.from(new Set([...fridgeItems, ...ingredients]));
 
   const handleAsk = async () => {
     if (!askModal || !question.trim()) return;
@@ -362,7 +367,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                     <View style={styles.metaChip}><Text style={styles.metaChipText}>🔥 {r.nutrition.calories}kcal</Text></View>
                   )}
                   {(() => {
-                    const missing = getMissingIngredients(ingredients, r.ingredients).length;
+                    const missing = getMissingIngredients(availableIngredients, r.ingredients).length;
                     return missing === 0
                       ? <View style={styles.ingOkChip}><Text style={styles.ingOkText}>재료 완비 ✓</Text></View>
                       : <View style={styles.ingMissingChip}><Text style={styles.ingMissingText}>{missing}개 부족</Text></View>;
@@ -396,7 +401,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                     <Text style={styles.detailHead}>🧂 재료</Text>
                     <View style={styles.ingredientGrid}>
                       {r.ingredients.map((ing, n) => {
-                        const have = matchesFridge(ingredients, ing);
+                        const have = matchesFridge(availableIngredients, ing);
                         return (
                           <View key={n} style={[styles.ingredientChip, have ? styles.ingredientChipHave : styles.ingredientChipMissing]}>
                             <Text style={[styles.ingredientChipText, have ? styles.ingredientChipTextHave : styles.ingredientChipTextMissing]}>
@@ -462,7 +467,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
         {/* 쿠팡 — 없는 재료만 */}
         {tab === 'ai' && (() => {
-          const allMissing = [...new Set(recipes.flatMap(r => getMissingIngredients(ingredients, r.ingredients)))];
+          const allMissing = [...new Set(recipes.flatMap(r => getMissingIngredients(availableIngredients, r.ingredients)))];
           if (allMissing.length === 0) return null;
           return (
             <View style={styles.coupangBar}>

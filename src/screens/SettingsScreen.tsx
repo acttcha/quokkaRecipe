@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   Alert, ScrollView, Image, StatusBar, Modal, Linking,
-  Animated, PanResponder,
+  Animated, PanResponder, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { resetOnboarding } from '../services/preferences';
+import { resetAllData } from '../services/reset';
 
 type InfoModal = 'guide' | 'update' | 'terms' | 'privacy' | null;
 
@@ -68,23 +69,49 @@ AI가 생성한 레시피로 인한 건강 문제에 대해 책임을 지지 않
   },
   privacy: {
     title: '개인정보처리방침',
-    body: `개인정보처리방침
+    body: `최종 업데이트: 2026.05.24
 
-수집하는 정보
-· 식이 선호도 (알레르기, 식단 유형 등)
-· 저장된 레시피 데이터
-· 스캔 횟수 (기기 내 저장)
+[수집하는 정보]
+· 식재료 사진, 영수증 사진 (사용 시)
+· 직접 입력한 재료 이름
+· 식이 선호도 (알레르기, 매운맛 정도, 조리 시간, 식단 유형 등)
+· 저장한 레시피, 폴더, 메모, Q&A 기록
+· 냉장고 재료 목록
+· 앱 사용 통계 (스캔 횟수)
 
-저장 방법
-모든 데이터는 기기 내 보안 저장소 및 로컬 파일에만 저장되며, 외부 서버로 전송되지 않습니다.
+[저장 위치]
+위 정보는 사용자 기기 내 보안 저장소(iOS Keychain, Android KeyStore)에만 저장되며, 본 앱 개발자의 서버로 전송·저장되지 않습니다.
 
-외부 서비스
-· Anthropic Claude API: 재료 인식 및 레시피 생성
-· YouTube Data API: 레시피 영상 검색
-· 쿠팡 파트너스: 재료 구매 연결
+[외부 서비스로 전송되는 정보]
+일부 기능 제공을 위해 다음 정보가 외부 서비스로 전송됩니다.
 
-문의
-앱 내 의견보내기 기능을 이용해 주세요.`,
+· Anthropic Claude API (미국)
+  전송 정보: 식재료/영수증 이미지, 입력 텍스트, 식이 선호도, 레시피 정보, 질문 내용
+  목적: 재료 인식, 레시피 생성, Q&A 응답, 유튜브 자막 분석
+
+· Google YouTube Data API (미국)
+  전송 정보: 재료명 기반 검색어
+  목적: 레시피 영상 검색
+
+· 쿠팡 파트너스 (한국)
+  전송 정보: 재료명 (구매 링크 클릭 시에만)
+  목적: 구매 페이지 연결
+
+[권한]
+· 카메라: 식재료/영수증 촬영 (선택)
+· 사진 라이브러리: 갤러리에서 사진 선택 (선택)
+권한은 기기 설정에서 언제든 변경할 수 있습니다.
+
+[사용자 권리]
+앱 내 메뉴에서 저장된 정보를 직접 확인·수정·삭제할 수 있습니다. 앱을 삭제하면 모든 로컬 저장 데이터가 함께 삭제됩니다.
+
+[만 14세 미만 아동]
+본 앱은 만 14세 미만 아동의 개인정보를 의도적으로 수집하지 않습니다.
+
+[연락처]
+앱 내 "의견 보내기" 기능을 이용해 주세요.
+
+전체 내용 및 최신 버전은 아래 "웹에서 전체 보기" 링크에서 확인할 수 있습니다.`,
   },
 };
 
@@ -155,10 +182,17 @@ function IcChevron() {
 
 interface Props extends NavProps {
   onResetPreferences?: () => void;
+  onResetAllData?: () => void;
 }
 
-export default function SettingsScreen({ navigate, onResetPreferences }: Props) {
+const DELETE_CONFIRM_PHRASE = '모든 데이터 삭제';
+
+export default function SettingsScreen({ navigate, onResetPreferences, onResetAllData }: Props) {
   const [openModal, setOpenModal] = useState<InfoModal>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const canDelete = deleteInput.trim() === DELETE_CONFIRM_PHRASE && !deleting;
 
   const handleFeedback = () => {
     Linking.openURL('mailto:acttcha@gmail.com?subject=쿼카레시피 의견').catch(() =>
@@ -170,6 +204,32 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
     Alert.alert('배너 광고 제거', '광고 제거 기능은 곧 지원될 예정이에요! 조금만 기다려주세요 🐾', [
       { text: '확인' },
     ]);
+  };
+
+  const handleResetAllData = () => {
+    setDeleteInput('');
+    setDeleteModalVisible(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setDeleteModalVisible(false);
+    setDeleteInput('');
+  };
+
+  const confirmDelete = async () => {
+    if (!canDelete) return;
+    setDeleting(true);
+    try {
+      await resetAllData();
+      setDeleteModalVisible(false);
+      setDeleteInput('');
+      onResetAllData?.();
+    } catch {
+      Alert.alert('오류', '데이터 삭제 중 문제가 생겼어요. 다시 시도해주세요.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -243,7 +303,76 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
           </View>
         </View>
 
+        {/* 데이터 관리 */}
+        <Text style={styles.sectionLabel}>데이터 관리</Text>
+        <TouchableOpacity
+          style={styles.dangerCard}
+          onPress={handleResetAllData}
+          activeOpacity={0.85}
+        >
+          <View style={styles.dangerIconWrap}>
+            <Text style={styles.dangerIcon}>🗑️</Text>
+          </View>
+          <View style={styles.dangerTexts}>
+            <Text style={styles.dangerTitle}>모든 데이터 삭제</Text>
+            <Text style={styles.dangerSub}>냉장고·레시피·메모·선호도 모두 영구 삭제</Text>
+          </View>
+          <IcChevron />
+        </TouchableOpacity>
+
       </ScrollView>
+
+      {/* 데이터 삭제 확인 모달 */}
+      <Modal visible={deleteModalVisible} transparent animationType="fade" onRequestClose={closeDeleteModal}>
+        <KeyboardAvoidingView
+          style={styles.deleteModalWrap}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.deleteModalBackdrop} />
+          <View style={styles.deleteModalCard}>
+            <Text style={styles.deleteModalIcon}>⚠️</Text>
+            <Text style={styles.deleteModalTitle}>모든 데이터를 삭제할까요?</Text>
+            <Text style={styles.deleteModalBody}>
+              냉장고, 저장된 레시피, 폴더, 메모, 선호도 등{'\n'}
+              모든 데이터가 <Text style={styles.deleteModalBodyStrong}>영구 삭제</Text>되며{'\n'}
+              되돌릴 수 없어요.
+            </Text>
+            <View style={styles.deleteModalHintBox}>
+              <Text style={styles.deleteModalHintLabel}>계속하려면 아래 문구를 정확히 입력해주세요</Text>
+              <Text style={styles.deleteModalKeyword}>{DELETE_CONFIRM_PHRASE}</Text>
+            </View>
+            <TextInput
+              style={[styles.deleteModalInput, canDelete && styles.deleteModalInputMatch]}
+              value={deleteInput}
+              onChangeText={setDeleteInput}
+              placeholder={DELETE_CONFIRM_PHRASE}
+              placeholderTextColor={Colors.inkMute}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!deleting}
+            />
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity
+                style={styles.deleteCancelBtn}
+                onPress={closeDeleteModal}
+                disabled={deleting}
+              >
+                <Text style={styles.deleteCancelText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deleteConfirmBtn, !canDelete && styles.deleteConfirmBtnDisabled]}
+                onPress={confirmDelete}
+                disabled={!canDelete}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.deleteConfirmText, !canDelete && styles.deleteConfirmTextDisabled]}>
+                  {deleting ? '삭제 중...' : '삭제'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* 정보 모달 */}
       <Modal visible={!!openModal} transparent animationType="none" onRequestClose={() => setOpenModal(null)}>
@@ -254,6 +383,10 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
               onClose={() => setOpenModal(null)}
               title={MODAL_CONTENT[openModal].title}
               body={MODAL_CONTENT[openModal].body}
+              footerLink={openModal === 'privacy' ? {
+                label: '웹에서 전체 보기',
+                url: 'https://nettle-satellite-63f.notion.site/36a8ac0e8b1c80bb85ded0cab2cdeca1',
+              } : undefined}
             />
           )}
         </View>
@@ -262,8 +395,11 @@ export default function SettingsScreen({ navigate, onResetPreferences }: Props) 
   );
 }
 
-function DraggableSheet({ onClose, title, body }: {
-  onClose: () => void; title: string; body: string;
+function DraggableSheet({ onClose, title, body, footerLink }: {
+  onClose: () => void;
+  title: string;
+  body: string;
+  footerLink?: { label: string; url: string };
 }) {
   const translateY     = useRef(new Animated.Value(600)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -319,6 +455,14 @@ function DraggableSheet({ onClose, title, body }: {
           </View>
           <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
             <Text style={styles.modalBody}>{body}</Text>
+            {footerLink && (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(footerLink.url)}
+                style={styles.modalFooterLinkRow}
+              >
+                <Text style={styles.modalFooterLinkText}>{footerLink.label} →</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
           <TouchableOpacity style={styles.modalCloseBtn} onPress={dismiss}>
             <Text style={styles.modalCloseBtnText}>닫기</Text>
@@ -406,6 +550,72 @@ const styles = StyleSheet.create({
 
   resetCard: { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: '#F2994A40', ...shadow.sm },
   resetGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+
+  dangerCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+    backgroundColor: '#FEF2F2', borderRadius: 22,
+    borderWidth: 1, borderColor: '#FCA5A5',
+    ...shadow.sm,
+  },
+  dangerIconWrap: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.white,
+    borderWidth: 1, borderColor: '#FCA5A5',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  dangerIcon: { fontSize: 18 },
+  dangerTexts: { flex: 1 },
+  dangerTitle: { fontSize: 14, fontWeight: '800', color: '#B91C1C' },
+  dangerSub: { fontSize: 12, color: '#991B1B', marginTop: 2 },
+
+  // 데이터 삭제 확인 모달
+  deleteModalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  deleteModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  deleteModalCard: {
+    width: '100%', maxWidth: 380,
+    backgroundColor: Colors.white, borderRadius: 24,
+    padding: 24, alignItems: 'center',
+    ...shadow.md,
+  },
+  deleteModalIcon: { fontSize: 36, marginBottom: 10 },
+  deleteModalTitle: { fontSize: 18, fontWeight: '900', color: '#B91C1C', marginBottom: 12, textAlign: 'center' },
+  deleteModalBody: { fontSize: 13, color: Colors.inkSoft, lineHeight: 20, textAlign: 'center', marginBottom: 16 },
+  deleteModalBodyStrong: { fontWeight: '800', color: '#B91C1C' },
+  deleteModalHintBox: {
+    width: '100%',
+    backgroundColor: '#FEF2F2', borderRadius: 12,
+    borderWidth: 1, borderColor: '#FCA5A5',
+    paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center',
+    marginBottom: 12,
+  },
+  deleteModalHintLabel: { fontSize: 11, color: '#991B1B', fontWeight: '600', marginBottom: 6 },
+  deleteModalKeyword: {
+    fontSize: 15, fontWeight: '800', color: '#B91C1C', letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  deleteModalInput: {
+    width: '100%',
+    backgroundColor: Colors.creamSoft,
+    borderRadius: 12, borderWidth: 1.5, borderColor: Colors.line,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 14, color: Colors.ink,
+    marginBottom: 16,
+  },
+  deleteModalInputMatch: { borderColor: '#B91C1C', backgroundColor: '#FEF2F2' },
+  deleteModalActions: { flexDirection: 'row', gap: 10, width: '100%' },
+  deleteCancelBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.line,
+    alignItems: 'center', backgroundColor: Colors.white,
+  },
+  deleteCancelText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
+  deleteConfirmBtn: {
+    flex: 1, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: '#DC2626', alignItems: 'center',
+  },
+  deleteConfirmBtnDisabled: { backgroundColor: '#FCA5A5' },
+  deleteConfirmText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
+  deleteConfirmTextDisabled: { color: '#FEF2F2' },
   resetIconWrap: {
     width: 38, height: 38, borderRadius: 12,
     backgroundColor: Colors.white,
@@ -451,6 +661,14 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.ink, marginBottom: 14, alignSelf: 'flex-start' },
   modalScroll: { marginBottom: 16 },
   modalBody: { fontSize: 14, color: Colors.ink, lineHeight: 24 },
+  modalFooterLinkRow: {
+    marginTop: 16, paddingVertical: 12, paddingHorizontal: 14,
+    backgroundColor: Colors.creamSoft, borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalFooterLinkText: {
+    fontSize: 13, fontWeight: '700', color: Colors.forestDeep,
+  },
   modalCloseBtn: {
     backgroundColor: Colors.forest, borderRadius: 14,
     paddingVertical: 14, alignItems: 'center',

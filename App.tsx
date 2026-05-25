@@ -213,7 +213,12 @@ export default function App() {
           />
         </View>
         <View style={styles.screen}>
-          <SettingsScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />
+          <SettingsScreen
+            navigate={navigate}
+            goBack={goBack}
+            onResetPreferences={() => setAppState('onboarding')}
+            onResetAllData={() => setAppState('fridge_setup')}
+          />
         </View>
       </Animated.View>
 
