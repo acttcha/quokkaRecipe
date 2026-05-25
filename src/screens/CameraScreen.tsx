@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
@@ -43,17 +44,21 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
     haptic.medium();
     setCapturing(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.8 });
-      if (photo?.base64) {
-        if (receiptMode) {
-          navigate({ name: 'ReceiptScan', imageBase64: photo.base64, mimeType: 'image/jpeg' });
-        } else if (fridgeMode) {
-          navigate({ name: 'FridgeScan', imageBase64: photo.base64, mimeType: 'image/jpeg' });
-        } else {
-          navigate({ name: 'Recipes', imageBase64: photo.base64, mimeType: 'image/jpeg' });
-        }
-      } else {
+      // base64를 직접 받지 않고 파일로 저장 후 읽음 — Android 메모리/파일시스템 호환성
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      if (!photo?.uri) {
         Alert.alert('앗!', '사진을 가져오지 못했어요');
+        return;
+      }
+      const base64 = await FileSystem.readAsStringAsync(photo.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      if (receiptMode) {
+        navigate({ name: 'ReceiptScan', imageBase64: base64, mimeType: 'image/jpeg' });
+      } else if (fridgeMode) {
+        navigate({ name: 'FridgeScan', imageBase64: base64, mimeType: 'image/jpeg' });
+      } else {
+        navigate({ name: 'Recipes', imageBase64: base64, mimeType: 'image/jpeg' });
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -65,12 +70,15 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
   };
 
   const handleGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], quality: 0.8, base64: true,
-    });
-    if (!result.canceled && result.assets[0]?.base64) {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], quality: 0.8,
+      });
+      if (result.canceled || !result.assets[0]?.uri) return;
       haptic.success();
-      const b64 = result.assets[0].base64;
+      const b64 = await FileSystem.readAsStringAsync(result.assets[0].uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
       if (receiptMode) {
         navigate({ name: 'ReceiptScan', imageBase64: b64, mimeType: 'image/jpeg' });
       } else if (fridgeMode) {
@@ -78,6 +86,10 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
       } else {
         navigate({ name: 'Recipes', imageBase64: b64, mimeType: 'image/jpeg' });
       }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[Gallery] error:', msg);
+      Alert.alert('갤러리 오류', msg);
     }
   };
 

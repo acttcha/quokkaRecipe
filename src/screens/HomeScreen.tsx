@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   StatusBar, Alert, Image, ImageBackground, Dimensions, AppState, Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavProps } from '../types';
 import { MOCK_MODE } from '../services/claude';
 import { getFridgeIngredients } from '../services/fridge';
@@ -13,11 +14,12 @@ import { haptic } from '../services/haptics';
 
 const { width, height } = Dimensions.get('window');
 // 화면 높이에 비례하는 쿼카 크기 — 작은 폰에선 자동으로 축소돼 사용량 칩/말풍선과 안 겹침
-const QUOKKA_HEIGHT = Math.min(310, height * 0.35);
+const QUOKKA_HEIGHT = Math.min(310, height * 0.30);
 
 const HAS_API_KEY = !!process.env.EXPO_PUBLIC_SUPABASE_URL && !!process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export default function HomeScreen({ navigate }: NavProps) {
+  const insets = useSafeAreaInsets();
   const [recipeStatus, setRecipeStatus] = useState<UsageStatus | null>(null);
   const [scanStatus, setScanStatus] = useState<UsageStatus | null>(null);
   const [qaStatus, setQaStatus] = useState<UsageStatus | null>(null);
@@ -68,7 +70,7 @@ export default function HomeScreen({ navigate }: NavProps) {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* 로고 + 설정 버튼 */}
-      <View style={styles.logoWrap}>
+      <View style={[styles.logoWrap, { paddingTop: Math.max(insets.top + 12, 24) }]}>
         <Image source={require('../../assets/main_logo.png')} style={styles.logo} resizeMode="contain" />
         <View style={styles.btnSetting}>
           <CircleIconButton onPress={() => navigate({ name: 'Settings' })}>
@@ -245,8 +247,9 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
 
   logoWrap: {
-    paddingTop: 62, paddingHorizontal: 32,
+    paddingHorizontal: 32,
     alignItems: 'center', flexDirection: 'row',
+    // paddingTop은 insets.top 으로 동적 설정
   },
   logo:      { flex: 1, height: 72 },
   btnSetting:{ marginLeft: 8 },

@@ -3,13 +3,15 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   StatusBar, Dimensions, Image, ImageBackground, Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, shadow } from '../constants/colors';
 import { UserPreferences } from '../types/preferences';
 import { savePreferences } from '../services/preferences';
 
 interface Props { onDone: () => void }
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const QUOKKA_HEIGHT = Math.min(310, height * 0.32);
 
 
 // ── 질문 데이터 ──────────────────────────────────────────────────
@@ -91,6 +93,7 @@ const STEPS = [
 ];
 
 export default function OnboardingScreen({ onDone }: Props) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [allergies, setAllergies]         = useState<string[]>([]);
   const [spiceLevel, setSpiceLevel]       = useState('');
@@ -237,7 +240,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* ── 상단 바 ── */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top + 8, 24) }]}>
         <TouchableOpacity onPress={step > 0 ? goBack : onDone} style={styles.backBtn}>
           <Text style={styles.backBtnText}>{step > 0 ? '←' : '✕'}</Text>
         </TouchableOpacity>
@@ -292,9 +295,9 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 58,
     paddingHorizontal: 18,
     paddingBottom: 4,
+    // paddingTop은 insets.top 으로 동적 설정
   },
   backBtn: {
     width: 40, height: 40, borderRadius: 20,
@@ -347,7 +350,7 @@ const styles = StyleSheet.create({
   },
   quokka: {
     width: width * 0.90,
-    height: 310,
+    height: QUOKKA_HEIGHT,
   },
 
   panel: {
