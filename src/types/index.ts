@@ -52,12 +52,13 @@ export type CurrentScreen =
   | { name: 'ReceiptScan'; imageBase64: string; mimeType: string }
   | { name: 'Recipes'; imageBase64: string; mimeType: string }
   | { name: 'FridgeRecipes'; ingredients: string[] }
+  | { name: 'DishRecipe'; dishName: string }
   | { name: 'Settings' }
   | { name: 'Saved' }
   | { name: 'Profile' }
   | { name: 'Fridge' }
   | { name: 'SavedRecipeDetail'; recipe: SavedRecipe }
-  | { name: 'YoutubeRecipe'; recipeName?: string };
+  | { name: 'YoutubeRecipe'; recipeName?: string; directVideo?: { videoId: string; title: string; channelTitle: string } };
 
 export interface NavProps {
   navigate: (screen: CurrentScreen) => void;

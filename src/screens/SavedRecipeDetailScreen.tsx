@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { NavProps, SavedRecipe, Folder } from '../types';
 import { askQuokka } from '../services/claude';
-import { openCoupang, openYouTubeByName } from '../services/youtube';
+import { openCoupang, openYouTubeByName, cleanIngredientName } from '../services/youtube';
 import { getMemo, saveMemo, getQAHistory, addQAEntry, deleteQAEntry, QAEntry } from '../services/recipeNotes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
@@ -487,7 +487,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                     <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 2 }}>
                       {missing.map(ing => (
                         <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
-                          <Text style={styles.coupangChipText}>{ing.split(' ')[0]}</Text>
+                          <Text style={styles.coupangChipText}>{cleanIngredientName(ing)}</Text>
                           <Text style={styles.coupangArrow}>→</Text>
                         </TouchableOpacity>
                       ))}

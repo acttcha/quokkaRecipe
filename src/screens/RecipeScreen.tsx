@@ -6,8 +6,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
-import { identifyIngredients, generateRecipes, askQuokka, MOCK_MODE } from '../services/claude';
-import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount } from '../services/youtube';
+import { identifyIngredients, generateRecipes, generateRecipeByName, askQuokka, MOCK_MODE } from '../services/claude';
+import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, cleanIngredientName } from '../services/youtube';
 import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
@@ -20,8 +20,9 @@ import { POPULAR_INGREDIENTS } from '../constants/ingredients';
 const { width } = Dimensions.get('window');
 
 type Props = NavProps & (
-  | { imageBase64: string; mimeType: string; prefillIngredients?: never }
-  | { imageBase64?: never; mimeType?: never; prefillIngredients: string[] }
+  | { imageBase64: string; mimeType: string; prefillIngredients?: never; dishName?: never }
+  | { imageBase64?: never; mimeType?: never; prefillIngredients: string[]; dishName?: never }
+  | { imageBase64?: never; mimeType?: never; prefillIngredients?: never; dishName: string }
 );
 type Step = 'identifying' | 'review' | 'generating' | 'results' | 'error';
 type Tab = 'ai' | 'youtube';
@@ -56,7 +57,7 @@ function getRecipeEmoji(name: string, ingredients: string[]): string {
   return '🍽️';
 }
 
-export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients }: Props) {
+export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients, dishName }: Props) {
   const [step, setStep]             = useState<Step>('identifying');
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [fridgeItems, setFridgeItems] = useState<string[]>([]);
@@ -80,12 +81,38 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   }, []);
 
   const identify = useCallback(async () => {
+    // 1) 특정 요리 검색 모드 — 재료 확인 단계 스킵, 바로 레시피 생성
+    if (dishName) {
+      if (!await checkUsageOrAlert('recipe')) {
+        goBack();
+        return;
+      }
+      setFridgeItems(await getFridgeIngredients());
+      setStep('generating');
+      try {
+        const [found, vids] = await Promise.all([
+          generateRecipeByName(dishName),
+          searchYouTubeRecipes([dishName]),
+        ]);
+        await recordUsage('recipe');
+        setRecipes(found);
+        setVideos(vids);
+        await loadSaved();
+        setStep('results');
+      } catch (e: unknown) {
+        setErrorMsg(e instanceof Error ? e.message : String(e));
+        setStep('error');
+      }
+      return;
+    }
+    // 2) 냉장고 재료 기반 (FridgeRecipes)
     if (prefillIngredients) {
       setIngredients(prefillIngredients);
       setFridgeItems(await getFridgeIngredients());
       setStep('review');
       return;
     }
+    // 3) 카메라 스캔 기반 (Recipes)
     if (!await checkUsageOrAlert('scan')) {
       goBack();
       return;
@@ -103,7 +130,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setErrorMsg(e instanceof Error ? e.message : String(e));
       setStep('error');
     }
-  }, [imageBase64, mimeType, prefillIngredients, goBack]);
+  }, [imageBase64, mimeType, prefillIngredients, dishName, goBack, loadSaved]);
 
   useEffect(() => { identify(); }, [identify]);
 
@@ -316,8 +343,13 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.resultsHero}>
-        <TouchableOpacity onPress={() => setStep('review')} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 재료 수정</Text>
+        <TouchableOpacity
+          onPress={() => dishName ? goBack() : setStep('review')}
+          style={styles.backBtn}
+        >
+          <Text style={styles.backBtnText}>
+            {dishName ? '← 돌아가기' : '← 재료 수정'}
+          </Text>
         </TouchableOpacity>
         <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
         <Text style={styles.resultsSub} numberOfLines={1}>
@@ -460,7 +492,14 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             {videos.map((v, i) => (
               <TouchableOpacity
                 key={v.id} style={styles.videoCard}
-                onPress={() => openYouTubeSearch(ingredients)} activeOpacity={0.85}
+                onPress={() => {
+                  haptic.light();
+                  navigate({
+                    name: 'YoutubeRecipe',
+                    directVideo: { videoId: v.id, title: v.title, channelTitle: v.channel },
+                  });
+                }}
+                activeOpacity={0.85}
               >
                 <View style={[styles.thumb, { backgroundColor: v.thumbnailColor }]}>
                   <Text style={styles.thumbEmoji}>{v.thumbnailEmoji}</Text>
@@ -469,7 +508,12 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 <View style={styles.videoInfo}>
                   <Text style={styles.videoTitle} numberOfLines={2}>{v.title}</Text>
                   <Text style={styles.videoChannel}>{v.channel}</Text>
-                  <View style={styles.viewBadge}><Text style={styles.viewText}>👁  {formatViewCount(v.viewCount)}</Text></View>
+                  <View style={styles.viewMetaRow}>
+                    <View style={styles.viewBadge}><Text style={styles.viewText}>👁  {formatViewCount(v.viewCount)}</Text></View>
+                    <View style={styles.analyzeChip}>
+                      <Text style={styles.analyzeChipText}>🤖 분석</Text>
+                    </View>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
@@ -488,7 +532,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {allMissing.map(ing => (
                     <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
-                      <Text style={styles.coupangChipText}>{ing.split(' ')[0]}</Text>
+                      <Text style={styles.coupangChipText}>{cleanIngredientName(ing)}</Text>
                       <Text style={styles.coupangChipIcon}>→</Text>
                     </TouchableOpacity>
                   ))}
@@ -686,8 +730,15 @@ const styles = StyleSheet.create({
   videoInfo: { flex: 1, padding: 12, justifyContent: 'center' },
   videoTitle: { fontSize: 14, fontWeight: '700', color: Colors.ink, lineHeight: 19, marginBottom: 4 },
   videoChannel: { fontSize: 12, color: Colors.inkMute },
-  viewBadge: { backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 6 },
+  viewMetaRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' },
+  viewBadge: { backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   viewText: { fontSize: 11, fontWeight: '700', color: Colors.youtube },
+  analyzeChip: {
+    backgroundColor: Colors.forestSoft, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1, borderColor: Colors.forest,
+  },
+  analyzeChipText: { fontSize: 11, fontWeight: '800', color: Colors.forestDeep },
 
   // 쿠팡
   coupangBar: { backgroundColor: Colors.white, borderRadius: 22, padding: 18, marginBottom: 14, marginTop: 8, borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },

@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { NavProps } from '../types';
 import {
@@ -19,7 +20,10 @@ import { saveRecipe, isRecipeSaved } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 
-type Props = NavProps & { recipeName?: string };
+type Props = NavProps & {
+  recipeName?: string;
+  directVideo?: { videoId: string; title: string; channelTitle: string };
+};
 type Stage = 'input' | 'searching' | 'results' | 'analyzing' | 'done' | 'error';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
@@ -46,10 +50,11 @@ function IconChevronLeft() {
   );
 }
 
-export default function YoutubeRecipeScreen({ goBack, recipeName }: Props) {
+export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }: Props) {
+  const insets = useSafeAreaInsets();
   const [stage, setStage]         = useState<Stage>(recipeName ? 'searching' : 'input');
   const [inputText, setInputText] = useState('');
-  const [queryLabel, setQueryLabel] = useState(recipeName ?? '');
+  const [queryLabel, setQueryLabel] = useState(recipeName ?? directVideo?.title ?? '');
   const [videos, setVideos]       = useState<YTSearchResult[]>([]);
   const [selected, setSelected]   = useState<YTSearchResult | null>(null);
   const [result, setResult]       = useState<YoutubeRecipeAnalysis | null>(null);
@@ -57,7 +62,18 @@ export default function YoutubeRecipeScreen({ goBack, recipeName }: Props) {
   const [saved, setSaved]         = useState(false);
 
   useEffect(() => {
-    if (recipeName) search(recipeName);
+    if (directVideo) {
+      // RecipeScreen 유튜브 탭에서 직접 분석 진입 — 검색 단계 스킵
+      analyze({
+        videoId: directVideo.videoId,
+        title: directVideo.title,
+        channelTitle: directVideo.channelTitle,
+        thumbnail: `https://img.youtube.com/vi/${directVideo.videoId}/mqdefault.jpg`,
+        viewCount: 0,
+      });
+    } else if (recipeName) {
+      search(recipeName);
+    }
   }, []);
 
   const search = async (query: string) => {
@@ -328,7 +344,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName }: Props) {
           </ScrollView>
 
           {/* 고정 하단 저장 바 */}
-          <View style={styles.actionBar}>
+          <View style={[styles.actionBar, { paddingBottom: 12 + Math.max(insets.bottom, 12) }]}>
             <TouchableOpacity
               style={styles.reanalzeBtn}
               onPress={() => { setStage('results'); setSelected(null); setResult(null); setSaved(false); }}
@@ -394,9 +410,10 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBar: {
     flexDirection: 'row', gap: 10,
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32,
+    paddingHorizontal: 16, paddingTop: 12,
     backgroundColor: Colors.cream,
     borderTopWidth: 1, borderTopColor: Colors.line,
+    // paddingBottom 은 insets.bottom 으로 동적 (안드로이드 시스템 네비 영역 회피)
   },
   saveBtn: {
     flex: 1, backgroundColor: Colors.forest, borderRadius: 14,

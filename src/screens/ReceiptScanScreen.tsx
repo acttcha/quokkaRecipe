@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   StatusBar, Image, ImageBackground, ActivityIndicator, Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { identifyReceiptItems } from '../services/claude';
@@ -16,6 +17,7 @@ interface Props extends NavProps {
 }
 
 export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeType }: Props) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading]   = useState(true);
   const [items, setItems]       = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -150,7 +152,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
       </ScrollView>
 
       {!loading && !error && items.length > 0 && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: 16 + Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity style={styles.cancelBtn} onPress={goBack}>
             <Text style={styles.cancelBtnText}>취소</Text>
           </TouchableOpacity>
@@ -218,9 +220,10 @@ const styles = StyleSheet.create({
   chipIcon:       { fontSize: 13, color: Colors.textMuted },
   chipIconActive: { color: Colors.accent, fontWeight: '800' },
 
+  // paddingBottom 은 insets.bottom 으로 동적
   footer: {
     flexDirection: 'row', gap: 10,
-    padding: 20, paddingBottom: 36, backgroundColor: Colors.bg,
+    paddingHorizontal: 20, paddingTop: 16, backgroundColor: Colors.bg,
   },
   cancelBtn: {
     paddingVertical: 16, paddingHorizontal: 20, borderRadius: 18,

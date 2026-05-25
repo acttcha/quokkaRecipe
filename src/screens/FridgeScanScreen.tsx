@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   StatusBar, Image, ImageBackground, ActivityIndicator, TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { identifyIngredients } from '../services/claude';
@@ -14,6 +15,7 @@ type Props = NavProps & { imageBase64: string; mimeType: string };
 type Step = 'scanning' | 'review' | 'error';
 
 export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeType }: Props) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('scanning');
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [newIng, setNewIng] = useState('');
@@ -132,7 +134,7 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
       </ScrollView>
 
       {step === 'review' && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: 16 + Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
             <Text style={styles.saveBtnText}>🧊  냉장고에 추가하기</Text>
           </TouchableOpacity>
@@ -195,7 +197,8 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
 
-  footer: { padding: 20, paddingBottom: 36, backgroundColor: Colors.bg },
+  // paddingBottom 은 insets.bottom 으로 동적
+  footer: { paddingHorizontal: 20, paddingTop: 16, backgroundColor: Colors.bg },
   saveBtn: {
     backgroundColor: Colors.primary, borderRadius: 20,
     paddingVertical: 18, alignItems: 'center', ...shadow.md,

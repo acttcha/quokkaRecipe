@@ -97,8 +97,28 @@ export function openYouTubeByName(recipeName: string) {
   Linking.openURL(`https://www.youtube.com/results?search_query=${query}&sp=CAM%3D`);
 }
 
+/**
+ * 레시피 재료 텍스트에서 검색용 핵심 이름만 추출
+ * 예: "다시마 (10cmX10cm) 4장" → "다시마"
+ *     "묵은 김치 1컵 (약 200g)" → "묵은 김치"
+ *     "돼지고기 앞다리살 200g" → "돼지고기 앞다리살"
+ */
+export function cleanIngredientName(raw: string): string {
+  // 1) 괄호와 그 안 내용 제거
+  let s = raw.replace(/\([^)]*\)/g, ' ').trim();
+  // 2) 공백으로 분리
+  const tokens = s.split(/\s+/).filter(Boolean);
+  // 3) 수량/단위 토큰 제거
+  const QTY = /^\d+([.,/]\d+)?(g|kg|ml|l|개|장|쪽|대|컵|큰술|작은술|묶음|줌|마리|모|입|봉|병|캔|알|톨)?$/i;
+  const MOD = /^(약|약간|적당량|조금|살짝|한|두|세|네)$/;
+  const nameTokens = tokens.filter(t => !QTY.test(t) && !MOD.test(t));
+  const cleaned = nameTokens.join(' ').trim();
+  return cleaned || raw.trim();
+}
+
 export function openCoupang(ingredient: string) {
-  Linking.openURL(`https://www.coupang.com/np/search?q=${encodeURIComponent(ingredient)}`);
+  const q = cleanIngredientName(ingredient);
+  Linking.openURL(`https://www.coupang.com/np/search?q=${encodeURIComponent(q)}`);
 }
 
 export { formatViewCount };

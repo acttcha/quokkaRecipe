@@ -232,12 +232,14 @@ function AppInner() {
       return <RecipeScreen navigate={navigate} goBack={goBack} imageBase64={subScreen.imageBase64} mimeType={subScreen.mimeType} />;
     if (subScreen.name === 'FridgeRecipes')
       return <RecipeScreen navigate={navigate} goBack={goBack} prefillIngredients={subScreen.ingredients} />;
+    if (subScreen.name === 'DishRecipe')
+      return <RecipeScreen navigate={navigate} goBack={goBack} dishName={subScreen.dishName} />;
     if (subScreen.name === 'Profile')
       return <ProfileScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />;
     if (subScreen.name === 'SavedRecipeDetail')
       return <SavedRecipeDetailScreen navigate={navigate} goBack={goBack} recipe={subScreen.recipe} />;
     if (subScreen.name === 'YoutubeRecipe')
-      return <YoutubeRecipeScreen navigate={navigate} goBack={goBack} recipeName={subScreen.recipeName} />;
+      return <YoutubeRecipeScreen navigate={navigate} goBack={goBack} recipeName={subScreen.recipeName} directVideo={subScreen.directVideo} />;
   }
 
   return (
