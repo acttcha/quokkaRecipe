@@ -55,8 +55,10 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
       } else {
         Alert.alert('앗!', '사진을 가져오지 못했어요');
       }
-    } catch {
-      Alert.alert('앗!', '촬영에 실패했어요');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[Camera] capture error:', msg);
+      Alert.alert('촬영 실패', msg);
     } finally {
       setCapturing(false);
     }

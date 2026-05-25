@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions,
   Animated, PanResponder,
 } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, Line, Circle } from 'react-native-svg';
 import { Asset } from 'expo-asset';
@@ -107,6 +108,15 @@ const TAB_ICON_MAP: Record<TabScreenName, React.ComponentType<{ active: boolean 
 type AppState = 'loading' | 'onboarding' | 'fridge_setup' | 'app';
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppInner />
+    </SafeAreaProvider>
+  );
+}
+
+function AppInner() {
+  const insets = useSafeAreaInsets();
   const [appState, setAppState]       = useState<AppState>('loading');
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [tabIndex, setTabIndex]       = useState(0);
@@ -231,7 +241,7 @@ export default function App() {
           pointerEvents="none"
         />
 
-        <View style={styles.tabbarWrap}>
+        <View style={[styles.tabbarWrap, { paddingBottom: 14 + Math.max(insets.bottom, 12) }]}>
           {/* 발바닥 노치 */}
           <View style={styles.pawNotchWrap} pointerEvents="none">
             <View style={styles.pawNotch}>
@@ -275,7 +285,8 @@ const styles = StyleSheet.create({
   tabbarGradient: { position: 'absolute', left: 0, right: 0, top: -28, height: 28 },
 
   // 패딩 컨테이너 (노치 overflow 허용)
-  tabbarWrap: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 26 },
+  // paddingBottom 은 insets.bottom 으로 동적 설정 (App 본체 인라인 스타일 참고)
+  tabbarWrap: { paddingHorizontal: 14, paddingTop: 14 },
 
   // 발바닥 노치
   pawNotchWrap: {

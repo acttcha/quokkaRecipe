@@ -11,9 +11,11 @@ import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+// 화면 높이에 비례하는 쿼카 크기 — 작은 폰에선 자동으로 축소돼 사용량 칩/말풍선과 안 겹침
+const QUOKKA_HEIGHT = Math.min(310, height * 0.35);
 
-const HAS_API_KEY = !!process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
+const HAS_API_KEY = !!process.env.EXPO_PUBLIC_SUPABASE_URL && !!process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export default function HomeScreen({ navigate }: NavProps) {
   const [recipeStatus, setRecipeStatus] = useState<UsageStatus | null>(null);
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
   },
 
   charWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
-  quokka:   { width: width * 0.90, height: 310 },
+  quokka:   { width: width * 0.90, height: QUOKKA_HEIGHT },
 
   panel: {
     backgroundColor: Colors.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30,

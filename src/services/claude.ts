@@ -1,13 +1,17 @@
 import { Recipe } from '../types';
 import { loadPreferences, preferencesToPrompt } from './preferences';
 
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+// Anthropic API 호출은 Supabase Edge Function (claude-proxy)를 통해 프록시.
+// Claude API 키는 Supabase 서버에만 존재하고, 앱에는 publishable key만 박힘.
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
+const CLAUDE_API_URL = `${SUPABASE_URL}/functions/v1/claude-proxy`;
+
 const MODEL = 'claude-sonnet-4-6';
 const MODEL_LIGHT = 'claude-haiku-4-5-20251001';
 // 비용 절감 트라이얼 — 레시피/유튜브 분석을 Haiku로. 품질 이슈 시 각각 MODEL로 되돌리기
 const MODEL_RECIPE = MODEL_LIGHT;
 const MODEL_YOUTUBE = MODEL_LIGHT;
-const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
 
 // true: 테스트 모드 (API 키 없이 목 데이터 사용), false: 실제 API 호출
 export const MOCK_MODE = false;
@@ -52,8 +56,8 @@ async function callClaude(body: object): Promise<string> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
     },
     body: JSON.stringify(body),
   });
