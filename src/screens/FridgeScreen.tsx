@@ -137,6 +137,37 @@ export default function FridgeScreen({ navigate }: NavProps) {
         keyboardShouldPersistTaps="handled"
       >
 
+        {/* 스캔 타일 (상단으로 이동 — 빈 냉장고에서도 잘 보이게) */}
+        <View style={styles.tileRow}>
+          <TouchableOpacity
+            style={styles.tile}
+            onPress={() => navigate({ name: 'Camera', fridgeMode: true })}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.tileIcon, styles.tileIconGreen]}>
+              <IconCamera />
+            </View>
+            <View>
+              <Text style={styles.tileTitle}>재료 스캔</Text>
+              <Text style={styles.tileSub}>사진으로 추가</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tile}
+            onPress={() => navigate({ name: 'Camera', receiptMode: true })}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.tileIcon, styles.tileIconOrange]}>
+              <IconReceipt />
+            </View>
+            <View>
+              <Text style={styles.tileTitle}>영수증 스캔</Text>
+              <Text style={styles.tileSub}>영수증으로 추가</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* 직접 추가 */}
         <Text style={styles.addLabel}>직접 추가</Text>
         <View style={styles.inputRow}>
@@ -206,37 +237,6 @@ export default function FridgeScreen({ navigate }: NavProps) {
               ))}
             </View>
           )}
-        </View>
-
-        {/* 스캔 타일 */}
-        <View style={styles.tileRow}>
-          <TouchableOpacity
-            style={styles.tile}
-            onPress={() => navigate({ name: 'Camera', fridgeMode: true })}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.tileIcon, styles.tileIconGreen]}>
-              <IconCamera />
-            </View>
-            <View>
-              <Text style={styles.tileTitle}>재료 스캔</Text>
-              <Text style={styles.tileSub}>사진으로 추가</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.tile}
-            onPress={() => navigate({ name: 'Camera', receiptMode: true })}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.tileIcon, styles.tileIconOrange]}>
-              <IconReceipt />
-            </View>
-            <View>
-              <Text style={styles.tileTitle}>영수증 스캔</Text>
-              <Text style={styles.tileSub}>영수증으로 추가</Text>
-            </View>
-          </TouchableOpacity>
         </View>
 
       </ScrollView>

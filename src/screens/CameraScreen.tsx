@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert,
+  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, StatusBar,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,6 +16,15 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
   const [facing, setFacing] = useState<CameraType>('back');
   const [capturing, setCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+
+  // 카메라가 fullscreen 모드라 안드로이드에서 상태바 숨겨지는 경우 있어서,
+  // 화면 들어올 때 / 빠져나갈 때 명시적으로 상태바 보이게
+  useEffect(() => {
+    StatusBar.setHidden(false, 'fade');
+    return () => {
+      StatusBar.setHidden(false, 'fade');
+    };
+  }, []);
 
   if (!permission) return <View style={styles.container} />;
 
@@ -95,6 +104,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <CameraView ref={cameraRef} style={styles.camera} facing={facing}>
         <View style={styles.overlay}>
           {/* 상단 */}

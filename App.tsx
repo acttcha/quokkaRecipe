@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions,
-  Animated, PanResponder,
+  Animated, PanResponder, BackHandler, Alert, Platform,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -167,6 +167,38 @@ function AppInner() {
   };
 
   const goBack = () => { subScreenRef.current = null; setSubScreen(null); };
+
+  // ── Android 하드웨어 뒤로가기 처리 ─────────────────────────
+  // 1) 서브 화면 열려있으면 → 닫기
+  // 2) 홈 탭 외 다른 탭이면 → 홈 탭으로 이동
+  // 3) 홈 탭이면 → 종료 확인 Alert
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    if (appState !== 'app') return;
+
+    const onBackPress = () => {
+      if (subScreenRef.current) {
+        goBack();
+        return true;
+      }
+      if (tabIndexRef.current !== 0) {
+        goToTab(0);
+        return true;
+      }
+      Alert.alert(
+        '앱을 종료할까요?',
+        '',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: '종료', style: 'destructive', onPress: () => BackHandler.exitApp() },
+        ],
+      );
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [appState]);
 
   const panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => false,

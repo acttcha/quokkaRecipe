@@ -2,7 +2,7 @@
   "expo": {
     "name": "쿼카레시피",
     "slug": "quokka-chef",
-    "version": "1.0.5",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/applogo.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.actcha.quokkarecipe",
-      "versionCode": 1,
+      "versionCode": 13,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"

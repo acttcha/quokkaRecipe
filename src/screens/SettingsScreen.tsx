@@ -12,6 +12,8 @@ import { resetOnboarding } from '../services/preferences';
 import { resetAllData } from '../services/reset';
 import { resetDailyUsage } from '../services/usage';
 
+const APP_VERSION = (require('../../app.json') as { expo: { version: string } }).expo.version;
+
 type InfoModal = 'guide' | 'update' | 'terms' | 'privacy' | null;
 
 const MODAL_CONTENT: Record<NonNullable<InfoModal>, { title: string; body: string }> = {
@@ -305,7 +307,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           <View style={styles.versionRow}>
             <View style={styles.listIconWrap}><Text style={{ fontSize: 14 }}>ℹ️</Text></View>
             <Text style={styles.listLabel}>앱 버전</Text>
-            <Text style={styles.versionValue}>1.0.0</Text>
+            <Text style={styles.versionValue}>{APP_VERSION}</Text>
           </View>
         </View>
 

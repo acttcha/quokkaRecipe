@@ -10,7 +10,7 @@ import { addIngredients, markFridgeSetupDone } from '../services/fridge';
 interface Props { onDone: () => void }
 
 const { width, height } = Dimensions.get('window');
-const QUOKKA_HEIGHT = Math.min(310, height * 0.32);
+const QUOKKA_HEIGHT = Math.min(280, height * 0.28);
 
 const FRIDGE_ALL = [
   '소금', '설탕', '간장', '된장', '고추장',
@@ -156,6 +156,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
   bubbleOuter: { alignItems: 'center', marginBottom: -6 },
   bubble: {
