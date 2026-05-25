@@ -7,26 +7,33 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { identifyIngredients } from '../services/claude';
 import { addIngredients } from '../services/fridge';
+import { recordUsage } from '../services/usage';
+import { checkUsageOrAlert } from '../services/usageGate';
 
 type Props = NavProps & { imageBase64: string; mimeType: string };
 type Step = 'scanning' | 'review' | 'error';
 
-export default function FridgeScanScreen({ navigate, imageBase64, mimeType }: Props) {
+export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeType }: Props) {
   const [step, setStep] = useState<Step>('scanning');
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [newIng, setNewIng] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   const scan = useCallback(async () => {
+    if (!await checkUsageOrAlert('scan')) {
+      goBack();
+      return;
+    }
     try {
       const found = await identifyIngredients(imageBase64, mimeType);
+      await recordUsage('scan');
       setIngredients(found);
       setStep('review');
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : String(e));
       setStep('error');
     }
-  }, [imageBase64, mimeType]);
+  }, [imageBase64, mimeType, goBack]);
 
   useEffect(() => { scan(); }, [scan]);
 

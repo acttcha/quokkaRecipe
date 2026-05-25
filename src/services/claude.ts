@@ -4,6 +4,9 @@ import { loadPreferences, preferencesToPrompt } from './preferences';
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
 const MODEL_LIGHT = 'claude-haiku-4-5-20251001';
+// 비용 절감 트라이얼 — 레시피/유튜브 분석을 Haiku로. 품질 이슈 시 각각 MODEL로 되돌리기
+const MODEL_RECIPE = MODEL_LIGHT;
+const MODEL_YOUTUBE = MODEL_LIGHT;
 const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY ?? '';
 
 // true: 테스트 모드 (API 키 없이 목 데이터 사용), false: 실제 API 호출
@@ -136,24 +139,52 @@ export async function generateRecipes(ingredients: string[]): Promise<Recipe[]> 
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
   const text = await callClaude({
-    model: MODEL,
+    model: MODEL_RECIPE,
     max_tokens: 4000,
     messages: [{
       role: 'user',
       content: `다음 재료들로 만들 수 있는 레시피 3가지를 추천해주세요.
 재료: ${ingredients.join(', ')}${prefText}
 
+[작성 규칙 — 반드시 지킬 것]
+
+1. ingredients는 모든 항목에 구체적인 분량을 적습니다. 한국 가정에서 흔히 쓰는 단위(큰술/작은술/컵/개/대/쪽/g)를 사용하세요.
+   - 좋은 예: "돼지고기 앞다리살 200g", "대파 1대(약 50g)", "간장 2큰술", "마늘 3쪽", "물 400ml"
+   - 나쁜 예: "고기 적당량", "양념 약간", "대파 조금", "마늘 적당히"
+
+2. steps는 각 단계에서 어떤 재료를 얼마나 쓰는지 분량까지 명시합니다. 초보자도 따라할 수 있어야 합니다.
+   - 좋은 예: "달군 팬에 식용유 2큰술을 두르고 다진 마늘 1큰술을 30초간 볶는다"
+   - 나쁜 예: "마늘을 볶는다", "양념해서 볶는다"
+
+3. 시간/온도/불세기가 있는 단계는 구체적으로 적습니다. (예: "중불에서 5분", "200℃ 오븐에서 15분", "약불로 줄여 10분 끓인다")
+
+4. steps는 5~8단계로 충분히 구체적으로. 너무 짧게 줄여서 모호하게 만들지 마세요.
+
 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 [
   {
-    "name": "요리 이름",
-    "description": "요리 설명 (1-2문장)",
-    "cookTime": "30분",
+    "name": "돼지고기 김치볶음밥",
+    "description": "남은 김치와 돼지고기로 빠르게 만드는 든든한 한끼.",
+    "cookTime": "15분",
     "servings": 2,
     "difficulty": "Easy",
-    "ingredients": ["재료1 100g", "재료2 2개"],
-    "steps": ["1단계", "2단계", "3단계"],
-    "nutrition": { "calories": 320, "protein": 18, "carbs": 24, "fat": 12 }
+    "ingredients": [
+      "찬밥 2공기 (약 400g)",
+      "돼지고기 앞다리살 150g",
+      "신김치 1컵 (약 200g)",
+      "대파 1대",
+      "간장 1큰술",
+      "참기름 1작은술",
+      "식용유 2큰술"
+    ],
+    "steps": [
+      "돼지고기는 한입 크기로 썰고, 신김치는 잘게 다지고, 대파는 송송 썬다.",
+      "달군 팬에 식용유 2큰술을 두르고 돼지고기를 중불에서 3분간 노릇하게 볶는다.",
+      "다진 김치와 간장 1큰술을 넣고 김치가 부드러워질 때까지 2분간 더 볶는다.",
+      "찬밥 2공기를 넣고 김치 양념이 골고루 배도록 3분간 볶는다.",
+      "불을 끄고 참기름 1작은술과 송송 썬 대파를 올려 마무리한다."
+    ],
+    "nutrition": { "calories": 520, "protein": 22, "carbs": 65, "fat": 18 }
   }
 ]
 
@@ -231,7 +262,7 @@ export async function analyzeYoutubeRecipe(
   ].filter(Boolean).join('\n');
 
   const text = await callClaude({
-    model: MODEL,
+    model: MODEL_YOUTUBE,
     max_tokens: 2000,
     messages: [{
       role: 'user',

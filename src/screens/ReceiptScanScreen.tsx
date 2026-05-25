@@ -7,6 +7,8 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { identifyReceiptItems } from '../services/claude';
 import { addIngredients } from '../services/fridge';
+import { recordUsage } from '../services/usage';
+import { checkUsageOrAlert } from '../services/usageGate';
 
 interface Props extends NavProps {
   imageBase64: string;
@@ -21,10 +23,15 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
   const [error, setError]       = useState('');
 
   const scan = useCallback(async () => {
+    if (!await checkUsageOrAlert('scan')) {
+      goBack();
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const found = await identifyReceiptItems(imageBase64, mimeType);
+      await recordUsage('scan');
       setItems(found);
       setSelected(new Set(found));
     } catch (e: unknown) {
@@ -32,7 +39,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
     } finally {
       setLoading(false);
     }
-  }, [imageBase64, mimeType]);
+  }, [imageBase64, mimeType, goBack]);
 
   useEffect(() => { scan(); }, [scan]);
 

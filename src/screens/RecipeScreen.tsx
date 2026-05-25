@@ -11,6 +11,8 @@ import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount }
 import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
+import { recordUsage } from '../services/usage';
+import { checkUsageOrAlert } from '../services/usageGate';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { POPULAR_INGREDIENTS } from '../constants/ingredients';
@@ -84,9 +86,14 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setStep('review');
       return;
     }
+    if (!await checkUsageOrAlert('scan')) {
+      goBack();
+      return;
+    }
     setStep('identifying');
     try {
       const found = await identifyIngredients(imageBase64!, mimeType!);
+      await recordUsage('scan');
       await addIngredients(found);
       setIngredients(found);
       setFridgeItems(await getFridgeIngredients());
@@ -96,18 +103,20 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setErrorMsg(e instanceof Error ? e.message : String(e));
       setStep('error');
     }
-  }, [imageBase64, mimeType, prefillIngredients]);
+  }, [imageBase64, mimeType, prefillIngredients, goBack]);
 
   useEffect(() => { identify(); }, [identify]);
 
   const handleGetRecipes = async () => {
     if (ingredients.length === 0) { Alert.alert('앗!', '재료를 1개 이상 추가해주세요 🥺'); return; }
+    if (!await checkUsageOrAlert('recipe')) return;
     setStep('generating');
     try {
       const [found, vids] = await Promise.all([
         generateRecipes(ingredients),
         searchYouTubeRecipes(ingredients),
       ]);
+      await recordUsage('recipe');
       setRecipes(found);
       setVideos(vids);
       await loadSaved();
@@ -184,11 +193,13 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
   const handleAsk = async () => {
     if (!askModal || !question.trim()) return;
+    if (!await checkUsageOrAlert('qa')) return;
     haptic.light();
     setAsking(true);
     setAnswer('');
     try {
       const res = await askQuokka(askModal, question.trim());
+      await recordUsage('qa');
       setAnswer(res);
       haptic.success();
     } catch {

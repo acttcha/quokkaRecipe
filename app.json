@@ -20,13 +20,16 @@
       }
     },
     "android": {
+      "package": "com.actcha.quokkarecipe",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"
       },
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -47,6 +50,11 @@
           "photosPermission": "갤러리에서 재료 사진을 선택하기 위해 접근이 필요합니다."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "17c9a7fb-9105-4ad0-8ea8-377637744b4c"
+      }
+    }
   }
 }

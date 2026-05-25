@@ -10,6 +10,7 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { resetOnboarding } from '../services/preferences';
 import { resetAllData } from '../services/reset';
+import { resetDailyUsage } from '../services/usage';
 
 type InfoModal = 'guide' | 'update' | 'terms' | 'privacy' | null;
 
@@ -206,6 +207,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     ]);
   };
 
+  const handleResetUsage = async () => {
+    await resetDailyUsage();
+    Alert.alert('초기화 완료', '오늘 사용량이 0으로 리셋됐어요.');
+  };
+
   const handleResetAllData = () => {
     setDeleteInput('');
     setDeleteModalVisible(true);
@@ -302,6 +308,21 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <Text style={styles.versionValue}>1.0.0</Text>
           </View>
         </View>
+
+        {/* 테스트용 (출시 전 제거) */}
+        <Text style={styles.sectionLabel}>🧪 테스트용</Text>
+        <TouchableOpacity
+          style={styles.testCard}
+          onPress={handleResetUsage}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.testIcon}>♻️</Text>
+          <View style={styles.testTexts}>
+            <Text style={styles.testTitle}>오늘 사용량 초기화</Text>
+            <Text style={styles.testSub}>일일 카운트를 0으로 (보너스는 유지)</Text>
+          </View>
+          <IcChevron />
+        </TouchableOpacity>
 
         {/* 데이터 관리 */}
         <Text style={styles.sectionLabel}>데이터 관리</Text>
@@ -567,6 +588,18 @@ const styles = StyleSheet.create({
   dangerTexts: { flex: 1 },
   dangerTitle: { fontSize: 14, fontWeight: '800', color: '#B91C1C' },
   dangerSub: { fontSize: 12, color: '#991B1B', marginTop: 2 },
+
+  // 테스트용 (출시 전 제거)
+  testCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+    backgroundColor: '#FFFBEB', borderRadius: 18,
+    borderWidth: 1, borderColor: '#FCD34D',
+    borderStyle: 'dashed',
+  },
+  testIcon: { fontSize: 22, width: 38, textAlign: 'center' },
+  testTexts: { flex: 1 },
+  testTitle: { fontSize: 14, fontWeight: '800', color: '#92400E' },
+  testSub: { fontSize: 12, color: '#A16207', marginTop: 2 },
 
   // 데이터 삭제 확인 모달
   deleteModalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

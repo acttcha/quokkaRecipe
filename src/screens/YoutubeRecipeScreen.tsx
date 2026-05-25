@@ -13,6 +13,8 @@ import {
   extractYouTubeVideoId,
 } from '../services/youtube';
 import { analyzeYoutubeRecipe, YoutubeRecipeAnalysis } from '../services/claude';
+import { recordUsage } from '../services/usage';
+import { checkUsageOrAlert } from '../services/usageGate';
 import { saveRecipe, isRecipeSaved } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
@@ -94,6 +96,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName }: Props) {
   };
 
   const analyze = async (video: YTSearchResult) => {
+    if (!await checkUsageOrAlert('recipe')) return;
     haptic.light();
     setSelected(video);
     setStage('analyzing');
@@ -105,6 +108,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName }: Props) {
       const analysis = await analyzeYoutubeRecipe(
         video.title, video.channelTitle, description, transcript,
       );
+      await recordUsage('recipe');
       haptic.success();
       setResult(analysis);
       const alreadySaved = await isRecipeSaved(analysis.recipeName);
