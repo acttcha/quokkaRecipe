@@ -72,9 +72,49 @@ async function callClaude(body: object): Promise<string> {
 }
 
 function extractJson<T>(text: string): T {
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error('응답에서 JSON을 찾을 수 없습니다');
-  return JSON.parse(match[0]) as T;
+  // 응답 끝부분의 균형 잡힌 JSON 배열을 추출
+  // (CoT 설명 텍스트 + 마지막에 출력되는 JSON 배열 형태 대응)
+  const lastClose = text.lastIndexOf(']');
+  if (lastClose === -1) throw new Error('응답에서 JSON을 찾을 수 없습니다');
+
+  let depth = 0;
+  let start = -1;
+  for (let i = lastClose; i >= 0; i--) {
+    const c = text[i];
+    if (c === ']') depth++;
+    else if (c === '[') {
+      depth--;
+      if (depth === 0) { start = i; break; }
+    }
+  }
+  if (start === -1) throw new Error('응답에서 JSON 시작을 찾을 수 없습니다');
+  return JSON.parse(text.slice(start, lastClose + 1)) as T;
+}
+
+// 모호한 카테고리 표현 필터 — 레시피와 매칭 불가능하므로 제거
+const VAGUE_INGREDIENT_TERMS = new Set([
+  '소스', '소스류', '양념', '양념류', '조미료', '조미료류',
+  '채소', '채소류', '야채', '야채류',
+  '고기', '고기류', '육류', '가금류',
+  '반찬', '반찬류', '밑반찬', '반찬통',
+  '식재료', '식재료류', '재료', '식료품',
+  '곡류', '두류', '견과류', '어류', '패류', '어패류', '해조류',
+  '과일', '과일류',
+  '유제품', '유제품류', '발효식품',
+  '기타', '음식', '식품',
+]);
+
+function filterVagueIngredients(items: string[]): string[] {
+  return items.filter((raw) => {
+    if (!raw || typeof raw !== 'string') return false;
+    // 괄호 부가 정보 제거하고 본체만 검사
+    const core = raw.replace(/\([^)]*\)/g, '').trim();
+    if (!core) return false;
+    if (VAGUE_INGREDIENT_TERMS.has(core)) return false;
+    // "○○류" 형태는 거의 항상 카테고리 표현 → 제외 (단, 짧은 단어는 통과)
+    if (core.length >= 3 && core.endsWith('류')) return false;
+    return true;
+  });
 }
 
 export async function identifyIngredients(
@@ -87,37 +127,52 @@ export async function identifyIngredients(
   }
   const text = await callClaude({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 512,
+    temperature: 0,
     messages: [{
       role: 'user',
       content: [
         { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
         {
           type: 'text',
-          text: `이 이미지에서 식별 가능한 구체적인 식재료만 추출하세요.
+          text: `사진의 식재료/음식을 한국어 일반명으로 식별하세요.
 
-[규칙]
-1. **확실히 보이는 것만 추가하세요.** 애매하거나 가려져있어 추측해야 하면 추가하지 마세요.
-2. **구체적인 재료명만.** "소스류", "양념류", "고기류" 같은 카테고리 표현 금지.
-   - ❌ 금지: "소스", "양념", "고기", "채소", "조미료", "기타"
-   - ✅ 가능: "간장", "고추장", "돼지고기", "양배추"
-3. **용기 안 내용물을 추측하지 마세요.** 통/병/봉지 라벨이 안 보이면 추가 X.
-   - ❌ 흰 통 보고 "두부일 것 같다" 추측 X
-   - ✅ 라벨 또는 내용물이 명확히 보일 때만 추가
-4. **종류를 알 수 없으면 일반명으로.** 정확한 부위/품종 모르면 큰 범주로.
-   - 잘 모르겠는 고기 → "돼지고기 모름" 식으로 ❌
-   - 그냥 추가하지 마세요 (애매한 건 빼는 게 나음)
-5. **확실한 재료가 하나도 없으면 빈 배열 반환.** 억지로 추가하지 마세요.
+[작업 순서]
+1. 사진에 보이는 것을 1문장으로 설명.
+2. 그중 본인이 **한국에 실재하는 식재료/음식 이름**이라고 확신하는 것만 골라 JSON 배열로 출력.
 
-응답은 한국어 재료 이름의 JSON 배열만. 다른 텍스트 X.
+[필수 규칙]
+1. 실재하는 한국 식재료/음식 이름만 — 들어본 적 없는 단어, 오타 같은 단어, 추측해서 만든 단어는 절대 X.
+   ❌ "마른 젠선" (가짜), "파이슨 브레톤 우유" (가짜), "조선 사이다" (가짜)
+   ✅ "마른 생선", "우유", "사이다"
+2. 라벨 글씨가 흐릿하거나 잘 안 읽히면, 글씨에 의존하지 말고 **시각적 외관**으로 판단해서 일반명 사용.
+   - 예: 라벨이 불분명한 우유팩 → "우유" (브랜드명 추측 X)
+   - 예: 흐릿한 글씨로 "마른생선" 같이 보이면 → "마른 생선" (실재하는 단어로)
+3. 일반명만 사용 — 브랜드/제품명 X. (예: "라면", "사이다", "우유" — "신라면", "조선 사이다" X)
+4. 가공식품·완성 음식은 음식 이름 그대로 (예: 단팥빵, 김밥, 두부, 김치).
+   원재료로 분해 X — 단팥빵을 "빵+팥"으로 쪼개지 마세요.
+5. 카테고리 표현 X — "소스", "양념", "채소", "고기", "○○류" 전부 금지.
+6. 모호하거나 확신 없으면 빼세요. 추가하느니 빼는 게 낫습니다.
 
-예시: ["토마토", "양파", "마늘", "계란"]
-하나도 명확하지 않으면: []`,
+[출력 형식]
+1줄 설명 + JSON 배열.
+
+예시 1:
+사진에 빨간 사과 두 개와 양파 한 개가 있다.
+["사과", "양파"]
+
+예시 2:
+사진에 우유팩과 단팥빵 하나가 있다.
+["우유", "단팥빵"]
+
+확실한 것이 없으면:
+판단 불가.
+[]`,
         },
       ],
     }],
   });
-  return extractJson<string[]>(text);
+  return filterVagueIngredients(extractJson<string[]>(text));
 }
 
 export async function identifyReceiptItems(
@@ -131,36 +186,28 @@ export async function identifyReceiptItems(
   const text = await callClaude({
     model: MODEL,
     max_tokens: 1024,
+    temperature: 0,
     messages: [{
       role: 'user',
       content: [
         { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
         {
           type: 'text',
-          text: `이것은 마트/슈퍼마켓 영수증 사진입니다. 영수증 텍스트에서 명확히 읽히는 식재료/식품 항목만 추출하세요.
+          text: `한국 마트/슈퍼마켓 영수증입니다. 영수증에서 또렷이 읽히는 식재료 또는 식품을 한국어로 추출하세요.
 
-[규칙]
-1. **글자가 또렷이 읽히는 항목만 추가.** 흐릿하거나 잘려서 추측해야 하면 추가하지 마세요.
-2. **구체적인 재료명만.** "소스류", "양념류", "고기류" 같은 카테고리 표현 금지.
-   - ❌ 금지: "소스", "양념", "고기", "채소", "조미료"
-   - ✅ 가능: "간장", "고추장", "돼지고기", "양배추"
-3. **세제·생활용품 등 식재료 아닌 건 제외.**
-4. **브랜드명·용량·수량은 제거**하고 핵심 재료명만:
-   - "풀무원 국산콩두부 300g" → "두부"
-   - "농심 신라면 5입" → 제외 (가공식품이라 빼는 게 나음, 단순 재료 아님)
-   - "한우 등심 200g" → "소고기 등심"
-5. **알 수 없는 줄임말은 추가 X.** "스파게티" 같이 명확한 것만, "ㅅㅍㄱㅌ" 같은 줄임은 X.
-6. **확실한 재료가 하나도 없으면 빈 배열.** 억지로 추가 X.
+- 브랜드명·용량·수량은 제거하고 핵심 이름만 (예: "풀무원 국산콩두부 300g" → "두부")
+- 가공식품/완성식품이면 그대로 (예: 단팥빵, 김밥)
+- 세제·생활용품 등 식품 아닌 건 제외
+- 글자가 흐릿하거나 추측해야 하면 추가하지 마세요
 
-응답은 한국어 재료 이름의 JSON 배열만.
-
-예시: ["계란", "우유", "양파", "닭가슴살"]
-하나도 명확하지 않으면: []`,
+JSON 배열로만 응답. 다른 텍스트 X.
+예: ["계란", "우유", "양파", "닭가슴살"]
+아무것도 명확하지 않으면: []`,
         },
       ],
     }],
   });
-  return extractJson<string[]>(text);
+  return filterVagueIngredients(extractJson<string[]>(text));
 }
 
 export async function generateRecipes(ingredients: string[]): Promise<Recipe[]> {

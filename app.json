@@ -2,7 +2,7 @@
   "expo": {
     "name": "쿼카레시피",
     "slug": "quokka-chef",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "orientation": "portrait",
     "icon": "./assets/applogo.png",
     "userInterfaceStyle": "light",

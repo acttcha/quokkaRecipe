@@ -9,8 +9,8 @@ import { addIngredients, markFridgeSetupDone } from '../services/fridge';
 
 interface Props { onDone: () => void }
 
-const { width, height } = Dimensions.get('window');
-const QUOKKA_HEIGHT = Math.min(280, height * 0.28);
+const { width } = Dimensions.get('window');
+const PANEL_HEIGHT = 360;
 
 const FRIDGE_ALL = [
   '소금', '설탕', '간장', '된장', '고추장',
@@ -182,14 +182,16 @@ const styles = StyleSheet.create({
   },
   quokka: {
     width: width * 0.90,
-    height: QUOKKA_HEIGHT,
+    flex: 1,
+    maxHeight: 340,
+    minHeight: 160,
   },
 
   panel: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    height: 380,
+    height: PANEL_HEIGHT,
     ...shadow.md,
   },
   panelScroll: { flex: 1 },

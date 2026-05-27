@@ -10,8 +10,7 @@ import { savePreferences } from '../services/preferences';
 
 interface Props { onDone: () => void }
 
-const { width, height } = Dimensions.get('window');
-const QUOKKA_HEIGHT = Math.min(310, height * 0.32);
+const { width } = Dimensions.get('window');
 
 
 // ── 질문 데이터 ──────────────────────────────────────────────────
@@ -325,6 +324,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: 0,
+    overflow: 'hidden',
   },
   bubbleOuter: { alignItems: 'center', marginBottom: -6 },
   bubble: {
@@ -350,7 +350,9 @@ const styles = StyleSheet.create({
   },
   quokka: {
     width: width * 0.90,
-    height: QUOKKA_HEIGHT,
+    flex: 1,
+    maxHeight: 340,
+    minHeight: 160,
   },
 
   panel: {
