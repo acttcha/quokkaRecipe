@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { NavProps } from '../types';
-import { MOCK_MODE } from '../services/claude';
+import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
 import { getStatus, UsageStatus } from '../services/usage';
 import { Colors, shadow } from '../constants/colors';
@@ -48,6 +48,7 @@ export default function HomeScreen({ navigate }: NavProps) {
   const [usageModalVisible, setUsageModalVisible] = useState(false);
   const [dishModalVisible, setDishModalVisible] = useState(false);
   const [dishQuery, setDishQuery] = useState('');
+  const [mockMode, setMockMode] = useState(getMockMode());
 
   const loadUsage = useCallback(async () => {
     const [r, s, q] = await Promise.all([
@@ -58,6 +59,7 @@ export default function HomeScreen({ navigate }: NavProps) {
     setRecipeStatus(r);
     setScanStatus(s);
     setQaStatus(q);
+    setMockMode(getMockMode());
   }, []);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function HomeScreen({ navigate }: NavProps) {
   const handleSearchDish = () => {
     const q = dishQuery.trim();
     if (!q) return;
-    if (!MOCK_MODE && !HAS_API_KEY) {
+    if (!mockMode && !HAS_API_KEY) {
       haptic.error();
       Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
       return;
@@ -96,7 +98,7 @@ export default function HomeScreen({ navigate }: NavProps) {
   };
 
   const handleRecommend = async () => {
-    if (!MOCK_MODE && !HAS_API_KEY) {
+    if (!mockMode && !HAS_API_KEY) {
       haptic.error();
       Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
       return;
@@ -157,12 +159,12 @@ export default function HomeScreen({ navigate }: NavProps) {
 
       {/* 하단 패널 */}
       <View style={styles.panel}>
-        {MOCK_MODE && (
+        {mockMode && (
           <View style={styles.testBadge}>
             <Text style={styles.testBadgeText}>🧪 테스트 모드</Text>
           </View>
         )}
-        {!MOCK_MODE && !HAS_API_KEY && (
+        {!mockMode && !HAS_API_KEY && (
           <TouchableOpacity style={styles.warnBanner} onPress={() => navigate({ name: 'Settings' })}>
             <Text style={styles.warnText}>⚠️ API 키 설정이 필요해요 →</Text>
           </TouchableOpacity>
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
 
   usageDivider: { width: 1, height: 36, backgroundColor: Colors.line, opacity: 0.6 },
 
-  bubbleOuter: { alignItems: 'center', marginBottom: 8 },
+  bubbleOuter: { alignItems: 'center', marginTop: 18, marginBottom: 8 },
   bubble: {
     backgroundColor: Colors.creamSoft, borderRadius: 22,
     paddingHorizontal: 22, paddingVertical: 14,

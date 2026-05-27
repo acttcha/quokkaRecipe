@@ -11,6 +11,11 @@ import { Colors, shadow } from '../constants/colors';
 import { resetOnboarding } from '../services/preferences';
 import { resetAllData } from '../services/reset';
 import { resetDailyUsage } from '../services/usage';
+import {
+  getMockMode, setMockMode,
+  getModelKey, setModelKey,
+  ModelKey,
+} from '../services/devSettings';
 
 const APP_VERSION = (require('../../app.json') as { expo: { version: string } }).expo.version;
 
@@ -195,7 +200,21 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [mockMode, setMockModeState] = useState(getMockMode());
+  const [modelKey, setModelKeyState] = useState<ModelKey>(getModelKey());
   const canDelete = deleteInput.trim() === DELETE_CONFIRM_PHRASE && !deleting;
+
+  const handleToggleMock = async () => {
+    const next = !mockMode;
+    setMockModeState(next);
+    await setMockMode(next);
+  };
+
+  const handlePickModel = async (k: ModelKey) => {
+    if (k === modelKey) return;
+    setModelKeyState(k);
+    await setModelKey(k);
+  };
 
   const handleFeedback = () => {
     Linking.openURL('mailto:acttcha@gmail.com?subject=쿼카레시피 의견').catch(() =>
@@ -325,6 +344,56 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           </View>
           <IcChevron />
         </TouchableOpacity>
+
+        {/* 임시 모드 — API 호출 없이 목 데이터로 화면 이동만 */}
+        <TouchableOpacity
+          style={styles.testCard}
+          onPress={handleToggleMock}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.testIcon}>{mockMode ? '🟢' : '⚪'}</Text>
+          <View style={styles.testTexts}>
+            <Text style={styles.testTitle}>임시 모드 (API 호출 X)</Text>
+            <Text style={styles.testSub}>
+              {mockMode
+                ? 'ON — 목 데이터로 화면 이동만 (Claude/YouTube 호출 안 함)'
+                : 'OFF — 실제 API 호출'}
+            </Text>
+          </View>
+          <View style={[styles.mockSwitch, mockMode && styles.mockSwitchOn]}>
+            <Text style={[styles.mockSwitchText, mockMode && styles.mockSwitchTextOn]}>
+              {mockMode ? 'ON' : 'OFF'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Claude 모델 변경 */}
+        <View style={styles.testCard}>
+          <Text style={styles.testIcon}>🤖</Text>
+          <View style={styles.testTexts}>
+            <Text style={styles.testTitle}>Claude API 모델 변경</Text>
+            <Text style={styles.testSub}>
+              현재: {modelKey} · 모든 호출에 적용됨
+            </Text>
+            <View style={styles.modelRow}>
+              {(['haiku', 'sonnet', 'opus'] as ModelKey[]).map(k => {
+                const active = k === modelKey;
+                return (
+                  <TouchableOpacity
+                    key={k}
+                    style={[styles.modelChip, active && styles.modelChipActive]}
+                    onPress={() => handlePickModel(k)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
+                      {k}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
 
         {/* 데이터 관리 */}
         <Text style={styles.sectionLabel}>데이터 관리</Text>
@@ -602,6 +671,26 @@ const styles = StyleSheet.create({
   testTexts: { flex: 1 },
   testTitle: { fontSize: 14, fontWeight: '800', color: '#92400E' },
   testSub: { fontSize: 12, color: '#A16207', marginTop: 2 },
+
+  mockSwitch: {
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1.5, borderColor: '#FCD34D',
+    backgroundColor: Colors.white,
+  },
+  mockSwitchOn: { backgroundColor: '#16A34A', borderColor: '#15803D' },
+  mockSwitchText: { fontSize: 11, fontWeight: '900', color: '#92400E', letterSpacing: 0.5 },
+  mockSwitchTextOn: { color: '#FFF' },
+
+  modelRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  modelChip: {
+    flex: 1, paddingVertical: 7, borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#FCD34D',
+    backgroundColor: Colors.white, alignItems: 'center',
+  },
+  modelChipActive: { backgroundColor: '#92400E', borderColor: '#92400E' },
+  modelChipText: { fontSize: 12, fontWeight: '800', color: '#92400E' },
+  modelChipTextActive: { color: '#FEF3C7' },
 
   // 데이터 삭제 확인 모달
   deleteModalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

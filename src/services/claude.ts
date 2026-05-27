@@ -1,20 +1,12 @@
 import { Recipe } from '../types';
 import { loadPreferences, preferencesToPrompt } from './preferences';
+import { getActiveModelId, getMockMode } from './devSettings';
 
 // Anthropic API 호출은 Supabase Edge Function (claude-proxy)를 통해 프록시.
 // Claude API 키는 Supabase 서버에만 존재하고, 앱에는 publishable key만 박힘.
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
 const CLAUDE_API_URL = `${SUPABASE_URL}/functions/v1/claude-proxy`;
-
-const MODEL = 'claude-sonnet-4-6';
-const MODEL_LIGHT = 'claude-haiku-4-5-20251001';
-// 비용 절감 — Haiku 사용. 프롬프트로 품질 보강 시도.
-const MODEL_RECIPE = MODEL_LIGHT;
-const MODEL_YOUTUBE = MODEL_LIGHT;
-
-// true: 테스트 모드 (API 키 없이 목 데이터 사용), false: 실제 API 호출
-export const MOCK_MODE = false;
 
 const MOCK_INGREDIENTS = ['계란', '토마토', '양파', '마늘', '올리브오일'];
 
@@ -121,12 +113,12 @@ export async function identifyIngredients(
   imageBase64: string,
   mimeType: string = 'image/jpeg',
 ): Promise<string[]> {
-  if (MOCK_MODE) {
+  if (getMockMode()) {
     await new Promise(r => setTimeout(r, 1500));
     return MOCK_INGREDIENTS;
   }
   const text = await callClaude({
-    model: MODEL,
+    model: getActiveModelId(),
     max_tokens: 512,
     temperature: 0,
     messages: [{
@@ -179,12 +171,12 @@ export async function identifyReceiptItems(
   imageBase64: string,
   mimeType: string = 'image/jpeg',
 ): Promise<string[]> {
-  if (MOCK_MODE) {
+  if (getMockMode()) {
     await new Promise(r => setTimeout(r, 1500));
     return ['계란', '우유', '버터', '양파', '당근', '닭가슴살', '브로콜리', '두부', '마늘', '파프리카'];
   }
   const text = await callClaude({
-    model: MODEL,
+    model: getActiveModelId(),
     max_tokens: 1024,
     temperature: 0,
     messages: [{
@@ -211,14 +203,14 @@ JSON 배열로만 응답. 다른 텍스트 X.
 }
 
 export async function generateRecipes(ingredients: string[]): Promise<Recipe[]> {
-  if (MOCK_MODE) {
+  if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
     return MOCK_RECIPES;
   }
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
   const text = await callClaude({
-    model: MODEL_RECIPE,
+    model: getActiveModelId(),
     max_tokens: 4000,
     messages: [{
       role: 'user',
@@ -340,14 +332,14 @@ nutrition은 1인분 기준 kcal/g 단위입니다.`,
  * - 사용자가 만들고 싶은 요리를 입력 → 표준 레시피 1~3가지 변형 반환
  */
 export async function generateRecipeByName(dishName: string): Promise<Recipe[]> {
-  if (MOCK_MODE) {
+  if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
     return MOCK_RECIPES;
   }
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
   const text = await callClaude({
-    model: MODEL_RECIPE,
+    model: getActiveModelId(),
     max_tokens: 4000,
     messages: [{
       role: 'user',
@@ -415,7 +407,7 @@ nutrition은 1인분 기준 kcal/g.`,
 }
 
 export async function askQuokka(recipe: Recipe, question: string): Promise<string> {
-  if (MOCK_MODE) {
+  if (getMockMode()) {
     await new Promise(r => setTimeout(r, 1200));
     return `${recipe.name}에 대한 좋은 질문이에요! 실제 API 키를 설정하면 쿼카가 직접 답해드릴게요 🐾`;
   }
@@ -428,7 +420,7 @@ export async function askQuokka(recipe: Recipe, question: string): Promise<strin
   `.trim();
 
   const text = await callClaude({
-    model: MODEL_LIGHT,
+    model: getActiveModelId(),
     max_tokens: 600,
     messages: [{
       role: 'user',
@@ -481,7 +473,7 @@ export async function analyzeYoutubeRecipe(
   ].filter(Boolean).join('\n');
 
   const text = await callClaude({
-    model: MODEL_YOUTUBE,
+    model: getActiveModelId(),
     max_tokens: 2000,
     messages: [{
       role: 'user',

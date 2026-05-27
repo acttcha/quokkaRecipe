@@ -11,6 +11,7 @@ import { Asset } from 'expo-asset';
 import { CurrentScreen } from './src/types';
 import { isOnboardingDone } from './src/services/preferences';
 import { isFridgeSetupDone } from './src/services/fridge';
+import { loadDevSettings } from './src/services/devSettings';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FridgeSetupScreen from './src/screens/FridgeSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -131,6 +132,7 @@ function AppInner() {
     Promise.all([
       isOnboardingDone(),
       isFridgeSetupDone(),
+      loadDevSettings(),
       Asset.loadAsync([
         require('./assets/background.png'),
         require('./assets/main_logo.png'),

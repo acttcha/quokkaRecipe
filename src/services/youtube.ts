@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import { YouTubeVideo } from '../types';
-import { MOCK_MODE } from './claude';
+import { getMockMode } from './devSettings';
 
 const MOCK_VIDEOS: YouTubeVideo[] = [
   {
@@ -89,7 +89,7 @@ export function formatRelativeDate(iso: string): string {
 const YT_API_KEY = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY ?? '';
 
 export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTubeVideo[]> {
-  if (MOCK_MODE || !YT_API_KEY) {
+  if (getMockMode() || !YT_API_KEY) {
     await new Promise(r => setTimeout(r, 1000));
     return MOCK_VIDEOS;
   }
