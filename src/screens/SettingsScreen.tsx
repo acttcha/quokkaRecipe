@@ -330,8 +330,25 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           </View>
         </View>
 
-        {/* 테스트용 (출시 전 제거) */}
-        <Text style={styles.sectionLabel}>🧪 테스트용</Text>
+        {/* 데이터 관리 */}
+        <Text style={styles.sectionLabel}>데이터 관리</Text>
+        <TouchableOpacity
+          style={styles.dangerCard}
+          onPress={handleResetAllData}
+          activeOpacity={0.85}
+        >
+          <View style={styles.dangerIconWrap}>
+            <Text style={styles.dangerIcon}>🗑️</Text>
+          </View>
+          <View style={styles.dangerTexts}>
+            <Text style={styles.dangerTitle}>모든 데이터 삭제</Text>
+            <Text style={styles.dangerSub}>냉장고·레시피·메모·선호도 모두 영구 삭제</Text>
+          </View>
+          <IcChevron />
+        </TouchableOpacity>
+
+        {/* 개발자모드 (출시 전 제거) */}
+        <Text style={styles.sectionLabel}>⚙️ 개발자모드</Text>
         <TouchableOpacity
           style={styles.testCard}
           onPress={handleResetUsage}
@@ -373,10 +390,12 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           <View style={styles.testTexts}>
             <Text style={styles.testTitle}>Claude API 모델 변경</Text>
             <Text style={styles.testSub}>
-              현재: {modelKey} · 모든 호출에 적용됨
+              {modelKey === 'auto'
+                ? 'auto — 비전=Sonnet, 그 외=Haiku (코드 기본값)'
+                : `${modelKey} — 모든 호출 강제 override`}
             </Text>
             <View style={styles.modelRow}>
-              {(['haiku', 'sonnet', 'opus'] as ModelKey[]).map(k => {
+              {(['auto', 'haiku', 'sonnet', 'opus'] as ModelKey[]).map(k => {
                 const active = k === modelKey;
                 return (
                   <TouchableOpacity
@@ -394,23 +413,6 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             </View>
           </View>
         </View>
-
-        {/* 데이터 관리 */}
-        <Text style={styles.sectionLabel}>데이터 관리</Text>
-        <TouchableOpacity
-          style={styles.dangerCard}
-          onPress={handleResetAllData}
-          activeOpacity={0.85}
-        >
-          <View style={styles.dangerIconWrap}>
-            <Text style={styles.dangerIcon}>🗑️</Text>
-          </View>
-          <View style={styles.dangerTexts}>
-            <Text style={styles.dangerTitle}>모든 데이터 삭제</Text>
-            <Text style={styles.dangerSub}>냉장고·레시피·메모·선호도 모두 영구 삭제</Text>
-          </View>
-          <IcChevron />
-        </TouchableOpacity>
 
       </ScrollView>
 

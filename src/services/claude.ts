@@ -1,6 +1,6 @@
 import { Recipe } from '../types';
 import { loadPreferences, preferencesToPrompt } from './preferences';
-import { getActiveModelId, getMockMode } from './devSettings';
+import { getModelIdFor, getMockMode } from './devSettings';
 
 // Anthropic API 호출은 Supabase Edge Function (claude-proxy)를 통해 프록시.
 // Claude API 키는 Supabase 서버에만 존재하고, 앱에는 publishable key만 박힘.
@@ -118,7 +118,7 @@ export async function identifyIngredients(
     return MOCK_INGREDIENTS;
   }
   const text = await callClaude({
-    model: getActiveModelId(),
+    model: getModelIdFor('vision'),
     max_tokens: 512,
     temperature: 0,
     messages: [{
@@ -176,7 +176,7 @@ export async function identifyReceiptItems(
     return ['계란', '우유', '버터', '양파', '당근', '닭가슴살', '브로콜리', '두부', '마늘', '파프리카'];
   }
   const text = await callClaude({
-    model: getActiveModelId(),
+    model: getModelIdFor('vision'),
     max_tokens: 1024,
     temperature: 0,
     messages: [{
@@ -210,7 +210,7 @@ export async function generateRecipes(ingredients: string[]): Promise<Recipe[]> 
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
   const text = await callClaude({
-    model: getActiveModelId(),
+    model: getModelIdFor('light'),
     max_tokens: 4000,
     messages: [{
       role: 'user',
@@ -339,7 +339,7 @@ export async function generateRecipeByName(dishName: string): Promise<Recipe[]> 
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
   const text = await callClaude({
-    model: getActiveModelId(),
+    model: getModelIdFor('light'),
     max_tokens: 4000,
     messages: [{
       role: 'user',
@@ -420,7 +420,7 @@ export async function askQuokka(recipe: Recipe, question: string): Promise<strin
   `.trim();
 
   const text = await callClaude({
-    model: getActiveModelId(),
+    model: getModelIdFor('light'),
     max_tokens: 600,
     messages: [{
       role: 'user',
@@ -473,7 +473,7 @@ export async function analyzeYoutubeRecipe(
   ].filter(Boolean).join('\n');
 
   const text = await callClaude({
-    model: getActiveModelId(),
+    model: getModelIdFor('light'),
     max_tokens: 2000,
     messages: [{
       role: 'user',
