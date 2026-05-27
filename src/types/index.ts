@@ -3,8 +3,13 @@ export interface YouTubeVideo {
   title: string;
   channel: string;
   viewCount: number;
-  thumbnailColor: string;
-  thumbnailEmoji: string;
+  description?: string;     // 영상 설명 (snippet.description)
+  durationSec?: number;     // 영상 길이 (초 단위)
+  publishedAt?: string;     // ISO 날짜 (snippet.publishedAt)
+  likeCount?: number;       // 좋아요 수
+  thumbnailUrl?: string;    // YouTube 썸네일 (있으면 사용)
+  thumbnailColor: string;   // 폴백 배경색
+  thumbnailEmoji: string;   // 폴백 이모지
   url: string;
 }
 

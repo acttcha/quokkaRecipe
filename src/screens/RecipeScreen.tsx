@@ -2,12 +2,12 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, TextInput, Image, ImageBackground,
-  StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions, Share,
+  StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions, Share, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
 import { identifyIngredients, generateRecipes, generateRecipeByName, askQuokka, MOCK_MODE } from '../services/claude';
-import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, cleanIngredientName } from '../services/youtube';
+import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, cleanIngredientName, formatDuration, formatRelativeDate } from '../services/youtube';
 import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
@@ -489,34 +489,65 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 <Text style={styles.ytMoreText}>유튜브에서 보기 →</Text>
               </TouchableOpacity>
             </View>
-            {videos.map((v, i) => (
-              <TouchableOpacity
-                key={v.id} style={styles.videoCard}
-                onPress={() => {
-                  haptic.light();
-                  navigate({
-                    name: 'YoutubeRecipe',
-                    directVideo: { videoId: v.id, title: v.title, channelTitle: v.channel },
-                  });
-                }}
-                activeOpacity={0.85}
-              >
-                <View style={[styles.thumb, { backgroundColor: v.thumbnailColor }]}>
-                  <Text style={styles.thumbEmoji}>{v.thumbnailEmoji}</Text>
-                  <View style={styles.rankBadge}><Text style={styles.rankText}>{i + 1}위</Text></View>
-                </View>
-                <View style={styles.videoInfo}>
-                  <Text style={styles.videoTitle} numberOfLines={2}>{v.title}</Text>
-                  <Text style={styles.videoChannel}>{v.channel}</Text>
-                  <View style={styles.viewMetaRow}>
-                    <View style={styles.viewBadge}><Text style={styles.viewText}>👁  {formatViewCount(v.viewCount)}</Text></View>
-                    <View style={styles.analyzeChip}>
-                      <Text style={styles.analyzeChipText}>🤖 분석</Text>
+            {videos.map((v, i) => {
+              const durationText = v.durationSec ? formatDuration(v.durationSec) : '';
+              const dateText = v.publishedAt ? formatRelativeDate(v.publishedAt) : '';
+              return (
+                <View key={v.id} style={styles.videoCard}>
+                  <View style={styles.videoCardTop}>
+                    <View style={[styles.thumb, { backgroundColor: v.thumbnailColor }]}>
+                      {v.thumbnailUrl ? (
+                        <Image source={{ uri: v.thumbnailUrl }} style={styles.thumbImage} resizeMode="cover" />
+                      ) : (
+                        <Text style={styles.thumbEmoji}>{v.thumbnailEmoji}</Text>
+                      )}
+                      <View style={styles.rankBadge}><Text style={styles.rankText}>{i + 1}위</Text></View>
+                      {!!durationText && (
+                        <View style={styles.durationBadge}>
+                          <Text style={styles.durationText}>{durationText}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.videoInfo}>
+                      <Text style={styles.videoTitle} numberOfLines={2}>{v.title}</Text>
+                      <Text style={styles.videoChannel}>{v.channel}</Text>
+                      <View style={styles.viewMetaRow}>
+                        <View style={styles.viewBadge}><Text style={styles.viewText}>👁  {formatViewCount(v.viewCount)}</Text></View>
+                        {!!dateText && (
+                          <View style={styles.dateBadge}><Text style={styles.dateText}>{dateText}</Text></View>
+                        )}
+                      </View>
                     </View>
                   </View>
+
+                  <View style={styles.videoActionRow}>
+                    <TouchableOpacity
+                      style={styles.videoOpenBtn}
+                      onPress={() => { haptic.light(); Linking.openURL(v.url); }}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.ytLogo}>
+                        <Text style={styles.ytLogoPlay}>▶</Text>
+                      </View>
+                      <Text style={styles.videoOpenBtnText}>유튜브로 이동</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.videoAnalyzeBtn}
+                      onPress={() => {
+                        haptic.light();
+                        navigate({
+                          name: 'YoutubeRecipe',
+                          directVideo: { videoId: v.id, title: v.title, channelTitle: v.channel },
+                        });
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.videoAnalyzeBtnText}>🤖 레시피 분석</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         )}
 
@@ -722,9 +753,42 @@ const styles = StyleSheet.create({
   ytHeaderText: { fontSize: 16, fontWeight: '800', color: Colors.ink },
   ytMoreBtn: { backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
   ytMoreText: { fontSize: 12, fontWeight: '700', color: Colors.youtube },
-  videoCard: { backgroundColor: Colors.white, borderRadius: 18, flexDirection: 'row', marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
-  thumb: { width: 110, height: 86, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  videoCard: { backgroundColor: Colors.white, borderRadius: 18, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
+  videoCardTop: { flexDirection: 'row' },
+  thumb: { width: 110, height: 86, alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' },
+  thumbImage: { width: '100%', height: '100%' },
   thumbEmoji: { fontSize: 36 },
+  durationBadge: {
+    position: 'absolute', bottom: 4, right: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 4,
+    paddingHorizontal: 4, paddingVertical: 1,
+  },
+  durationText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  dateBadge: { backgroundColor: Colors.creamSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  dateText: { fontSize: 11, fontWeight: '600', color: Colors.inkSoft },
+  videoActionRow: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: 12, paddingBottom: 12, paddingTop: 4,
+  },
+  videoOpenBtn: {
+    flex: 1, flexDirection: 'row', gap: 8,
+    paddingVertical: 10, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.line,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.white,
+  },
+  videoOpenBtnText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
+  ytLogo: {
+    width: 24, height: 17, borderRadius: 5,
+    backgroundColor: Colors.youtube,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ytLogoPlay: { color: '#FFF', fontSize: 9, marginLeft: 1 },
+  videoAnalyzeBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 12,
+    backgroundColor: Colors.forest, alignItems: 'center', justifyContent: 'center',
+  },
+  videoAnalyzeBtnText: { fontSize: 13, fontWeight: '800', color: '#FFF' },
   rankBadge: { position: 'absolute', top: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   rankText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
   videoInfo: { flex: 1, padding: 12, justifyContent: 'center' },
@@ -733,12 +797,6 @@ const styles = StyleSheet.create({
   viewMetaRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' },
   viewBadge: { backgroundColor: '#FEE2E2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   viewText: { fontSize: 11, fontWeight: '700', color: Colors.youtube },
-  analyzeChip: {
-    backgroundColor: Colors.forestSoft, borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderWidth: 1, borderColor: Colors.forest,
-  },
-  analyzeChipText: { fontSize: 11, fontWeight: '800', color: Colors.forestDeep },
 
   // 쿠팡
   coupangBar: { backgroundColor: Colors.white, borderRadius: 22, padding: 18, marginBottom: 14, marginTop: 8, borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },

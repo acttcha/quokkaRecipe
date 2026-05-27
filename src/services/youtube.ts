@@ -48,6 +48,44 @@ function formatViewCount(count: number): string {
   return `${count}회`;
 }
 
+// ISO 8601 duration ("PT1H23M45S") → 초
+export function parseIsoDuration(iso: string): number {
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return 0;
+  const h = parseInt(m[1] || '0', 10);
+  const min = parseInt(m[2] || '0', 10);
+  const s = parseInt(m[3] || '0', 10);
+  return h * 3600 + min * 60 + s;
+}
+
+// 초 → "1시간 23분" / "12분 35초" / "45초"
+export function formatDuration(sec: number): string {
+  if (sec <= 0) return '';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}시간 ${m}분`;
+  if (m > 0) return `${m}분 ${s > 0 ? `${s}초` : ''}`.trim();
+  return `${s}초`;
+}
+
+// ISO 날짜 → "3년 전" / "5개월 전" / "어제" 같은 상대 표기
+export function formatRelativeDate(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!then) return '';
+  const diffMs = Date.now() - then;
+  const day = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (day < 1) return '오늘';
+  if (day < 2) return '어제';
+  if (day < 7) return `${day}일 전`;
+  const week = Math.floor(day / 7);
+  if (week < 5) return `${week}주 전`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month}개월 전`;
+  const year = Math.floor(day / 365);
+  return `${year}년 전`;
+}
+
 const YT_API_KEY = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY ?? '';
 
 export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTubeVideo[]> {
@@ -64,27 +102,42 @@ export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTu
   if (!searchData.items) return MOCK_VIDEOS;
 
   const ids = searchData.items.map((i: any) => i.id.videoId).join(',');
-  const statsRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids}&key=${YT_API_KEY}`
+  const detailsRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${ids}&key=${YT_API_KEY}`
   );
-  const statsData = await statsRes.json();
-  const statsMap: Record<string, number> = {};
-  for (const item of statsData.items || []) {
-    statsMap[item.id] = parseInt(item.statistics.viewCount || '0', 10);
+  const detailsData = await detailsRes.json();
+  const detailMap: Record<string, { views: number; likes: number; durationSec: number }> = {};
+  for (const item of detailsData.items || []) {
+    detailMap[item.id] = {
+      views: parseInt(item.statistics?.viewCount || '0', 10),
+      likes: parseInt(item.statistics?.likeCount || '0', 10),
+      durationSec: parseIsoDuration(item.contentDetails?.duration || ''),
+    };
   }
 
   const emojis = ['🍳', '🍜', '🥘', '🍲', '🥗', '🍱'];
   const colors = ['#FFE0B2', '#C8E6C9', '#FFCDD2', '#E1BEE7', '#B3E5FC', '#DCEDC8'];
 
-  return searchData.items.map((item: any, i: number) => ({
-    id: item.id.videoId,
-    title: item.snippet.title,
-    channel: item.snippet.channelTitle,
-    viewCount: statsMap[item.id.videoId] || 0,
-    thumbnailColor: colors[i % colors.length],
-    thumbnailEmoji: emojis[i % emojis.length],
-    url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-  }));
+  return searchData.items.map((item: any, i: number) => {
+    const thumb = item.snippet.thumbnails;
+    const thumbnailUrl = thumb?.medium?.url || thumb?.high?.url || thumb?.default?.url
+      || `https://img.youtube.com/vi/${item.id.videoId}/mqdefault.jpg`;
+    const detail = detailMap[item.id.videoId] || { views: 0, likes: 0, durationSec: 0 };
+    return {
+      id: item.id.videoId,
+      title: item.snippet.title,
+      channel: item.snippet.channelTitle,
+      viewCount: detail.views,
+      likeCount: detail.likes,
+      durationSec: detail.durationSec,
+      description: item.snippet.description || '',
+      publishedAt: item.snippet.publishedAt || '',
+      thumbnailUrl,
+      thumbnailColor: colors[i % colors.length],
+      thumbnailEmoji: emojis[i % emojis.length],
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+    };
+  });
 }
 
 export function openYouTubeSearch(ingredients: string[]) {
