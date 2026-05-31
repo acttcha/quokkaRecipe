@@ -7,10 +7,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { BannerAd, BannerAdSize, TestIds } from '../services/ads';
+import { LeafIcon } from '../components/LeafIcon';
 import { NavProps } from '../types';
 import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
-import { getStatus, UsageStatus } from '../services/usage';
+import {
+  getBalance, LeafBalance, FREE_DAILY_LEAVES,
+  LEAF_COST, ACTION_LABEL, LeafAction,
+} from '../services/leaves';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
@@ -43,23 +47,15 @@ const HAS_API_KEY = !!process.env.EXPO_PUBLIC_SUPABASE_URL && !!process.env.EXPO
 
 export default function HomeScreen({ navigate }: NavProps) {
   const insets = useSafeAreaInsets();
-  const [recipeStatus, setRecipeStatus] = useState<UsageStatus | null>(null);
-  const [scanStatus, setScanStatus] = useState<UsageStatus | null>(null);
-  const [qaStatus, setQaStatus] = useState<UsageStatus | null>(null);
+  const [balance, setBalance] = useState<LeafBalance | null>(null);
   const [usageModalVisible, setUsageModalVisible] = useState(false);
   const [dishModalVisible, setDishModalVisible] = useState(false);
   const [dishQuery, setDishQuery] = useState('');
   const [mockMode, setMockMode] = useState(getMockMode());
 
   const loadUsage = useCallback(async () => {
-    const [r, s, q] = await Promise.all([
-      getStatus('recipe'),
-      getStatus('scan'),
-      getStatus('qa'),
-    ]);
-    setRecipeStatus(r);
-    setScanStatus(s);
-    setQaStatus(q);
+    const b = await getBalance();
+    setBalance(b);
     setMockMode(getMockMode());
   }, []);
 
@@ -127,20 +123,19 @@ export default function HomeScreen({ navigate }: NavProps) {
         </View>
       </View>
 
-      {/* 오늘의 사용량 칩 */}
+      {/* 잎사귀 잔액 칩 */}
       <View style={styles.usageChipWrap}>
         <TouchableOpacity
           style={styles.usageChip}
           onPress={openUsageModal}
           activeOpacity={0.75}
         >
-          <Text style={styles.usageChipEmoji}>🐾</Text>
+          <LeafIcon size={26} />
           <Text style={styles.usageChipText}>
-            오늘 남은 횟수{' '}
+            남은 잎사귀{' '}
             <Text style={styles.usageChipCount}>
-              {recipeStatus ? recipeStatus.remaining : '·'}
+              {balance ? (balance.isUnlimited ? '∞' : balance.total) : '·'}
             </Text>
-            <Text style={styles.usageChipSlash}>회</Text>
           </Text>
           <Text style={styles.usageChipArrow}>›</Text>
         </TouchableOpacity>
@@ -231,35 +226,74 @@ export default function HomeScreen({ navigate }: NavProps) {
         >
           <TouchableOpacity activeOpacity={1} style={styles.umCard}>
             <View style={styles.umHeader}>
-              <Text style={styles.umEmoji}>🐾</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.umTitle}>오늘의 사용량</Text>
-                <Text style={styles.umSub}>매일 자정에 다시 채워져요</Text>
+              <LeafIcon size={28} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.umTitle}>잎사귀 잔액</Text>
+                <Text style={styles.umSub}>
+                  {balance?.isUnlimited
+                    ? 'PRO 구독 중 — 무제한 사용 가능'
+                    : `매일 자정에 무료 잎사귀 ${FREE_DAILY_LEAVES}개가 충전돼요`}
+                </Text>
               </View>
               <TouchableOpacity onPress={() => setUsageModalVisible(false)} style={styles.umClose}>
                 <Text style={styles.umCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.umRow}>
-              <UsageStat icon="🍳" label="AI 추천" status={recipeStatus} />
-              <View style={styles.usageDivider} />
-              <UsageStat icon="📷" label="스캔" status={scanStatus} />
-              <View style={styles.usageDivider} />
-              <UsageStat icon="💬" label="Q&A" status={qaStatus} />
+            {/* 잔액 큰 표시 */}
+            <View style={styles.leafBig}>
+              <Text style={styles.leafBigVal}>
+                {balance ? (balance.isUnlimited ? '∞' : balance.total) : '·'}
+              </Text>
+              <View style={styles.leafBigUnitRow}>
+                <LeafIcon size={24} />
+                <Text style={styles.leafBigUnit}>사용 가능</Text>
+              </View>
+              {balance && !balance.isUnlimited && (
+                <Text style={styles.leafBigBreakdown}>
+                  오늘 무료 {balance.daily} · 보너스 {balance.bonus}
+                </Text>
+              )}
+            </View>
+
+            {/* 비용 안내 */}
+            <View style={styles.costGrid}>
+              {(['scan', 'recipe', 'qa'] as LeafAction[]).map(a => (
+                <View key={a} style={styles.costItem}>
+                  <Text style={styles.costLabel}>{ACTION_LABEL[a]}</Text>
+                  <View style={styles.costValRow}>
+                    <LeafIcon size={30} />
+                    <Text style={styles.costVal}>{LEAF_COST[a]}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
 
             <View style={styles.umDivider} />
 
+            {/* 충전하기 (메인 CTA) */}
+            <TouchableOpacity
+              style={styles.rechargeBtn}
+              onPress={() => {
+                setUsageModalVisible(false);
+                navigate({ name: 'LeafShop' });
+              }}
+              activeOpacity={0.85}
+            >
+              <LeafIcon size={22} />
+              <Text style={styles.rechargeBtnText}>잎사귀 충전하기</Text>
+              <Text style={styles.rechargeBtnArrow}>›</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.umAdBtn}
-              onPress={() => Alert.alert('곧 지원돼요', '광고 보고 횟수 충전 기능은 준비 중이에요 🐾')}
+              onPress={() => Alert.alert('곧 지원돼요', '광고 보고 잎사귀 충전 기능은 준비 중이에요 🐾')}
               activeOpacity={0.82}
             >
               <Text style={styles.umAdEmoji}>📺</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.umAdTitle}>광고 보고 횟수 충전</Text>
-                <Text style={styles.umAdSub}>30초 광고 1회 시청으로 보너스 적립</Text>
+                <Text style={styles.umAdTitle}>광고 보고 잎사귀 받기</Text>
+                <Text style={styles.umAdSub}>30초 광고 시청 = 잎사귀 1개</Text>
               </View>
               <Text style={styles.umAdBadge}>곧 지원</Text>
             </TouchableOpacity>
@@ -330,63 +364,6 @@ export default function HomeScreen({ navigate }: NavProps) {
   );
 }
 
-function UsageStat({
-  icon, label, status, unlimited,
-}: {
-  icon: string;
-  label: string;
-  status?: UsageStatus | null;
-  unlimited?: boolean;
-}) {
-  if (unlimited) {
-    return (
-      <View style={statStyles.item}>
-        <Text style={statStyles.icon}>{icon}</Text>
-        <Text style={statStyles.label}>{label}</Text>
-        <Text style={statStyles.valueUnlimited}>∞</Text>
-        <Text style={statStyles.subtle}>무제한</Text>
-      </View>
-    );
-  }
-  if (!status) {
-    return (
-      <View style={statStyles.item}>
-        <Text style={statStyles.icon}>{icon}</Text>
-        <Text style={statStyles.label}>{label}</Text>
-        <Text style={statStyles.value}>...</Text>
-      </View>
-    );
-  }
-  const out = status.remaining === 0;
-  const low = status.remaining === 1;
-  const color = out ? Colors.coral : low ? '#D97706' : Colors.forest;
-  return (
-    <View style={statStyles.item}>
-      <Text style={statStyles.icon}>{icon}</Text>
-      <Text style={statStyles.label}>{label}</Text>
-      <Text style={[statStyles.value, { color }]}>
-        {status.remaining}
-        <Text style={statStyles.valueSlash}>/{status.limit}</Text>
-      </Text>
-      {status.bonus > 0 ? (
-        <Text style={statStyles.bonus}>+보너스 {status.bonus}</Text>
-      ) : (
-        <Text style={statStyles.subtle}>{out ? '한도 끝' : '남음'}</Text>
-      )}
-    </View>
-  );
-}
-
-const statStyles = StyleSheet.create({
-  item: { flex: 1, alignItems: 'center', gap: 2 },
-  icon: { fontSize: 20, marginBottom: 2 },
-  label: { fontSize: 11, fontWeight: '700', color: Colors.inkMute, letterSpacing: 0.2 },
-  value: { fontSize: 18, fontWeight: '900', color: Colors.forest, marginTop: 2 },
-  valueSlash: { fontSize: 12, fontWeight: '700', color: Colors.inkMute },
-  valueUnlimited: { fontSize: 20, fontWeight: '900', color: Colors.forest, marginTop: 2 },
-  bonus: { fontSize: 10, fontWeight: '800', color: Colors.forest, marginTop: 1 },
-  subtle: { fontSize: 10, fontWeight: '600', color: Colors.inkMute, marginTop: 1 },
-});
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -411,10 +388,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6,
     ...shadow.sm,
   },
-  usageChipEmoji: { fontSize: 13 },
   usageChipText: { fontSize: 12, fontWeight: '700', color: Colors.inkSoft },
   usageChipCount: { fontSize: 13, fontWeight: '900', color: Colors.forest },
-  usageChipSlash: { fontSize: 11, fontWeight: '700', color: Colors.inkSoft },
   usageChipArrow: { fontSize: 14, color: Colors.inkMute, fontWeight: '300', marginLeft: 2 },
 
   // 사용량 모달
@@ -424,14 +399,41 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderRadius: 24,
     padding: 20, ...shadow.md,
   },
-  umHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  umEmoji: { fontSize: 22 },
+  umHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   umTitle: { fontSize: 16, fontWeight: '900', color: Colors.ink },
   umSub: { fontSize: 11, color: Colors.inkMute, fontWeight: '600', marginTop: 2 },
   umClose: { width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.creamSoft, alignItems: 'center', justifyContent: 'center' },
   umCloseText: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft },
-  umRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   umDivider: { height: 1, backgroundColor: Colors.line, opacity: 0.5, marginVertical: 14 },
+
+  leafBig: { alignItems: 'center', paddingVertical: 10 },
+  leafBigVal: { fontSize: 44, fontWeight: '900', color: Colors.forest, lineHeight: 50 },
+  leafBigUnitRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  leafBigUnit: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft },
+  leafBigBreakdown: { fontSize: 11, fontWeight: '600', color: Colors.inkMute, marginTop: 6 },
+
+  costGrid: {
+    flexDirection: 'row', gap: 8, marginTop: 14,
+    paddingHorizontal: 4,
+  },
+  costItem: {
+    flex: 1, alignItems: 'center',
+    backgroundColor: Colors.creamSoft, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 6,
+  },
+  costLabel: { fontSize: 11, fontWeight: '700', color: Colors.inkSoft, textAlign: 'center' },
+  costValRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  costVal: { fontSize: 13, fontWeight: '900', color: Colors.forest },
+
+  rechargeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.forest,
+    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16,
+    marginBottom: 10,
+    ...shadow.sm,
+  },
+  rechargeBtnText: { flex: 1, fontSize: 14, fontWeight: '800', color: '#FFF' },
+  rechargeBtnArrow: { fontSize: 18, color: '#FFF', fontWeight: '300' },
   umAdBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.creamSoft, borderRadius: 16,
@@ -444,8 +446,6 @@ const styles = StyleSheet.create({
     fontSize: 10, fontWeight: '800', color: Colors.orangeDeep,
     backgroundColor: Colors.orangeSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
-
-  usageDivider: { width: 1, height: 36, backgroundColor: Colors.line, opacity: 0.6 },
 
   bubbleOuter: { alignItems: 'center', marginTop: 18, marginBottom: 8 },
   bubble: {

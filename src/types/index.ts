@@ -63,7 +63,8 @@ export type CurrentScreen =
   | { name: 'Profile' }
   | { name: 'Fridge' }
   | { name: 'SavedRecipeDetail'; recipe: SavedRecipe }
-  | { name: 'YoutubeRecipe'; recipeName?: string; directVideo?: { videoId: string; title: string; channelTitle: string } };
+  | { name: 'YoutubeRecipe'; recipeName?: string; directVideo?: { videoId: string; title: string; channelTitle: string } }
+  | { name: 'LeafShop' };
 
 export interface NavProps {
   navigate: (screen: CurrentScreen) => void;

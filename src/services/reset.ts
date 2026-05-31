@@ -8,6 +8,15 @@ const SECURE_STORE_KEYS = [
   'onboarding_done',
   'scan_count',
   'user_nickname',
+  // 잎사귀 / 구독 / 개발자 설정
+  'leaves_daily_v1',
+  'leaves_bonus_v1',
+  'subscription_is_pro',
+  'dev_mock_mode',
+  'dev_model_key',
+  // 레거시 (구 usage 시스템 잔재 — 정리)
+  'daily_usage_v1',
+  'bonus_credits_v1',
 ];
 
 export async function resetAllData(): Promise<void> {

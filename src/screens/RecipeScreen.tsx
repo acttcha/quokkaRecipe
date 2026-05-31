@@ -8,11 +8,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
 import { identifyIngredients, generateRecipes, generateRecipeByName, askQuokka } from '../services/claude';
 import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, cleanIngredientName, formatDuration, formatRelativeDate } from '../services/youtube';
-import { saveRecipe, removeRecipe, getSavedRecipes, SaveLimitError } from '../services/savedRecipes';
+import { saveRecipe, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
-import { recordUsage } from '../services/usage';
-import { checkUsageOrAlert } from '../services/usageGate';
+import { spend } from '../services/leaves';
+import { checkLeafOrAlert } from '../services/leafGate';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { POPULAR_INGREDIENTS } from '../constants/ingredients';
@@ -83,7 +83,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   const identify = useCallback(async () => {
     // 1) 특정 요리 검색 모드 — 재료 확인 단계 스킵, 바로 레시피 생성
     if (dishName) {
-      if (!await checkUsageOrAlert('recipe')) {
+      if (!await checkLeafOrAlert('recipe')) {
         goBack();
         return;
       }
@@ -94,7 +94,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           generateRecipeByName(dishName),
           searchYouTubeRecipes([dishName]),
         ]);
-        await recordUsage('recipe');
+        await spend('recipe');
         setRecipes(found);
         setVideos(vids);
         await loadSaved();
@@ -113,14 +113,14 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       return;
     }
     // 3) 카메라 스캔 기반 (Recipes)
-    if (!await checkUsageOrAlert('scan')) {
+    if (!await checkLeafOrAlert('scan')) {
       goBack();
       return;
     }
     setStep('identifying');
     try {
       const found = await identifyIngredients(imageBase64!, mimeType!);
-      await recordUsage('scan');
+      await spend('scan');
       await addIngredients(found);
       setIngredients(found);
       setFridgeItems(await getFridgeIngredients());
@@ -136,14 +136,14 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
   const handleGetRecipes = async () => {
     if (ingredients.length === 0) { Alert.alert('앗!', '재료를 1개 이상 추가해주세요 🥺'); return; }
-    if (!await checkUsageOrAlert('recipe')) return;
+    if (!await checkLeafOrAlert('recipe')) return;
     setStep('generating');
     try {
       const [found, vids] = await Promise.all([
         generateRecipes(ingredients),
         searchYouTubeRecipes(ingredients),
       ]);
-      await recordUsage('recipe');
+      await spend('recipe');
       setRecipes(found);
       setVideos(vids);
       await loadSaved();
@@ -212,23 +212,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       await loadSaved();
     } catch (e) {
       await loadSaved(); // 실패 시 실제 상태로 복원
-      if (e instanceof SaveLimitError) {
-        haptic.warning();
-        Alert.alert(
-          '저장 한도에 도달했어요',
-          `무료로는 레시피를 ${e.limit}개까지 저장할 수 있어요.\nPRO 구독을 하면 무제한으로 저장돼요 🐾`,
-          [
-            { text: '나중에', style: 'cancel' },
-            { text: '기존 정리하기', onPress: () => navigate({ name: 'Saved' }) },
-            {
-              text: '구독하기',
-              onPress: () => Alert.alert('곧 지원돼요', '구독 결제는 준비 중이에요. 조금만 기다려주세요 🐾'),
-            },
-          ]
-        );
-      } else {
-        Alert.alert('저장 오류', String(e));
-      }
+      Alert.alert('저장 오류', String(e));
     }
   };
 
@@ -236,13 +220,13 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
   const handleAsk = async () => {
     if (!askModal || !question.trim()) return;
-    if (!await checkUsageOrAlert('qa')) return;
+    if (!await checkLeafOrAlert('qa')) return;
     haptic.light();
     setAsking(true);
     setAnswer('');
     try {
       const res = await askQuokka(askModal, question.trim());
-      await recordUsage('qa');
+      await spend('qa');
       setAnswer(res);
       haptic.success();
     } catch {

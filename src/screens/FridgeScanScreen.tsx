@@ -8,8 +8,8 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { identifyIngredients } from '../services/claude';
 import { addIngredients } from '../services/fridge';
-import { recordUsage } from '../services/usage';
-import { checkUsageOrAlert } from '../services/usageGate';
+import { spend } from '../services/leaves';
+import { checkLeafOrAlert } from '../services/leafGate';
 
 type Props = NavProps & { imageBase64: string; mimeType: string };
 type Step = 'scanning' | 'review' | 'error';
@@ -22,13 +22,13 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
   const [errorMsg, setErrorMsg] = useState('');
 
   const scan = useCallback(async () => {
-    if (!await checkUsageOrAlert('scan')) {
+    if (!await checkLeafOrAlert('scan')) {
       goBack();
       return;
     }
     try {
       const found = await identifyIngredients(imageBase64, mimeType);
-      await recordUsage('scan');
+      await spend('scan');
       setIngredients(found);
       setStep('review');
     } catch (e) {

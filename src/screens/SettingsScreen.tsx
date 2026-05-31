@@ -10,7 +10,7 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { resetOnboarding } from '../services/preferences';
 import { resetAllData } from '../services/reset';
-import { resetDailyUsage } from '../services/usage';
+import { resetDailyLeaves } from '../services/leaves';
 import {
   getMockMode, setMockMode,
   getModelKey, setModelKey,
@@ -237,8 +237,8 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   };
 
   const handleResetUsage = async () => {
-    await resetDailyUsage();
-    Alert.alert('초기화 완료', '오늘 사용량이 0으로 리셋됐어요.');
+    await resetDailyLeaves();
+    Alert.alert('충전 완료', '오늘 무료 잎사귀가 다시 채워졌어요 🍃');
   };
 
   const handleResetAllData = () => {
@@ -362,10 +362,10 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           onPress={handleResetUsage}
           activeOpacity={0.85}
         >
-          <Text style={styles.testIcon}>♻️</Text>
+          <Text style={styles.testIcon}>🍃</Text>
           <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>오늘 사용량 초기화</Text>
-            <Text style={styles.testSub}>일일 카운트를 0으로 (보너스는 유지)</Text>
+            <Text style={styles.testTitle}>오늘 무료 잎사귀 다시 채우기</Text>
+            <Text style={styles.testSub}>일일 무료를 3개로 리셋 (보너스 풀은 유지)</Text>
           </View>
           <IcChevron />
         </TouchableOpacity>
@@ -381,8 +381,8 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <Text style={styles.testTitle}>PRO 구독 (수동 강제)</Text>
             <Text style={styles.testSub}>
               {proMode
-                ? 'ON — 레시피 저장 무제한, 광고 제거 등 PRO 기능 활성'
-                : 'OFF — 무료 사용자 (저장 10개 제한)'}
+                ? 'ON — 잎사귀 무제한, 광고 제거 등 PRO 기능 활성'
+                : 'OFF — 무료 사용자'}
             </Text>
           </View>
           <View style={[styles.mockSwitch, proMode && styles.mockSwitchOn]}>

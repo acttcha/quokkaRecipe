@@ -13,6 +13,7 @@ import { isOnboardingDone } from './src/services/preferences';
 import { isFridgeSetupDone } from './src/services/fridge';
 import { loadDevSettings } from './src/services/devSettings';
 import { loadSubscription } from './src/services/subscription';
+import { loadLeaves } from './src/services/leaves';
 import { initAds } from './src/services/ads';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
@@ -30,6 +31,7 @@ import FridgeScanScreen from './src/screens/FridgeScanScreen';
 import ReceiptScanScreen from './src/screens/ReceiptScanScreen';
 import SavedRecipeDetailScreen from './src/screens/SavedRecipeDetailScreen';
 import YoutubeRecipeScreen from './src/screens/YoutubeRecipeScreen';
+import LeafShopScreen from './src/screens/LeafShopScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -139,6 +141,7 @@ function AppInner() {
       isFridgeSetupDone(),
       loadDevSettings(),
       loadSubscription(),
+      loadLeaves(),
       Asset.loadAsync([
         require('./assets/background.png'),
         require('./assets/main_logo.png'),
@@ -248,6 +251,8 @@ function AppInner() {
       return <SavedRecipeDetailScreen navigate={navigate} goBack={goBack} recipe={subScreen.recipe} />;
     if (subScreen.name === 'YoutubeRecipe')
       return <YoutubeRecipeScreen navigate={navigate} goBack={goBack} recipeName={subScreen.recipeName} directVideo={subScreen.directVideo} />;
+    if (subScreen.name === 'LeafShop')
+      return <LeafShopScreen navigate={navigate} goBack={goBack} />;
   }
 
   return (

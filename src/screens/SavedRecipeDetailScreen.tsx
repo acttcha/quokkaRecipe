@@ -15,8 +15,8 @@ import { haptic } from '../services/haptics';
 import { moveRecipeToFolder, updateRecipe } from '../services/savedRecipes';
 import { getFolders, createFolder } from '../services/folders';
 import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
-import { recordUsage } from '../services/usage';
-import { checkUsageOrAlert } from '../services/usageGate';
+import { spend } from '../services/leaves';
+import { checkLeafOrAlert } from '../services/leafGate';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
   Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
@@ -124,13 +124,13 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
 
   const handleAsk = async () => {
     if (!question.trim()) return;
-    if (!await checkUsageOrAlert('qa')) return;
+    if (!await checkLeafOrAlert('qa')) return;
     haptic.light();
     setAsking(true);
     setAnswer('');
     try {
       const res = await askQuokka(r, question.trim());
-      await recordUsage('qa');
+      await spend('qa');
       setAnswer(res);
       haptic.success();
       await addQAEntry(r.id, question.trim(), res);

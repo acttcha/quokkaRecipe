@@ -4,8 +4,6 @@ import * as SecureStore from 'expo-secure-store';
 // 지금은 IAP 미연동 — 개발자모드에서 수동 토글로 테스트.
 // 나중에 expo-iap / RevenueCat 으로 갈아끼울 때 setIsPro() 호출 지점만 바꾸면 됨.
 
-export const SAVE_LIMIT_FREE = 10;
-
 const PRO_KEY = 'subscription_is_pro';
 
 let _isPro = false;
@@ -26,12 +24,4 @@ export function isPro(): boolean {
 export async function setIsPro(v: boolean): Promise<void> {
   _isPro = v;
   await SecureStore.setItemAsync(PRO_KEY, v ? '1' : '0');
-}
-
-export function getSaveLimit(): number {
-  return _isPro ? Infinity : SAVE_LIMIT_FREE;
-}
-
-export function canSaveMore(currentCount: number): boolean {
-  return currentCount < getSaveLimit();
 }
