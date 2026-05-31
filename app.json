@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.actcha.quokkarecipe",
-      "versionCode": 17,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"
@@ -50,7 +50,14 @@
           "photosPermission": "갤러리에서 재료 사진을 선택하기 위해 접근이 필요합니다."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4900218913057183~9532509739",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ]
     ],
     "extra": {
       "eas": {

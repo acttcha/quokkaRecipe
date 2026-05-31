@@ -1,7 +1,15 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Recipe, SavedRecipe } from '../types';
+import { getSaveLimit } from './subscription';
 
 const FILE_PATH = FileSystem.documentDirectory + 'saved_recipes.json';
+
+export class SaveLimitError extends Error {
+  constructor(public limit: number, public current: number) {
+    super(`저장 한도(${limit}개)에 도달했어요.`);
+    this.name = 'SaveLimitError';
+  }
+}
 
 export async function getSavedRecipes(): Promise<SavedRecipe[]> {
   try {
@@ -22,6 +30,11 @@ export async function saveRecipe(
   const saved = await getSavedRecipes();
   const existing = saved.find(r => r.name === recipe.name);
   if (existing) return;
+
+  const limit = getSaveLimit();
+  if (saved.length >= limit) {
+    throw new SaveLimitError(limit, saved.length);
+  }
 
   const newEntry: SavedRecipe = {
     ...recipe,

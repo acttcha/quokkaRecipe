@@ -9,6 +9,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { NavProps, SavedRecipe, Folder } from '../types';
 import { getSavedRecipes, removeRecipe, moveRecipeToFolder } from '../services/savedRecipes';
 import { getFolders, createFolder, deleteFolder } from '../services/folders';
+import { isPro, SAVE_LIMIT_FREE } from '../services/subscription';
 import { getFridgeIngredients, getMissingIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SearchIcon } from '../components/ui';
@@ -250,7 +251,11 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
             </TouchableOpacity>
           </View>
           <Text style={styles.headerSub}>
-            {recipes.length > 0 ? `${recipes.length}개의 레시피를 보관 중이에요` : '아직 저장된 레시피가 없어요'}
+            {(() => {
+              if (recipes.length === 0) return '아직 저장된 레시피가 없어요';
+              if (isPro()) return `${recipes.length}개의 레시피를 보관 중이에요 · PRO`;
+              return `${recipes.length} / ${SAVE_LIMIT_FREE}개 보관 중`;
+            })()}
           </Text>
         </View>
         <View style={styles.headerHairline} />
@@ -260,6 +265,29 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
           </CircleIconButton>
         </View>
       </LinearGradient>
+
+      {/* 저장 한도 안내 — 무료 사용자 + 한도 임박/도달 시 */}
+      {!isPro() && recipes.length >= SAVE_LIMIT_FREE - 2 && (
+        <TouchableOpacity
+          style={[
+            styles.limitBanner,
+            recipes.length >= SAVE_LIMIT_FREE && styles.limitBannerFull,
+          ]}
+          onPress={() => Alert.alert('곧 지원돼요', 'PRO 구독은 준비 중이에요. 조금만 기다려주세요 🐾')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.limitBannerIcon}>{recipes.length >= SAVE_LIMIT_FREE ? '🔒' : '⚠️'}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.limitBannerTitle}>
+              {recipes.length >= SAVE_LIMIT_FREE
+                ? '저장 한도에 도달했어요'
+                : `저장 한도까지 ${SAVE_LIMIT_FREE - recipes.length}개 남았어요`}
+            </Text>
+            <Text style={styles.limitBannerSub}>PRO 구독하면 무제한으로 저장 가능</Text>
+          </View>
+          <Text style={styles.limitBannerArrow}>›</Text>
+        </TouchableOpacity>
+      )}
 
       {/* 폴더 탭 바 — 터치 시작 즉시 부모 PanResponder 차단 */}
       <View
@@ -586,6 +614,20 @@ const styles = StyleSheet.create({
   ytAnalyzeBtnText: { fontSize: 12, fontWeight: '700', color: '#CC0000' },
   headerHairline: { height: 1, backgroundColor: Colors.line, opacity: 0.5 },
   headerSearchBtn: { position: 'absolute', top: 60, right: 18 },
+
+  limitBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 16, marginTop: 10,
+    paddingVertical: 11, paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1, borderColor: '#FCD34D',
+  },
+  limitBannerFull: { backgroundColor: '#FFE4E6', borderColor: '#FCA5A5' },
+  limitBannerIcon: { fontSize: 20 },
+  limitBannerTitle: { fontSize: 13, fontWeight: '800', color: Colors.ink },
+  limitBannerSub: { fontSize: 11, fontWeight: '600', color: Colors.inkSoft, marginTop: 2 },
+  limitBannerArrow: { fontSize: 18, color: Colors.inkMute, fontWeight: '300' },
 
   folderBar: {
     backgroundColor: Colors.cream,

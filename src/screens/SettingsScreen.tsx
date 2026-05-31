@@ -16,6 +16,7 @@ import {
   getModelKey, setModelKey,
   ModelKey,
 } from '../services/devSettings';
+import { isPro, setIsPro } from '../services/subscription';
 
 const APP_VERSION = (require('../../app.json') as { expo: { version: string } }).expo.version;
 
@@ -202,12 +203,19 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [deleting, setDeleting] = useState(false);
   const [mockMode, setMockModeState] = useState(getMockMode());
   const [modelKey, setModelKeyState] = useState<ModelKey>(getModelKey());
+  const [proMode, setProModeState] = useState(isPro());
   const canDelete = deleteInput.trim() === DELETE_CONFIRM_PHRASE && !deleting;
 
   const handleToggleMock = async () => {
     const next = !mockMode;
     setMockModeState(next);
     await setMockMode(next);
+  };
+
+  const handleTogglePro = async () => {
+    const next = !proMode;
+    setProModeState(next);
+    await setIsPro(next);
   };
 
   const handlePickModel = async (k: ModelKey) => {
@@ -360,6 +368,28 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <Text style={styles.testSub}>일일 카운트를 0으로 (보너스는 유지)</Text>
           </View>
           <IcChevron />
+        </TouchableOpacity>
+
+        {/* PRO 구독 토글 — 진짜 IAP 붙기 전까지 수동 강제 */}
+        <TouchableOpacity
+          style={styles.testCard}
+          onPress={handleTogglePro}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.testIcon}>{proMode ? '💎' : '🆓'}</Text>
+          <View style={styles.testTexts}>
+            <Text style={styles.testTitle}>PRO 구독 (수동 강제)</Text>
+            <Text style={styles.testSub}>
+              {proMode
+                ? 'ON — 레시피 저장 무제한, 광고 제거 등 PRO 기능 활성'
+                : 'OFF — 무료 사용자 (저장 10개 제한)'}
+            </Text>
+          </View>
+          <View style={[styles.mockSwitch, proMode && styles.mockSwitchOn]}>
+            <Text style={[styles.mockSwitchText, proMode && styles.mockSwitchTextOn]}>
+              {proMode ? 'PRO' : 'FREE'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         {/* 임시 모드 — API 호출 없이 목 데이터로 화면 이동만 */}

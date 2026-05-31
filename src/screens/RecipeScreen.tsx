@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
 import { identifyIngredients, generateRecipes, generateRecipeByName, askQuokka } from '../services/claude';
 import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, cleanIngredientName, formatDuration, formatRelativeDate } from '../services/youtube';
-import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
+import { saveRecipe, removeRecipe, getSavedRecipes, SaveLimitError } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { recordUsage } from '../services/usage';
@@ -212,7 +212,23 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       await loadSaved();
     } catch (e) {
       await loadSaved(); // 실패 시 실제 상태로 복원
-      Alert.alert('저장 오류', String(e));
+      if (e instanceof SaveLimitError) {
+        haptic.warning();
+        Alert.alert(
+          '저장 한도에 도달했어요',
+          `무료로는 레시피를 ${e.limit}개까지 저장할 수 있어요.\nPRO 구독을 하면 무제한으로 저장돼요 🐾`,
+          [
+            { text: '나중에', style: 'cancel' },
+            { text: '기존 정리하기', onPress: () => navigate({ name: 'Saved' }) },
+            {
+              text: '구독하기',
+              onPress: () => Alert.alert('곧 지원돼요', '구독 결제는 준비 중이에요. 조금만 기다려주세요 🐾'),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('저장 오류', String(e));
+      }
     }
   };
 

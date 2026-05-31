@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
+import { BannerAd, BannerAdSize, TestIds } from '../services/ads';
 import { NavProps } from '../types';
 import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
@@ -203,6 +204,17 @@ export default function HomeScreen({ navigate }: NavProps) {
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* AdMob 배너 — 개발 중엔 무조건 TestIds (자기클릭 = 계정정지 위험)
+            Expo Go 에선 BannerAd 가 null 이라 안 렌더링됨 */}
+        {BannerAd && (
+          <View style={styles.bannerWrap}>
+            <BannerAd
+              unitId={TestIds.BANNER}
+              size={BannerAdSize.BANNER}
+            />
+          </View>
+        )}
       </View>
 
       {/* 사용량 상세 모달 */}
@@ -474,6 +486,7 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
+  bannerWrap: { alignItems: 'center', marginTop: 8 },
   tileIconGreen: { backgroundColor: Colors.forestSoft, borderWidth: 1, borderColor: '#CFE5D6' },
   tileIconOrange: { backgroundColor: Colors.orangeSoft, borderWidth: 1, borderColor: '#F2994A40' },
   tileTitle: { fontSize: 13, fontWeight: '700', color: Colors.ink },

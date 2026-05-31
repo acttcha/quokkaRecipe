@@ -12,6 +12,11 @@ import { CurrentScreen } from './src/types';
 import { isOnboardingDone } from './src/services/preferences';
 import { isFridgeSetupDone } from './src/services/fridge';
 import { loadDevSettings } from './src/services/devSettings';
+import { loadSubscription } from './src/services/subscription';
+import { initAds } from './src/services/ads';
+
+// AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
+initAds().catch(() => { /* 무시 — 광고 실패가 앱을 막진 않음 */ });
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import FridgeSetupScreen from './src/screens/FridgeSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -133,6 +138,7 @@ function AppInner() {
       isOnboardingDone(),
       isFridgeSetupDone(),
       loadDevSettings(),
+      loadSubscription(),
       Asset.loadAsync([
         require('./assets/background.png'),
         require('./assets/main_logo.png'),
