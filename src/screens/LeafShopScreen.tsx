@@ -8,7 +8,7 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { LeafIcon } from '../components/LeafIcon';
 import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
-import { getBalance, LeafBalance } from '../services/leaves';
+import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES } from '../services/leaves';
 import { haptic } from '../services/haptics';
 
 export default function LeafShopScreen({ goBack }: NavProps) {
@@ -123,7 +123,7 @@ export default function LeafShopScreen({ goBack }: NavProps) {
           <Text style={styles.subTitle}>쿼카 패스</Text>
           <Text style={styles.subPrice}>₩4,900<Text style={styles.subPricePer}>/월</Text></Text>
           <View style={styles.subBenefits}>
-            <Text style={styles.subBenefit}>✓ 잎사귀 매달 100개</Text>
+            <Text style={styles.subBenefit}>✓ 잎사귀 매달 {PRO_MONTHLY_LEAVES}개</Text>
             <Text style={styles.subBenefit}>✓ 광고 완전 제거</Text>
           </View>
           <Text style={styles.subHint}>하루 3회 이상 사용 시 더 이득</Text>

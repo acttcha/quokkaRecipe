@@ -3,7 +3,7 @@ import { isPro } from './subscription';
 
 // 잎사귀 (쿼카 테마 토큰) — AI 호출 단위로 소비.
 //   재료 인식 / 영수증 인식 / 레시피 생성 / 유튜브 분석 = 1🍃
-//   쿼카 질문 (가벼운 Haiku 호출) = 0.1🍃
+//   쿼카 질문 (가벼운 호출) = 0.2🍃
 // PRO 구독자는 모든 잎사귀 체크/차감 우회 (무제한).
 
 export type LeafAction = 'scan' | 'recipe' | 'qa';
@@ -11,7 +11,7 @@ export type LeafAction = 'scan' | 'recipe' | 'qa';
 export const LEAF_COST: Record<LeafAction, number> = {
   scan: 1,
   recipe: 1,
-  qa: 0.1,
+  qa: 0.2,
 };
 
 export const ACTION_LABEL: Record<LeafAction, string> = {
@@ -22,9 +22,10 @@ export const ACTION_LABEL: Record<LeafAction, string> = {
 
 export const FREE_DAILY_LEAVES = 3;   // 매일 자정 리셋되는 무료 잎사귀
 export const WELCOME_BONUS = 2;        // 첫 실행 1회만 — 초기 경험용
-export const AD_REWARD = 1;            // 광고 1회 보상 (보너스 풀로)
+export const AD_REWARD = 2;            // 광고 1회 보상 (보너스 풀로)
 export const AD_DAILY_LIMIT = 5;            // 하루 보상형 광고 시청 최대 횟수
-export const AD_COOLDOWN_MS = 60 * 60 * 1000; // 광고 간 최소 간격 (1시간) — 연달아 몰아보기 방지
+export const AD_COOLDOWN_MS = 30 * 60 * 1000; // 광고 간 최소 간격 (30분) — 연달아 몰아보기 방지
+export const PRO_MONTHLY_LEAVES = 130;      // 쿼카 패스(PRO) 월 지급 잎사귀 (실제 지급은 IAP 연동 시)
 
 const DAILY_KEY = 'leaves_daily_v1';
 const BONUS_KEY = 'leaves_bonus_v1';

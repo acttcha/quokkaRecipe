@@ -15,11 +15,11 @@ export interface LeafPackage {
 }
 
 export const LEAF_PACKAGES: LeafPackage[] = [
-  { id: 'handful', name: '잎사귀 한 줌',   image: require('../../assets/product1.webp'), price: 1100,  leaves: 12 },
-  { id: 'bundle',  name: '잎사귀 한 다발', image: require('../../assets/product2.webp'), price: 3300,  leaves: 50,  bonusPercent: 25, featured: true },
-  { id: 'armful',  name: '잎사귀 한 아름', image: require('../../assets/product3.webp'), price: 5500,  leaves: 100, bonusPercent: 50 },
-  { id: 'basket',  name: '잎사귀 한 바구니', image: require('../../assets/product4.webp'), price: 11000, leaves: 220, bonusPercent: 83 },
-  { id: 'box',     name: '잎사귀 한 박스', image: require('../../assets/product5.webp'), price: 33000, leaves: 800, bonusPercent: 123 },
+  { id: 'handful', name: '잎사귀 한 줌',   image: require('../../assets/product1.webp'), price: 1100,  leaves: 15 },
+  { id: 'bundle',  name: '잎사귀 한 다발', image: require('../../assets/product2.webp'), price: 3300,  leaves: 60,   bonusPercent: 33,  featured: true },
+  { id: 'armful',  name: '잎사귀 한 아름', image: require('../../assets/product3.webp'), price: 5500,  leaves: 125,  bonusPercent: 67 },
+  { id: 'basket',  name: '잎사귀 한 바구니', image: require('../../assets/product4.webp'), price: 11000, leaves: 300,  bonusPercent: 100 },
+  { id: 'box',     name: '잎사귀 한 박스', image: require('../../assets/product5.webp'), price: 33000, leaves: 1000, bonusPercent: 122 },
 ];
 
 export function formatKrw(n: number): string {

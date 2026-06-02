@@ -7,7 +7,7 @@ import { showRewardedAd, isExpoGo } from './ads';
 
 /**
  * 보상형 광고를 보여주고, 보상 획득 시 잎사귀를 지급한다.
- * 제한: 하루 AD_DAILY_LIMIT 회 + 광고 간 1시간 쿨다운 (무한/연달아 파밍 방지).
+ * 제한: 하루 AD_DAILY_LIMIT 회 + 광고 간 30분 쿨다운 (무한/연달아 파밍 방지).
  * @returns 잎사귀가 실제로 충전되면 true.
  */
 export async function watchAdForLeaves(): Promise<boolean> {
@@ -28,7 +28,7 @@ export async function watchAdForLeaves(): Promise<boolean> {
     const min = Math.ceil(cooldown / 60000);
     Alert.alert(
       '조금 뒤에 다시 와주세요 ⏳',
-      `광고 충전은 1시간에 한 번이에요.\n약 ${min}분 뒤에 다시 가능해요 🐾`,
+      `광고 충전은 30분에 한 번이에요.\n약 ${min}분 뒤에 다시 가능해요 🐾`,
     );
     return false;
   }
