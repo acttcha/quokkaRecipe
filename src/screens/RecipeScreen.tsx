@@ -14,6 +14,7 @@ import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredie
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { AdBanner } from '../components/AdBanner';
+import { LeafIcon } from '../components/LeafIcon';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { POPULAR_INGREDIENTS } from '../constants/ingredients';
@@ -69,6 +70,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   const [tab, setTab]               = useState<Tab>('ai');
   const [errorMsg, setErrorMsg]     = useState('');
   const [savedNames, setSavedNames] = useState<Set<string>>(new Set());
+  const [seenNames, setSeenNames]   = useState<string[]>([]);  // 재추천 시 제외할 (이미 본) 요리명 누적
+  const [reRolling, setReRolling]   = useState(false);
 
   // 쿼카 질문 모달
   const [askModal, setAskModal]   = useState<Recipe | null>(null);
@@ -97,6 +100,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         ]);
         await spend('recipe');
         setRecipes(found);
+        setSeenNames(found.map(r => r.name));
         setVideos(vids);
         await loadSaved();
         setStep('results');
@@ -146,12 +150,35 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       ]);
       await spend('recipe');
       setRecipes(found);
+      setSeenNames(found.map(r => r.name));
       setVideos(vids);
       await loadSaved();
       setStep('results');
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : String(e));
       setStep('error');
+    }
+  };
+
+  // 다른 레시피 추천받기 — 이미 본 요리는 제외하고 새 2개. 1잎사귀 소비.
+  const handleMoreRecipes = async () => {
+    if (reRolling) return;
+    if (!await checkLeafOrAlert('recipe')) return;
+    haptic.medium();
+    setReRolling(true);
+    try {
+      const found = dishName
+        ? await generateRecipeByName(dishName, seenNames)
+        : await generateRecipes(ingredients, seenNames);
+      await spend('recipe');
+      setRecipes(found);
+      setSeenNames(prev => [...prev, ...found.map(r => r.name)]);
+      setExpanded(null);
+      await loadSaved();
+    } catch (e: unknown) {
+      Alert.alert('앗, 오류가 생겼어요', e instanceof Error ? e.message : String(e));
+    } finally {
+      setReRolling(false);
     }
   };
 
@@ -480,6 +507,28 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             </View>
           );
         })}
+
+        {/* 다른 레시피 추천받기 — 이미 본 건 제외, 1잎사귀 */}
+        {tab === 'ai' && recipes.length > 0 && (
+          <TouchableOpacity
+            style={[styles.moreBtn, reRolling && styles.moreBtnDisabled]}
+            onPress={handleMoreRecipes}
+            disabled={reRolling}
+            activeOpacity={0.85}
+          >
+            {reRolling ? (
+              <ActivityIndicator size="small" color={Colors.forest} />
+            ) : (
+              <>
+                <Text style={styles.moreBtnText}>🔄  다른 레시피 추천받기</Text>
+                <View style={styles.moreBtnLeaf}>
+                  <LeafIcon size={15} />
+                  <Text style={styles.moreBtnLeafText}>1</Text>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* 유튜브 */}
         {tab === 'youtube' && (
@@ -822,6 +871,16 @@ const styles = StyleSheet.create({
 
   homeBtn: { backgroundColor: Colors.white, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 12, borderWidth: 1, borderColor: Colors.line },
   homeBtnText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
+
+  moreBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: Colors.forestSoft, borderRadius: 16, paddingVertical: 15, marginTop: 6,
+    borderWidth: 1.5, borderColor: '#CFE5D6', minHeight: 52,
+  },
+  moreBtnDisabled: { opacity: 0.6 },
+  moreBtnText: { fontSize: 14, fontWeight: '800', color: Colors.forestDeep },
+  moreBtnLeaf: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  moreBtnLeafText: { fontSize: 13, fontWeight: '900', color: Colors.forestDeep },
 
   // 모달
   modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },

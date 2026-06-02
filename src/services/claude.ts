@@ -202,126 +202,55 @@ JSON 배열로만 응답. 다른 텍스트 X.
   return filterVagueIngredients(extractJson<string[]>(text));
 }
 
-export async function generateRecipes(ingredients: string[]): Promise<Recipe[]> {
+// 레시피 생성 공통 지침 (정적) — system 으로 분리해 prompt caching 대상으로 둠.
+// 매 호출 동일한 prefix 라, 5분 내 재호출(재추천)이면 캐시 적중해 입력 비용↓.
+// (단, 모델별 최소 캐시 토큰 조건 충족 시에만 실제 캐싱됨)
+const RECIPE_SYSTEM = `당신은 한국 가정식에 능숙한 요리사입니다. 사용자의 보유 재료로 만들 수 있는, 실제로 흔히 먹는 레시피 2가지를 추천합니다.
+
+가장 중요: 재료를 조합해 새로운 요리를 창작하지 마세요. 실제로 존재하고 사람들이 자주 먹는 보편적인 요리(예: 김치볶음밥, 된장찌개, 제육볶음, 계란말이, 비빔밥, 잔치국수, 오므라이스, 김치찌개) 중에서 보유 재료로 만들 수 있는 것을 고르세요. 재료를 억지로 엮은 괴상한 요리(예: 초고추장 라면, 매실 볶음밥) 절대 금지.
+
+규칙:
+1. 보유 재료를 다 쓸 필요 없음 — 한 요리에 어울리는 재료만 쓰고 나머지는 무시. 양념·소스(간장·초고추장·매실청·쌈장 등)는 간 맞추는 용도일 뿐 주재료가 아님.
+2. 이름은 그 요리의 익숙한 실제 이름으로(재료 나열식 금지). 갖지 않은 재료·소스를 이름에 넣지 말 것(김치 없이 "김치찌개" X).
+3. 모든 재료에 분량 표기(예: 간장 1큰술, 마늘 3쪽). "적당량·약간" 금지.
+4. steps 4~6단계, 각 단계 한 문장, 시간·분량 구체적으로(예: "중불에서 3분"). 한 요리를 위해 다른 요리를 먼저 만들지 말 것.
+5. 정확한 한국어만, 사용자 선호([사용자 선호도]) 반영.
+
+설명·머리말 없이 아래 JSON 배열로만 응답:
+[{"name":"요리명","description":"한 줄 설명","cookTime":"15분","servings":2,"difficulty":"Easy","ingredients":["재료 분량",...],"steps":["단계",...],"nutrition":{"calories":520,"protein":22,"carbs":65,"fat":18}}]
+difficulty는 Easy·Medium·Hard 중 하나, nutrition은 1인분 kcal/g.`;
+
+// 요리명 기반 생성 공통 지침 (정적)
+const DISH_SYSTEM = `당신은 한식·양식·중식·일식·동남아 등 다양한 요리에 능숙한 가정식 요리사입니다. 사용자가 만들고 싶다고 한 요리의 표준 레시피를 서로 다른 변형 2가지로 간결하게 작성합니다.
+
+[필수 규칙]
+1. 요청 요리의 보편적·표준 형태로 작성. 스타일(한/중/일/양식) 명시 시 그대로, 모호하면 한국 가정식 기준.
+2. 변형 2가지는 서로 달라야 함(예: 김치찌개 → 기본/참치). 변형이 애매하면 분량·난이도 변형(간단/정식).
+3. 분량 필수: 모든 재료에 정확한 분량. "적당량·약간·조금" 금지.
+4. steps: 4~6단계, 각 단계 한 문장. 재료·분량·시간 구체적으로. 모호한 표현 금지.
+5. 한 요리를 위해 다른 요리를 먼저 만들지 말 것. 정확한 한국어만, 오타·영어 혼용 금지.
+
+[출력] 설명·머리말 없이 아래 JSON 배열로만 응답:
+[{"name":"변형 이름","description":"한 줄 설명","cookTime":"30분","servings":2,"difficulty":"Easy","ingredients":["재료 분량",...],"steps":["단계",...],"nutrition":{"calories":320,"protein":18,"carbs":24,"fat":12}}]
+difficulty는 Easy·Medium·Hard 중 하나, nutrition은 1인분 kcal/g.`;
+
+export async function generateRecipes(ingredients: string[], exclude: string[] = []): Promise<Recipe[]> {
   if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
     return MOCK_RECIPES;
   }
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
+  const excludeText = exclude.length
+    ? `\n제외(이미 추천함, 겹치지 말 것): ${exclude.join(', ')}`
+    : '';
   const text = await callClaude({
     model: getModelIdFor('light'),
-    max_tokens: 4000,
+    max_tokens: 2200,
+    system: [{ type: 'text', text: RECIPE_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{
       role: 'user',
-      content: `당신은 한식·양식·중식·일식·동남아 등 다양한 요리에 능숙한 가정식 요리사입니다. 사용자의 보유 재료와 선호 스타일에 맞춰 실용적인 레시피 3가지를 추천하세요. 재료 구성을 보고 가장 자연스럽게 어울리는 요리 스타일로 만드세요.
-
-재료: ${ingredients.join(', ')}${prefText}
-
-━━━━━━━━━━━━━━━━━━━━━━
-🚨 절대 규칙 (위반 시 잘못된 응답)
-━━━━━━━━━━━━━━━━━━━━━━
-
-【1】 이름 정직성
-요리 이름(name)에 들어간 재료/소스는 반드시 ingredients 배열에 있어야 합니다.
-없는 재료의 이름을 붙이는 것은 거짓말입니다.
-
-❌ 거짓 이름 예시 (절대 금지):
-  - "짜장 우동" → ingredients 에 춘장/짜장소스 없음
-  - "카레 덮밥" → ingredients 에 카레가루 없음
-  - "토마토 파스타" → ingredients 에 토마토 없음
-  - "김치찌개" → ingredients 에 김치 없음
-
-✅ 정직한 이름 예시:
-  - 간장 + 소면 + 양파 → "간장 소면 볶음" (○)
-  - 계란 + 토마토 → "토마토 계란 볶음" (○)
-  - 김치 + 두부 → "김치 두부 찌개" (○)
-
-판단이 애매하면 무난한 가정식 이름 (○○볶음, ○○찌개, ○○국, ○○덮밥)을 사용하세요.
-
-【2】 표준 조리법 (불필요한 중간 요리 금지)
-한 요리를 만들기 위해 다른 요리를 먼저 만들지 마세요. 표준 한국 가정식 조리법만 따르세요.
-
-❌ 절대 하지 말 것:
-  - "계란볶음밥" 만들 때 → "먼저 계란말이를 부쳐서 한입 크기로 자른다" (X)
-  - "김치찌개" 만들 때 → "먼저 김치전을 부쳐서 잘라 넣는다" (X)
-  - "두부조림" 만들 때 → "먼저 두부튀김을 만들어서 양념에 졸인다" (X)
-
-✅ 표준 조리법:
-  - "계란볶음밥" → "계란을 풀어 팬에 넣고 휘저어가며 밥과 함께 볶는다"
-  - "김치찌개" → "김치를 한입 크기로 썰어 냄비에 넣고 끓인다"
-  - "두부조림" → "두부를 도톰하게 썰어 양념장과 함께 졸인다"
-
-재료는 그대로 손질해서 바로 쓰는 게 원칙. 2차 가공 단계를 넣지 마세요.
-
-【3】 분량 표기 의무
-ingredients 의 모든 항목에 정확한 분량 명시. "적당량" "약간" "조금" 같은 모호한 표현 금지.
-
-❌ 금지: "고기 적당량", "양념 약간", "마늘 조금"
-✅ 필수: "돼지고기 앞다리살 200g", "간장 2큰술", "마늘 3쪽", "물 400ml"
-
-단위는 한국 가정에서 쓰는 것: 큰술, 작은술, 컵, g, ml, 개, 대, 쪽, 묶음 등.
-
-【4】 steps 구체성
-각 단계는:
-  - 어떤 재료를 얼마나 쓰는지 명시
-  - 시간/불세기 명시 (예: "중불에서 5분")
-  - 초보자가 따라할 수 있을 정도로 명확
-
-❌ 금지: "마늘을 볶는다", "양념하여 끓인다", "적당히 익힌다"
-✅ 필수: "달군 팬에 식용유 2큰술을 두르고 다진 마늘 1큰술을 중불에서 30초간 볶는다"
-
-steps 는 5~8단계. 너무 적으면 모호하고, 너무 많으면 복잡함.
-
-【5】 정확한 한국어
-모든 텍스트는 정확한 한국어로 작성. 오타, 영어 혼용 절대 금지.
-
-❌ 금지: "참기rings을 뿌린다", "올리브 oil 두른다", "salt 약간"
-✅ 필수: "참기름을 뿌린다", "올리브오일을 두른다", "소금 약간"
-
-━━━━━━━━━━━━━━━━━━━━━━
-💡 응답 전 자체 점검
-━━━━━━━━━━━━━━━━━━━━━━
-응답하기 전에 본인 응답을 점검하세요:
-
-1. 요리 이름의 모든 단어가 ingredients 에 실제로 존재하는가? (없으면 이름 변경)
-2. steps 에 "먼저 ○○를 만들어서..." 같은 중간 요리 단계가 있는가? (있으면 제거하고 표준 방법으로)
-3. 모든 ingredients 에 분량이 적혀있는가? (없으면 추가)
-4. 한국어가 정확하고 오타/영어 혼용 없는가?
-5. 사용자 선호도 (위 [사용자 선호도] 섹션)를 다 반영했는가?
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
-[
-  {
-    "name": "돼지고기 김치볶음밥",
-    "description": "남은 김치와 돼지고기로 빠르게 만드는 든든한 한끼.",
-    "cookTime": "15분",
-    "servings": 2,
-    "difficulty": "Easy",
-    "ingredients": [
-      "찬밥 2공기 (약 400g)",
-      "돼지고기 앞다리살 150g",
-      "신김치 1컵 (약 200g)",
-      "대파 1대",
-      "간장 1큰술",
-      "참기름 1작은술",
-      "식용유 2큰술"
-    ],
-    "steps": [
-      "돼지고기는 한입 크기로 썰고, 신김치는 잘게 다지고, 대파는 송송 썬다.",
-      "달군 팬에 식용유 2큰술을 두르고 돼지고기를 중불에서 3분간 노릇하게 볶는다.",
-      "다진 김치와 간장 1큰술을 넣고 김치가 부드러워질 때까지 2분간 더 볶는다.",
-      "찬밥 2공기를 넣고 김치 양념이 골고루 배도록 3분간 볶는다.",
-      "불을 끄고 참기름 1작은술과 송송 썬 대파를 올려 마무리한다."
-    ],
-    "nutrition": { "calories": 520, "protein": 22, "carbs": 65, "fat": 18 }
-  }
-]
-
-difficulty는 반드시 "Easy", "Medium", "Hard" 중 하나입니다.
-nutrition은 1인분 기준 kcal/g 단위입니다.`,
+      content: `재료: ${ingredients.join(', ')}${prefText}${excludeText}`,
     }],
   });
   return extractJson<Recipe[]>(text);
@@ -331,76 +260,23 @@ nutrition은 1인분 기준 kcal/g 단위입니다.`,
  * 특정 요리 이름으로 레시피 생성 (재료 기반이 아닌, 요리 이름 기반)
  * - 사용자가 만들고 싶은 요리를 입력 → 표준 레시피 1~3가지 변형 반환
  */
-export async function generateRecipeByName(dishName: string): Promise<Recipe[]> {
+export async function generateRecipeByName(dishName: string, exclude: string[] = []): Promise<Recipe[]> {
   if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
     return MOCK_RECIPES;
   }
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
+  const excludeText = exclude.length
+    ? `\n제외(이미 추천한 변형, 겹치지 말 것): ${exclude.join(', ')}`
+    : '';
   const text = await callClaude({
     model: getModelIdFor('light'),
-    max_tokens: 4000,
+    max_tokens: 2200,
+    system: [{ type: 'text', text: DISH_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{
       role: 'user',
-      content: `당신은 한식·양식·중식·일식·동남아 등 다양한 요리에 능숙한 가정식 요리사입니다. 사용자가 만들고 싶다고 한 요리의 표준 레시피를 작성하세요.
-
-사용자가 만들고 싶은 요리: ${dishName}${prefText}
-
-━━━━━━━━━━━━━━━━━━━━━━
-🚨 절대 규칙
-━━━━━━━━━━━━━━━━━━━━━━
-
-【1】 요리 이름의 표준 해석
-"${dishName}" 의 일반적이고 표준적인 형태로 레시피를 작성하세요.
-사용자가 한국식/중식/일식/양식 등을 명시했으면 그 스타일로.
-모호하면 가장 보편적인 한국 가정 버전으로.
-
-【2】 3가지 변형 제공
-같은 요리의 서로 다른 변형/응용 3가지를 제시하세요.
-예: "김치찌개" → ["기본 김치찌개", "참치 김치찌개", "돼지고기 김치찌개"]
-예: "파스타" → ["크림 새우 파스타", "토마토 미트볼 파스타", "알리오 올리오"]
-예: "오믈렛" → ["기본 오믈렛", "치즈 햄 오믈렛", "야채 오믈렛"]
-변형이 명확하지 않은 요리면 분량/난이도 변형으로 (1인분/2인분, 간단/정식).
-
-【3】 분량 표기 의무
-ingredients 의 모든 항목에 정확한 분량 명시.
-❌ 금지: "적당량", "약간", "조금"
-✅ 필수: "돼지고기 200g", "간장 2큰술", "마늘 3쪽"
-
-【4】 steps 구체성
-각 단계에 분량, 시간, 불세기 명시. 5~8단계.
-❌ 금지: "마늘을 볶는다", "양념해서 끓인다"
-✅ 필수: "달군 팬에 식용유 2큰술을 두르고 다진 마늘 1큰술을 중불에서 30초간 볶는다"
-
-【5】 표준 조리법 (불필요한 중간 요리 금지)
-한 요리 만드는데 다른 요리 먼저 만들지 마세요.
-❌ "계란볶음밥" 만들 때 계란말이 부쳐서 자르기
-✅ 계란을 풀어 직접 스크램블
-
-【6】 정확한 한국어
-오타, 영어 혼용 금지.
-❌ "참기rings", "올리브 oil"
-✅ "참기름", "올리브오일"
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-응답은 JSON 배열로만. 다른 텍스트 X.
-[
-  {
-    "name": "${dishName} (변형 이름)",
-    "description": "1-2문장 설명",
-    "cookTime": "30분",
-    "servings": 2,
-    "difficulty": "Easy",
-    "ingredients": ["재료 1 분량", "재료 2 분량", ...],
-    "steps": ["1단계 상세", "2단계 상세", ...],
-    "nutrition": { "calories": 320, "protein": 18, "carbs": 24, "fat": 12 }
-  }
-]
-
-difficulty는 "Easy", "Medium", "Hard" 중 하나.
-nutrition은 1인분 기준 kcal/g.`,
+      content: `만들고 싶은 요리: ${dishName}${prefText}${excludeText}`,
     }],
   });
   return extractJson<Recipe[]>(text);
