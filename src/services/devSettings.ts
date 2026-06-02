@@ -22,21 +22,37 @@ export const MODEL_IDS: Record<Exclude<ModelKey, 'auto'>, string> = {
   opus: 'claude-opus-4-7',
 };
 
+// 레시피 생성 전용 모델 선택 (개발자 모드). Gemini/Claude 혼용 가능.
+export type RecipeModelKey = 'gemini-flash' | 'gemini-flash-lite' | 'claude-haiku' | 'claude-sonnet';
+
+export const RECIPE_MODELS: Record<RecipeModelKey, { provider: 'gemini' | 'claude'; model: string; label: string }> = {
+  'gemini-flash':      { provider: 'gemini', model: 'gemini-2.5-flash',          label: 'Gemini Flash' },
+  'gemini-flash-lite': { provider: 'gemini', model: 'gemini-2.5-flash-lite',     label: 'Gemini Lite' },
+  'claude-haiku':      { provider: 'claude', model: 'claude-haiku-4-5-20251001', label: 'Claude Haiku' },
+  'claude-sonnet':     { provider: 'claude', model: 'claude-sonnet-4-6',         label: 'Claude Sonnet' },
+};
+
 const MOCK_KEY = 'dev_mock_mode';
 const MODEL_KEY = 'dev_model_key';
+const RECIPE_MODEL_KEY = 'dev_recipe_model_key';
 
 let _mockMode = false;
 let _modelKey: ModelKey = 'auto';
+let _recipeModelKey: RecipeModelKey = 'gemini-flash';
 
 export async function loadDevSettings(): Promise<void> {
   try {
-    const [mock, model] = await Promise.all([
+    const [mock, model, recipeModel] = await Promise.all([
       SecureStore.getItemAsync(MOCK_KEY),
       SecureStore.getItemAsync(MODEL_KEY),
+      SecureStore.getItemAsync(RECIPE_MODEL_KEY),
     ]);
     _mockMode = mock === '1';
     if (model === 'auto' || model === 'haiku' || model === 'sonnet' || model === 'opus') {
       _modelKey = model;
+    }
+    if (recipeModel && Object.prototype.hasOwnProperty.call(RECIPE_MODELS, recipeModel)) {
+      _recipeModelKey = recipeModel as RecipeModelKey;
     }
   } catch {
     // 무시 — 디폴트로 진행
@@ -64,4 +80,13 @@ export function getModelIdFor(tier: ModelTier): string {
 export async function setModelKey(k: ModelKey): Promise<void> {
   _modelKey = k;
   await SecureStore.setItemAsync(MODEL_KEY, k);
+}
+
+export function getRecipeModelKey(): RecipeModelKey {
+  return _recipeModelKey;
+}
+
+export async function setRecipeModelKey(k: RecipeModelKey): Promise<void> {
+  _recipeModelKey = k;
+  await SecureStore.setItemAsync(RECIPE_MODEL_KEY, k);
 }

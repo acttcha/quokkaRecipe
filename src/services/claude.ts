@@ -1,6 +1,7 @@
 import { Recipe } from '../types';
 import { loadPreferences, preferencesToPrompt } from './preferences';
-import { getModelIdFor, getMockMode } from './devSettings';
+import { getMockMode, getRecipeModelKey, RECIPE_MODELS } from './devSettings';
+import { callGemini } from './gemini';
 
 // Anthropic API 호출은 Supabase Edge Function (claude-proxy)를 통해 프록시.
 // Claude API 키는 Supabase 서버에만 존재하고, 앱에는 publishable key만 박힘.
@@ -117,17 +118,9 @@ export async function identifyIngredients(
     await new Promise(r => setTimeout(r, 1500));
     return MOCK_INGREDIENTS;
   }
-  const text = await callClaude({
-    model: getModelIdFor('vision'),
-    max_tokens: 512,
-    temperature: 0,
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
-        {
-          type: 'text',
-          text: `사진의 식재료/음식을 한국어 일반명으로 식별하세요.
+  const text = await callGemini({
+    system: '사진 속 식재료/음식을 한국어 일반명으로 정확히 식별하는 어시스턴트입니다.',
+    userText: `사진의 식재료/음식을 한국어 일반명으로 식별하세요.
 
 [작업 순서]
 1. 사진에 보이는 것을 1문장으로 설명.
@@ -160,9 +153,9 @@ export async function identifyIngredients(
 확실한 것이 없으면:
 판단 불가.
 []`,
-        },
-      ],
-    }],
+    images: [{ mimeType, dataBase64: imageBase64 }],
+    maxOutputTokens: 512,
+    temperature: 0,
   });
   return filterVagueIngredients(extractJson<string[]>(text));
 }
@@ -175,17 +168,9 @@ export async function identifyReceiptItems(
     await new Promise(r => setTimeout(r, 1500));
     return ['계란', '우유', '버터', '양파', '당근', '닭가슴살', '브로콜리', '두부', '마늘', '파프리카'];
   }
-  const text = await callClaude({
-    model: getModelIdFor('vision'),
-    max_tokens: 1024,
-    temperature: 0,
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
-        {
-          type: 'text',
-          text: `한국 마트/슈퍼마켓 영수증입니다. 영수증에서 또렷이 읽히는 식재료 또는 식품을 한국어로 추출하세요.
+  const text = await callGemini({
+    system: '한국 마트/슈퍼마켓 영수증에서 식재료·식품을 정확히 추출하는 어시스턴트입니다.',
+    userText: `한국 마트/슈퍼마켓 영수증입니다. 영수증에서 또렷이 읽히는 식재료 또는 식품을 한국어로 추출하세요.
 
 - 브랜드명·용량·수량은 제거하고 핵심 이름만 (예: "풀무원 국산콩두부 300g" → "두부")
 - 가공식품/완성식품이면 그대로 (예: 단팥빵, 김밥)
@@ -195,16 +180,15 @@ export async function identifyReceiptItems(
 JSON 배열로만 응답. 다른 텍스트 X.
 예: ["계란", "우유", "양파", "닭가슴살"]
 아무것도 명확하지 않으면: []`,
-        },
-      ],
-    }],
+    images: [{ mimeType, dataBase64: imageBase64 }],
+    maxOutputTokens: 1024,
+    temperature: 0,
   });
   return filterVagueIngredients(extractJson<string[]>(text));
 }
 
-// 레시피 생성 공통 지침 (정적) — system 으로 분리해 prompt caching 대상으로 둠.
-// 매 호출 동일한 prefix 라, 5분 내 재호출(재추천)이면 캐시 적중해 입력 비용↓.
-// (단, 모델별 최소 캐시 토큰 조건 충족 시에만 실제 캐싱됨)
+// 레시피 생성 공통 지침 — Gemini systemInstruction 으로 전달.
+// 레시피 생성/요리명 생성은 Gemini 2.5 Flash 사용(상식·비용 우위). 비전/Q&A 는 아직 Claude.
 const RECIPE_SYSTEM = `당신은 한국 가정식에 능숙한 요리사입니다. 사용자의 보유 재료로 만들 수 있는, 실제로 흔히 먹는 레시피 2가지를 추천합니다.
 
 가장 중요: 재료를 조합해 새로운 요리를 창작하지 마세요. 실제로 존재하고 사람들이 자주 먹는 보편적인 요리(예: 김치볶음밥, 된장찌개, 제육볶음, 계란말이, 비빔밥, 잔치국수, 오므라이스, 김치찌개) 중에서 보유 재료로 만들 수 있는 것을 고르세요. 재료를 억지로 엮은 괴상한 요리(예: 초고추장 라면, 매실 볶음밥) 절대 금지.
@@ -234,6 +218,20 @@ const DISH_SYSTEM = `당신은 한식·양식·중식·일식·동남아 등 다
 [{"name":"변형 이름","description":"한 줄 설명","cookTime":"30분","servings":2,"difficulty":"Easy","ingredients":["재료 분량",...],"steps":["단계",...],"nutrition":{"calories":320,"protein":18,"carbs":24,"fat":12}}]
 difficulty는 Easy·Medium·Hard 중 하나, nutrition은 1인분 kcal/g.`;
 
+// 레시피 JSON 생성 — 개발자 모드에서 고른 모델(Gemini/Claude)로 라우팅.
+async function generateRecipeJson(system: string, userText: string): Promise<string> {
+  const cfg = RECIPE_MODELS[getRecipeModelKey()];
+  if (cfg.provider === 'gemini') {
+    return callGemini({ system, userText, maxOutputTokens: 2200, jsonOutput: true, model: cfg.model });
+  }
+  return callClaude({
+    model: cfg.model,
+    max_tokens: 2200,
+    system: [{ type: 'text', text: system }],
+    messages: [{ role: 'user', content: userText }],
+  });
+}
+
 export async function generateRecipes(ingredients: string[], exclude: string[] = []): Promise<Recipe[]> {
   if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
@@ -244,15 +242,10 @@ export async function generateRecipes(ingredients: string[], exclude: string[] =
   const excludeText = exclude.length
     ? `\n제외(이미 추천함, 겹치지 말 것): ${exclude.join(', ')}`
     : '';
-  const text = await callClaude({
-    model: getModelIdFor('light'),
-    max_tokens: 2200,
-    system: [{ type: 'text', text: RECIPE_SYSTEM, cache_control: { type: 'ephemeral' } }],
-    messages: [{
-      role: 'user',
-      content: `재료: ${ingredients.join(', ')}${prefText}${excludeText}`,
-    }],
-  });
+  const text = await generateRecipeJson(
+    RECIPE_SYSTEM,
+    `재료: ${ingredients.join(', ')}${prefText}${excludeText}`,
+  );
   return extractJson<Recipe[]>(text);
 }
 
@@ -270,15 +263,10 @@ export async function generateRecipeByName(dishName: string, exclude: string[] =
   const excludeText = exclude.length
     ? `\n제외(이미 추천한 변형, 겹치지 말 것): ${exclude.join(', ')}`
     : '';
-  const text = await callClaude({
-    model: getModelIdFor('light'),
-    max_tokens: 2200,
-    system: [{ type: 'text', text: DISH_SYSTEM, cache_control: { type: 'ephemeral' } }],
-    messages: [{
-      role: 'user',
-      content: `만들고 싶은 요리: ${dishName}${prefText}${excludeText}`,
-    }],
-  });
+  const text = await generateRecipeJson(
+    DISH_SYSTEM,
+    `만들고 싶은 요리: ${dishName}${prefText}${excludeText}`,
+  );
   return extractJson<Recipe[]>(text);
 }
 
@@ -295,21 +283,14 @@ export async function askQuokka(recipe: Recipe, question: string): Promise<strin
 조리법: ${recipe.steps.join(' → ')}
   `.trim();
 
-  const text = await callClaude({
-    model: getModelIdFor('light'),
-    max_tokens: 600,
-    messages: [{
-      role: 'user',
-      content: `당신은 요리를 잘 아는 친근한 쿼카 캐릭터입니다. 아래 레시피에 대해 사용자가 질문했습니다.
-친근하고 짧게 (3-5문장) 한국어로 답해주세요. 이모지를 적절히 사용해 귀엽게 답변해주세요.
-절대로 **굵은 글씨**, *기울임*, 마크다운 기호를 사용하지 마세요. 일반 텍스트로만 답해주세요.
-
-[레시피 정보]
+  const text = await callGemini({
+    system: `당신은 요리를 잘 아는 친근한 쿼카 캐릭터입니다. 사용자의 레시피 질문에 친근하고 짧게(3-5문장) 한국어로 답하고, 이모지를 적절히 사용해 귀엽게 답변하세요. 절대로 **굵은 글씨**, *기울임* 등 마크다운 기호를 쓰지 말고 일반 텍스트로만 답하세요.`,
+    userText: `[레시피 정보]
 ${recipeContext}
 
 [질문]
 ${question}`,
-    }],
+    maxOutputTokens: 600,
   });
   return text.trim();
 }
@@ -348,28 +329,16 @@ export async function analyzeYoutubeRecipe(
     hasTranscript  ? `\n자막 내용:\n${transcript.slice(0, 4000)}` : '',
   ].filter(Boolean).join('\n');
 
-  const text = await callClaude({
-    model: getModelIdFor('light'),
-    max_tokens: 2000,
-    messages: [{
-      role: 'user',
-      content: `다음 유튜브 요리 영상 정보를 분석해서 레시피를 추출해주세요.
+  const text = await callGemini({
+    system: `유튜브 요리 영상 정보(제목·설명·자막)를 분석해 레시피를 추출하는 어시스턴트입니다. 자막이 있으면 자막의 실제 조리 흐름을 중심으로, 영상 설명의 재료 정보를 함께 활용해 최대한 정확하고 상세하게 작성하세요. 자막이 없으면 설명과 제목만으로 최선을 다해 추출하세요.
 
-${parts}
+반드시 다음 JSON 형식으로만 응답:
+{"recipeName":"요리 이름","cookTime":"예: 30분","servings":2,"difficulty":"Easy 또는 Medium 또는 Hard","ingredients":["재료1 (양)","재료2 (양)"],"steps":["1단계 상세 설명","2단계 상세 설명"],"tips":["팁1","팁2"]}`,
+    userText: `다음 유튜브 요리 영상 정보를 분석해서 레시피를 추출해주세요.
 
-자막이 있다면 자막의 실제 조리 흐름을 중심으로, 영상 설명의 재료 정보를 함께 활용해서 최대한 정확하고 상세하게 작성해주세요. 자막이 없다면 영상 설명과 제목만으로 최선을 다해 추출해주세요.
-
-반드시 다음 JSON 형식으로만 응답하세요 (JSON 이외의 텍스트 없이):
-{
-  "recipeName": "요리 이름",
-  "cookTime": "예: 30분",
-  "servings": 2,
-  "difficulty": "Easy 또는 Medium 또는 Hard",
-  "ingredients": ["재료1 (양)", "재료2 (양)"],
-  "steps": ["1단계 상세 설명", "2단계 상세 설명"],
-  "tips": ["팁1", "팁2"]
-}`,
-    }],
+${parts}`,
+    maxOutputTokens: 2000,
+    jsonOutput: true,
   });
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);

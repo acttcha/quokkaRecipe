@@ -15,6 +15,7 @@ import {
   getMockMode, setMockMode,
   getModelKey, setModelKey,
   ModelKey,
+  getRecipeModelKey, setRecipeModelKey, RecipeModelKey, RECIPE_MODELS,
 } from '../services/devSettings';
 import { isPro, setIsPro } from '../services/subscription';
 
@@ -341,6 +342,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [deleting, setDeleting] = useState(false);
   const [mockMode, setMockModeState] = useState(getMockMode());
   const [modelKey, setModelKeyState] = useState<ModelKey>(getModelKey());
+  const [recipeModelKey, setRecipeModelKeyState] = useState<RecipeModelKey>(getRecipeModelKey());
   const [proMode, setProModeState] = useState(isPro());
   const canDelete = deleteInput.trim() === DELETE_CONFIRM_PHRASE && !deleting;
 
@@ -360,6 +362,12 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     if (k === modelKey) return;
     setModelKeyState(k);
     await setModelKey(k);
+  };
+
+  const handlePickRecipeModel = async (k: RecipeModelKey) => {
+    if (k === recipeModelKey) return;
+    setRecipeModelKeyState(k);
+    await setRecipeModelKey(k);
   };
 
   const handleFeedback = () => {
@@ -574,6 +582,35 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
                   >
                     <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
                       {k}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        {/* 레시피 생성 모델 변경 */}
+        <View style={styles.testCard}>
+          <Text style={styles.testIcon}>🍳</Text>
+          <View style={styles.testTexts}>
+            <Text style={styles.testTitle}>레시피 생성 모델</Text>
+            <Text style={styles.testSub}>
+              현재: {RECIPE_MODELS[recipeModelKey].label} — 재료/요리명 레시피 생성에만 적용
+            </Text>
+            <View style={styles.modelRow}>
+              {(Object.keys(RECIPE_MODELS) as RecipeModelKey[]).map(k => {
+                const active = k === recipeModelKey;
+                const short = RECIPE_MODELS[k].label.replace('Gemini ', 'G·').replace('Claude ', 'C·');
+                return (
+                  <TouchableOpacity
+                    key={k}
+                    style={[styles.modelChip, active && styles.modelChipActive]}
+                    onPress={() => handlePickRecipeModel(k)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
+                      {short}
                     </Text>
                   </TouchableOpacity>
                 );
