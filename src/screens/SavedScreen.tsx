@@ -12,6 +12,7 @@ import { getFolders, createFolder, deleteFolder } from '../services/folders';
 import { getFridgeIngredients, getMissingIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SearchIcon } from '../components/ui';
+import { AdBanner } from '../components/AdBanner';
 import { haptic } from '../services/haptics';
 
 const { width } = Dimensions.get('window');
@@ -444,6 +445,8 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
             );
           })
         )}
+
+        {recipes.length > 0 && <AdBanner />}
       </ScrollView>
 
       {/* 폴더 이동 모달 (bottom sheet) */}

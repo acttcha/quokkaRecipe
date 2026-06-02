@@ -23,9 +23,12 @@ export const ACTION_LABEL: Record<LeafAction, string> = {
 export const FREE_DAILY_LEAVES = 3;   // 매일 자정 리셋되는 무료 잎사귀
 export const WELCOME_BONUS = 2;        // 첫 실행 1회만 — 초기 경험용
 export const AD_REWARD = 1;            // 광고 1회 보상 (보너스 풀로)
+export const AD_DAILY_LIMIT = 5;            // 하루 보상형 광고 시청 최대 횟수
+export const AD_COOLDOWN_MS = 60 * 60 * 1000; // 광고 간 최소 간격 (1시간) — 연달아 몰아보기 방지
 
 const DAILY_KEY = 'leaves_daily_v1';
 const BONUS_KEY = 'leaves_bonus_v1';
+const AD_KEY = 'leaves_ad_v1';
 
 interface DailyState {
   date: string;     // YYYY-MM-DD
@@ -136,6 +139,50 @@ export async function addBonusLeaves(amount: number): Promise<void> {
   await setBonus(bonus);
 }
 
+// ── 보상형 광고 시청 제한 (일일 상한 + 쿨다운) ──────────────
+interface AdState {
+  date: string;        // YYYY-MM-DD (count 의 기준일)
+  count: number;       // 오늘 시청한 광고 횟수
+  lastWatchAt: number; // 마지막 시청 시각 (epoch ms) — 쿨다운 계산용, 날짜와 무관
+}
+
+async function getAdState(): Promise<AdState> {
+  const today = todayStr();
+  const raw = await SecureStore.getItemAsync(AD_KEY);
+  if (!raw) return { date: today, count: 0, lastWatchAt: 0 };
+  try {
+    const parsed: AdState = JSON.parse(raw);
+    // 날짜가 바뀌면 count 만 리셋. lastWatchAt(쿨다운)은 자정과 무관하게 유지.
+    if (parsed.date !== today) {
+      return { date: today, count: 0, lastWatchAt: parsed.lastWatchAt ?? 0 };
+    }
+    return { date: parsed.date, count: parsed.count, lastWatchAt: parsed.lastWatchAt ?? 0 };
+  } catch {
+    return { date: today, count: 0, lastWatchAt: 0 };
+  }
+}
+
+/** 오늘 남은 광고 시청 가능 횟수 (0 이면 일일 한도 소진). */
+export async function getAdWatchesLeft(): Promise<number> {
+  const { count } = await getAdState();
+  return Math.max(0, AD_DAILY_LIMIT - count);
+}
+
+/** 쿨다운 남은 시간(ms). 0 이면 지금 시청 가능. */
+export async function getAdCooldownRemaining(): Promise<number> {
+  const { lastWatchAt } = await getAdState();
+  if (!lastWatchAt) return 0;
+  return Math.max(0, AD_COOLDOWN_MS - (Date.now() - lastWatchAt));
+}
+
+/** 광고 1회 시청 기록 (보상 지급에 성공한 직후 호출). */
+export async function recordAdWatch(): Promise<void> {
+  const state = await getAdState();
+  state.count += 1;
+  state.lastWatchAt = Date.now();
+  await SecureStore.setItemAsync(AD_KEY, JSON.stringify(state));
+}
+
 /**
  * 잎사귀 시스템 초기 워밍업 (App 시작 시 호출).
  * SecureStore 의 첫 실행 분기를 트리거 (웰컴 보너스 지급).
@@ -145,8 +192,11 @@ export async function loadLeaves(): Promise<void> {
 }
 
 /**
- * 테스트용 — 일일 잎사귀를 다시 5로 채움 (보너스는 유지)
+ * 테스트용 — 일일 잎사귀 + 광고 시청 제한(횟수/쿨다운)을 리셋 (보너스는 유지)
  */
 export async function resetDailyLeaves(): Promise<void> {
-  await SecureStore.deleteItemAsync(DAILY_KEY);
+  await Promise.all([
+    SecureStore.deleteItemAsync(DAILY_KEY),
+    SecureStore.deleteItemAsync(AD_KEY),
+  ]);
 }

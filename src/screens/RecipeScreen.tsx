@@ -13,6 +13,7 @@ import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
+import { AdBanner } from '../components/AdBanner';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { POPULAR_INGREDIENTS } from '../constants/ingredients';
@@ -576,6 +577,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         <TouchableOpacity style={styles.homeBtn} onPress={() => navigate({ name: 'Home' })}>
           <Text style={styles.homeBtnText}>🏠  처음으로 돌아가기</Text>
         </TouchableOpacity>
+
+        <AdBanner />
       </ScrollView>
 
       {/* 쿼카 질문 모달 */}

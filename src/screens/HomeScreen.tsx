@@ -2,19 +2,20 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   StatusBar, Alert, Image, ImageBackground, Dimensions, AppState, Modal,
-  TextInput, Keyboard,
+  TextInput, Keyboard, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
-import { BannerAd, BannerAdSize, TestIds } from '../services/ads';
 import { LeafIcon } from '../components/LeafIcon';
 import { NavProps } from '../types';
 import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
 import {
   getBalance, LeafBalance, FREE_DAILY_LEAVES,
-  LEAF_COST, ACTION_LABEL, LeafAction,
+  LEAF_COST, ACTION_LABEL, LeafAction, AD_REWARD,
+  getAdWatchesLeft, getAdCooldownRemaining, AD_DAILY_LIMIT,
 } from '../services/leaves';
+import { watchAdForLeaves } from '../services/leafGate';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
@@ -52,10 +53,17 @@ export default function HomeScreen({ navigate }: NavProps) {
   const [dishModalVisible, setDishModalVisible] = useState(false);
   const [dishQuery, setDishQuery] = useState('');
   const [mockMode, setMockMode] = useState(getMockMode());
+  const [adLoading, setAdLoading] = useState(false);
+  const [adLeft, setAdLeft] = useState(AD_DAILY_LIMIT);
+  const [adCooldownLeft, setAdCooldownLeft] = useState(0);  // ms
 
   const loadUsage = useCallback(async () => {
-    const b = await getBalance();
+    const [b, left, cooldown] = await Promise.all([
+      getBalance(), getAdWatchesLeft(), getAdCooldownRemaining(),
+    ]);
     setBalance(b);
+    setAdLeft(left);
+    setAdCooldownLeft(cooldown);
     setMockMode(getMockMode());
   }, []);
 
@@ -92,6 +100,22 @@ export default function HomeScreen({ navigate }: NavProps) {
     haptic.light();
     loadUsage();
     setUsageModalVisible(true);
+  };
+
+  const handleWatchAd = async () => {
+    if (adLoading) return;
+    haptic.light();
+    setAdLoading(true);
+    try {
+      const ok = await watchAdForLeaves();
+      if (ok) {
+        haptic.success();
+        await loadUsage();
+        Alert.alert('잎사귀 충전 완료 🍃', `잎사귀 ${AD_REWARD}개가 충전됐어요!`);
+      }
+    } finally {
+      setAdLoading(false);
+    }
   };
 
   const handleRecommend = async () => {
@@ -199,17 +223,6 @@ export default function HomeScreen({ navigate }: NavProps) {
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* AdMob 배너 — 개발 중엔 무조건 TestIds (자기클릭 = 계정정지 위험)
-            Expo Go 에선 BannerAd 가 null 이라 안 렌더링됨 */}
-        {BannerAd && (
-          <View style={styles.bannerWrap}>
-            <BannerAd
-              unitId={TestIds.BANNER}
-              size={BannerAdSize.BANNER}
-            />
-          </View>
-        )}
       </View>
 
       {/* 사용량 상세 모달 */}
@@ -285,18 +298,39 @@ export default function HomeScreen({ navigate }: NavProps) {
               <Text style={styles.rechargeBtnArrow}>›</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.umAdBtn}
-              onPress={() => Alert.alert('곧 지원돼요', '광고 보고 잎사귀 충전 기능은 준비 중이에요 🐾')}
-              activeOpacity={0.82}
-            >
-              <Text style={styles.umAdEmoji}>📺</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.umAdTitle}>광고 보고 잎사귀 받기</Text>
-                <Text style={styles.umAdSub}>30초 광고 시청 = 잎사귀 1개</Text>
-              </View>
-              <Text style={styles.umAdBadge}>곧 지원</Text>
-            </TouchableOpacity>
+            {(() => {
+              const cooldownMin = Math.ceil(adCooldownLeft / 60000);
+              const onCooldown = adCooldownLeft > 0;
+              const dailyDone = adLeft <= 0;
+              const disabled = adLoading || dailyDone || onCooldown;
+              return (
+                <TouchableOpacity
+                  style={[styles.umAdBtn, disabled && styles.umAdBtnDisabled]}
+                  onPress={handleWatchAd}
+                  disabled={disabled}
+                  activeOpacity={0.82}
+                >
+                  <Text style={styles.umAdEmoji}>📺</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.umAdTitle}>광고 보고 잎사귀 받기</Text>
+                    <Text style={styles.umAdSub}>
+                      {adLoading
+                        ? '광고를 불러오는 중…'
+                        : dailyDone
+                          ? '오늘 충전 완료 · 내일 다시 가능해요'
+                          : onCooldown
+                            ? `약 ${cooldownMin}분 뒤에 다시 가능해요`
+                            : `광고 시청 = 잎사귀 ${AD_REWARD}개 · 오늘 ${adLeft}/${AD_DAILY_LIMIT}회`}
+                    </Text>
+                  </View>
+                  {adLoading
+                    ? <ActivityIndicator size="small" color={Colors.orangeDeep} />
+                    : <Text style={styles.umAdBadge}>
+                        {dailyDone ? '내일 만나요' : onCooldown ? '⏳' : `+${AD_REWARD}🍃`}
+                      </Text>}
+                </TouchableOpacity>
+              );
+            })()}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -439,6 +473,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.creamSoft, borderRadius: 16,
     padding: 14, borderWidth: 1, borderColor: Colors.line,
   },
+  umAdBtnDisabled: { opacity: 0.6 },
   umAdEmoji: { fontSize: 24 },
   umAdTitle: { fontSize: 13, fontWeight: '800', color: Colors.ink },
   umAdSub: { fontSize: 11, color: Colors.inkSoft, marginTop: 2, fontWeight: '600' },
@@ -486,7 +521,6 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  bannerWrap: { alignItems: 'center', marginTop: 8 },
   tileIconGreen: { backgroundColor: Colors.forestSoft, borderWidth: 1, borderColor: '#CFE5D6' },
   tileIconOrange: { backgroundColor: Colors.orangeSoft, borderWidth: 1, borderColor: '#F2994A40' },
   tileTitle: { fontSize: 13, fontWeight: '700', color: Colors.ink },

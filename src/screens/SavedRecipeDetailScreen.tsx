@@ -17,6 +17,7 @@ import { getFolders, createFolder } from '../services/folders';
 import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
+import { AdBanner } from '../components/AdBanner';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
   Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
@@ -499,6 +500,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           })()}
         </View>
 
+        <AdBanner />
       </ScrollView>
 
       {/* ── 쿼카 질문 모달 ── */}
