@@ -16,6 +16,7 @@ import {
   getAdWatchesLeft, getAdCooldownRemaining, AD_DAILY_LIMIT,
 } from '../services/leaves';
 import { watchAdForLeaves } from '../services/leafGate';
+import { loadPreferences } from '../services/preferences';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
@@ -56,14 +57,16 @@ export default function HomeScreen({ navigate }: NavProps) {
   const [adLoading, setAdLoading] = useState(false);
   const [adLeft, setAdLeft] = useState(AD_DAILY_LIMIT);
   const [adCooldownLeft, setAdCooldownLeft] = useState(0);  // ms
+  const [dishServings, setDishServings] = useState(2);  // 요리검색 인분 (기본=선호도값)
 
   const loadUsage = useCallback(async () => {
-    const [b, left, cooldown] = await Promise.all([
-      getBalance(), getAdWatchesLeft(), getAdCooldownRemaining(),
+    const [b, left, cooldown, prefs] = await Promise.all([
+      getBalance(), getAdWatchesLeft(), getAdCooldownRemaining(), loadPreferences(),
     ]);
     setBalance(b);
     setAdLeft(left);
     setAdCooldownLeft(cooldown);
+    setDishServings(prefs.servings);
     setMockMode(getMockMode());
   }, []);
 
@@ -87,7 +90,7 @@ export default function HomeScreen({ navigate }: NavProps) {
     Keyboard.dismiss();
     setDishQuery('');
     setDishModalVisible(false);
-    navigate({ name: 'DishRecipe', dishName: q });
+    navigate({ name: 'DishRecipe', dishName: q, servings: dishServings });
   };
 
   const closeDishModal = () => {
@@ -383,6 +386,24 @@ export default function HomeScreen({ navigate }: NavProps) {
               ))}
             </View>
 
+            {/* 몇 인분 */}
+            <Text style={styles.dishServingsLabel}>👥 몇 인분</Text>
+            <View style={styles.dishServingsChips}>
+              {[1, 2, 3, 4].map(n => {
+                const active = dishServings === n;
+                return (
+                  <TouchableOpacity
+                    key={n}
+                    style={[styles.dishServingsChip, active && styles.dishServingsChipActive]}
+                    onPress={() => { haptic.light(); setDishServings(n); }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.dishServingsChipText, active && styles.dishServingsChipTextActive]}>{n}인분</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <TouchableOpacity
               style={[styles.dishSubmit, !dishQuery.trim() && styles.dishSubmitDisabled]}
               onPress={handleSearchDish}
@@ -546,6 +567,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dishQuickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
+  dishServingsLabel: { fontSize: 13, fontWeight: '800', color: Colors.ink, marginBottom: 8 },
+  dishServingsChips: { flexDirection: 'row', gap: 6, marginBottom: 16 },
+  dishServingsChip: {
+    flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10,
+    backgroundColor: Colors.creamSoft, borderWidth: 1.5, borderColor: Colors.line,
+  },
+  dishServingsChipActive: { backgroundColor: Colors.forestSoft, borderColor: Colors.forest },
+  dishServingsChipText: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft },
+  dishServingsChipTextActive: { color: Colors.forestDeep, fontWeight: '800' },
   dishQuickChip: {
     backgroundColor: Colors.creamDark, borderRadius: 999,
     paddingHorizontal: 12, paddingVertical: 6,

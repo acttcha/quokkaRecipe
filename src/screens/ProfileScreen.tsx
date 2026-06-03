@@ -57,6 +57,7 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
     { icon: '👨‍🍳', label: '요리 실력',   value: prefs.cookingSkill || '설정 전' },
     { icon: '⚠️', label: '알레르기',    value: prefs.allergies.length > 0 ? prefs.allergies.join(', ') : '없음' },
     { icon: '🍽️', label: '선호 스타일', value: prefs.cuisineStyles.length > 0 ? prefs.cuisineStyles.join(', ') : '설정 전' },
+    { icon: '👥', label: '기본 인분',   value: prefs.servings ? `${prefs.servings}인분` : '설정 전' },
   ];
 
   return (

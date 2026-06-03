@@ -5,6 +5,7 @@ export interface UserPreferences {
   dietType: string;          // 식단 유형
   cookingSkill: string;      // 요리 실력
   cuisineStyles: string[];   // 선호 음식 스타일
+  servings: number;          // 보통 몇 인분 요리하는지 (레시피 생성 기본 인분)
 }
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -14,6 +15,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   dietType: '',
   cookingSkill: '',
   cuisineStyles: [],
+  servings: 2,
 };
 
 export const PREFERENCES_KEY = 'user_preferences';

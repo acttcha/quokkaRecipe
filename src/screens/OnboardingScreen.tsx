@@ -74,6 +74,16 @@ const STEPS = [
     ],
   },
   {
+    id: 'servings', type: 'single' as const,
+    question: '보통 몇 인분으로\n요리하세요?',
+    options: [
+      { label: '1인분 (혼밥)', emoji: '🙂', value: '1' },
+      { label: '2인분', emoji: '🍽️', value: '2' },
+      { label: '3인분', emoji: '👨‍👩‍👦', value: '3' },
+      { label: '4인분 이상', emoji: '👨‍👩‍👧‍👦', value: '4' },
+    ],
+  },
+  {
     id: 'cuisineStyles', type: 'multi' as const,
     question: '좋아하는 음식 스타일이\n있나요?',
     hint: '여러 개 선택 가능 · 건너뛸 수 있어요',
@@ -100,6 +110,7 @@ export default function OnboardingScreen({ onDone }: Props) {
   const [dietType, setDietType]           = useState('');
   const [cookingSkill, setCookingSkill]   = useState('');
   const [cuisineStyles, setCuisineStyles] = useState<string[]>([]);
+  const [servings, setServings]           = useState<number>(2);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const current = STEPS[step];
@@ -134,6 +145,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       dietType,
       cookingSkill,
       cuisineStyles: cuisineStyles.filter(c => c !== '상관없음'),
+      servings,
     };
     await savePreferences(prefs);
     onDone();
@@ -146,6 +158,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       case 'cookingTime':  setCookingTime(value);   break;
       case 'dietType':     setDietType(value);      break;
       case 'cookingSkill': setCookingSkill(value);  break;
+      case 'servings':     setServings(Number(value)); break;
     }
     setTimeout(goNext, 380);
   };
@@ -156,6 +169,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       case 'cookingTime':  return cookingTime;
       case 'dietType':     return dietType;
       case 'cookingSkill': return cookingSkill;
+      case 'servings':     return String(servings);
       default: return '';
     }
   };

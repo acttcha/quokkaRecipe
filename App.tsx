@@ -244,7 +244,7 @@ function AppInner() {
     if (subScreen.name === 'FridgeRecipes')
       return <RecipeScreen navigate={navigate} goBack={goBack} prefillIngredients={subScreen.ingredients} />;
     if (subScreen.name === 'DishRecipe')
-      return <RecipeScreen navigate={navigate} goBack={goBack} dishName={subScreen.dishName} />;
+      return <RecipeScreen navigate={navigate} goBack={goBack} dishName={subScreen.dishName} servings={subScreen.servings} />;
     if (subScreen.name === 'Profile')
       return <ProfileScreen navigate={navigate} goBack={goBack} onResetPreferences={() => setAppState('onboarding')} />;
     if (subScreen.name === 'SavedRecipeDetail')

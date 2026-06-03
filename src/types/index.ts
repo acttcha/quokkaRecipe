@@ -57,7 +57,7 @@ export type CurrentScreen =
   | { name: 'ReceiptScan'; imageBase64: string; mimeType: string }
   | { name: 'Recipes'; imageBase64: string; mimeType: string }
   | { name: 'FridgeRecipes'; ingredients: string[] }
-  | { name: 'DishRecipe'; dishName: string }
+  | { name: 'DishRecipe'; dishName: string; servings?: number }
   | { name: 'Settings' }
   | { name: 'Saved' }
   | { name: 'Profile' }

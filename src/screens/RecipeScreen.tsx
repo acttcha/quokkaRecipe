@@ -13,6 +13,7 @@ import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
+import { loadPreferences } from '../services/preferences';
 import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
 import { Colors, shadow } from '../constants/colors';
@@ -22,9 +23,9 @@ import { POPULAR_INGREDIENTS } from '../constants/ingredients';
 const { width } = Dimensions.get('window');
 
 type Props = NavProps & (
-  | { imageBase64: string; mimeType: string; prefillIngredients?: never; dishName?: never }
-  | { imageBase64?: never; mimeType?: never; prefillIngredients: string[]; dishName?: never }
-  | { imageBase64?: never; mimeType?: never; prefillIngredients?: never; dishName: string }
+  | { imageBase64: string; mimeType: string; prefillIngredients?: never; dishName?: never; servings?: never }
+  | { imageBase64?: never; mimeType?: never; prefillIngredients: string[]; dishName?: never; servings?: never }
+  | { imageBase64?: never; mimeType?: never; prefillIngredients?: never; dishName: string; servings?: number }
 );
 type Step = 'identifying' | 'review' | 'generating' | 'results' | 'error';
 type Tab = 'ai' | 'youtube';
@@ -59,9 +60,10 @@ function getRecipeEmoji(name: string, ingredients: string[]): string {
   return '🍽️';
 }
 
-export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients, dishName }: Props) {
+export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients, dishName, servings: propsServings }: Props) {
   const [step, setStep]             = useState<Step>('identifying');
   const [ingredients, setIngredients] = useState<string[]>([]);
+  const [servings, setServings]     = useState<number>(propsServings ?? 2);  // 재료확인 화면 인분 선택 (기본=선호도값)
   const [fridgeItems, setFridgeItems] = useState<string[]>([]);
   const [recipes, setRecipes]       = useState<Recipe[]>([]);
   const [videos, setVideos]         = useState<YouTubeVideo[]>([]);
@@ -95,7 +97,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setStep('generating');
       try {
         const [found, vids] = await Promise.all([
-          generateRecipeByName(dishName),
+          generateRecipeByName(dishName, [], propsServings ?? 2),
           searchYouTubeRecipes([dishName]),
         ]);
         await spend('recipe');
@@ -139,13 +141,20 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
   useEffect(() => { identify(); }, [identify]);
 
+  // 재료 기반/스캔 플로우: 인분 기본값을 선호도에서 채움 (요리검색은 nav 로 이미 전달됨)
+  useEffect(() => {
+    if (propsServings == null) {
+      loadPreferences().then(p => setServings(p.servings)).catch(() => {});
+    }
+  }, [propsServings]);
+
   const handleGetRecipes = async () => {
     if (ingredients.length === 0) { Alert.alert('앗!', '재료를 1개 이상 추가해주세요 🥺'); return; }
     if (!await checkLeafOrAlert('recipe')) return;
     setStep('generating');
     try {
       const [found, vids] = await Promise.all([
-        generateRecipes(ingredients),
+        generateRecipes(ingredients, [], servings),
         searchYouTubeRecipes(ingredients),
       ]);
       await spend('recipe');
@@ -168,8 +177,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     setReRolling(true);
     try {
       const found = dishName
-        ? await generateRecipeByName(dishName, seenNames)
-        : await generateRecipes(ingredients, seenNames);
+        ? await generateRecipeByName(dishName, seenNames, servings)
+        : await generateRecipes(ingredients, seenNames, servings);
       await spend('recipe');
       setRecipes(found);
       setSeenNames(prev => [...prev, ...found.map(r => r.name)]);
@@ -357,6 +366,27 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           {ingredients.length === 0 && (
             <View style={styles.emptyCard}><Text style={styles.emptyCardText}>😅 재료를 직접 추가해보세요!</Text></View>
           )}
+
+          {/* 몇 인분 */}
+          <View style={styles.servingsRow}>
+            <Text style={styles.servingsLabel}>👥 몇 인분으로 만들까요?</Text>
+            <View style={styles.servingsChips}>
+              {[1, 2, 3, 4].map(n => {
+                const active = servings === n;
+                return (
+                  <TouchableOpacity
+                    key={n}
+                    style={[styles.servingsChip, active && styles.servingsChipActive]}
+                    onPress={() => { haptic.light(); setServings(n); }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.servingsChipText, active && styles.servingsChipTextActive]}>{n}인분</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <TouchableOpacity style={styles.greenBtn} onPress={handleGetRecipes}>
             <Text style={styles.greenBtnText}>👨‍🍳  레시피 추천받기</Text>
           </TouchableOpacity>
@@ -717,6 +747,17 @@ const styles = StyleSheet.create({
 
   greenBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', marginTop: 16, ...shadow.sm },
   greenBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+
+  servingsRow: { marginTop: 18 },
+  servingsLabel: { fontSize: 14, fontWeight: '800', color: Colors.ink, marginBottom: 10 },
+  servingsChips: { flexDirection: 'row', gap: 8 },
+  servingsChip: {
+    flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 12,
+    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.lineSoft,
+  },
+  servingsChipActive: { backgroundColor: Colors.forestSoft, borderColor: Colors.forest },
+  servingsChipText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
+  servingsChipTextActive: { color: Colors.forestDeep, fontWeight: '800' },
   textBtn: { padding: 12, alignItems: 'center' },
   textBtnText: { color: Colors.inkMute, fontSize: 14, fontWeight: '600' },
 

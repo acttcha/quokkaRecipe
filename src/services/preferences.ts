@@ -10,7 +10,8 @@ export async function loadPreferences(): Promise<UserPreferences> {
   const raw = await SecureStore.getItemAsync(PREFERENCES_KEY);
   if (!raw) return DEFAULT_PREFERENCES;
   try {
-    return JSON.parse(raw) as UserPreferences;
+    // 기존 저장본에 없는 필드(servings 등)는 기본값으로 채움
+    return { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } as UserPreferences;
   } catch {
     return DEFAULT_PREFERENCES;
   }

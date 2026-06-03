@@ -218,6 +218,11 @@ const DISH_SYSTEM = `당신은 한식·양식·중식·일식·동남아 등 다
 [{"name":"변형 이름","description":"한 줄 설명","cookTime":"30분","servings":2,"difficulty":"Easy","ingredients":["재료 분량",...],"steps":["단계",...],"nutrition":{"calories":320,"protein":18,"carbs":24,"fat":12}}]
 difficulty는 Easy·Medium·Hard 중 하나, nutrition은 1인분 kcal/g.`;
 
+// 인분 지시문 — ingredients 분량·nutrition·servings 를 N인분 기준으로.
+function servingsText(servings: number): string {
+  return `\n인분: ${servings}인분 — ingredients 분량과 nutrition을 ${servings}인분 기준으로 맞추고, JSON의 servings도 ${servings}로 하세요.`;
+}
+
 // 레시피 JSON 생성 — 개발자 모드에서 고른 모델(Gemini/Claude)로 라우팅.
 async function generateRecipeJson(system: string, userText: string): Promise<string> {
   const cfg = RECIPE_MODELS[getRecipeModelKey()];
@@ -232,7 +237,7 @@ async function generateRecipeJson(system: string, userText: string): Promise<str
   });
 }
 
-export async function generateRecipes(ingredients: string[], exclude: string[] = []): Promise<Recipe[]> {
+export async function generateRecipes(ingredients: string[], exclude: string[] = [], servings = 2): Promise<Recipe[]> {
   if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
     return MOCK_RECIPES;
@@ -244,7 +249,7 @@ export async function generateRecipes(ingredients: string[], exclude: string[] =
     : '';
   const text = await generateRecipeJson(
     RECIPE_SYSTEM,
-    `재료: ${ingredients.join(', ')}${prefText}${excludeText}`,
+    `재료: ${ingredients.join(', ')}${prefText}${excludeText}${servingsText(servings)}`,
   );
   return extractJson<Recipe[]>(text);
 }
@@ -253,7 +258,7 @@ export async function generateRecipes(ingredients: string[], exclude: string[] =
  * 특정 요리 이름으로 레시피 생성 (재료 기반이 아닌, 요리 이름 기반)
  * - 사용자가 만들고 싶은 요리를 입력 → 표준 레시피 1~3가지 변형 반환
  */
-export async function generateRecipeByName(dishName: string, exclude: string[] = []): Promise<Recipe[]> {
+export async function generateRecipeByName(dishName: string, exclude: string[] = [], servings = 2): Promise<Recipe[]> {
   if (getMockMode()) {
     await new Promise(r => setTimeout(r, 2000));
     return MOCK_RECIPES;
@@ -265,7 +270,7 @@ export async function generateRecipeByName(dishName: string, exclude: string[] =
     : '';
   const text = await generateRecipeJson(
     DISH_SYSTEM,
-    `만들고 싶은 요리: ${dishName}${prefText}${excludeText}`,
+    `만들고 싶은 요리: ${dishName}${prefText}${excludeText}${servingsText(servings)}`,
   );
   return extractJson<Recipe[]>(text);
 }
