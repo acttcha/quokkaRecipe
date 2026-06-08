@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "쿼카레시피",
-    "slug": "quokka-chef",
-    "version": "1.0.35",
+    "slug": "quokka-recipe",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/applogo.png",
     "userInterfaceStyle": "light",
@@ -13,6 +13,7 @@
       "backgroundColor": "#FAFAF8"
     },
     "ios": {
+      "bundleIdentifier": "com.chasoft.quokkarecipe",
       "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "재료를 촬영해 레시피를 추천받기 위해 카메라가 필요합니다.",
@@ -20,8 +21,8 @@
       }
     },
     "android": {
-      "package": "com.actcha.quokkarecipe",
-      "versionCode": 43,
+      "package": "com.chasoft.quokkarecipe",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"
