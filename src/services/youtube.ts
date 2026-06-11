@@ -1,6 +1,19 @@
 import { Linking } from 'react-native';
 import { YouTubeVideo } from '../types';
 import { getMockMode } from './devSettings';
+import { getLang } from '../i18n';
+import { getRegionCode } from './locale';
+
+// 검색어 끝에 붙일 "레시피/recipe" — 사용자 언어 기준.
+function recipeWord(): string {
+  return getLang() === 'en' ? 'recipe' : '레시피';
+}
+// YouTube 검색 지역·언어 파라미터 — 사용자 언어/지역 기준.
+function ytLangParams(): string {
+  return getLang() === 'en'
+    ? `&regionCode=${getRegionCode() || 'US'}&relevanceLanguage=en`
+    : `&regionCode=KR&relevanceLanguage=ko`;
+}
 
 const MOCK_VIDEOS: YouTubeVideo[] = [
   {
@@ -42,6 +55,12 @@ const MOCK_VIDEOS: YouTubeVideo[] = [
 ];
 
 function formatViewCount(count: number): string {
+  if (getLang() === 'en') {
+    if (count >= 1_000_000_000) return `${(count / 1_000_000_000).toFixed(1)}B views`;
+    if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M views`;
+    if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K views`;
+    return `${count} views`;
+  }
   if (count >= 100000000) return `${(count / 100000000).toFixed(1)}억회`;
   if (count >= 10000) return `${Math.floor(count / 10000)}만회`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}천회`;
@@ -58,32 +77,39 @@ export function parseIsoDuration(iso: string): number {
   return h * 3600 + min * 60 + s;
 }
 
-// 초 → "1시간 23분" / "12분 35초" / "45초"
+// 초 → "1시간 23분" / "12분 35초" / "45초"  (en: "1h 23m" / "12m 35s" / "45s")
 export function formatDuration(sec: number): string {
   if (sec <= 0) return '';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
+  if (getLang() === 'en') {
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    return `${s}s`;
+  }
   if (h > 0) return `${h}시간 ${m}분`;
   if (m > 0) return `${m}분 ${s > 0 ? `${s}초` : ''}`.trim();
   return `${s}초`;
 }
 
-// ISO 날짜 → "3년 전" / "5개월 전" / "어제" 같은 상대 표기
+// ISO 날짜 → "3년 전" / "5개월 전" / "어제" 같은 상대 표기 (en: "3 years ago" 등)
 export function formatRelativeDate(iso: string): string {
   const then = new Date(iso).getTime();
   if (!then) return '';
   const diffMs = Date.now() - then;
   const day = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (day < 1) return '오늘';
-  if (day < 2) return '어제';
-  if (day < 7) return `${day}일 전`;
+  const en = getLang() === 'en';
+  const ago = (n: number, unit: string) => en ? `${n} ${unit}${n > 1 ? 's' : ''} ago` : '';
+  if (day < 1) return en ? 'today' : '오늘';
+  if (day < 2) return en ? 'yesterday' : '어제';
+  if (day < 7) return en ? ago(day, 'day') : `${day}일 전`;
   const week = Math.floor(day / 7);
-  if (week < 5) return `${week}주 전`;
+  if (week < 5) return en ? ago(week, 'week') : `${week}주 전`;
   const month = Math.floor(day / 30);
-  if (month < 12) return `${month}개월 전`;
+  if (month < 12) return en ? ago(month, 'month') : `${month}개월 전`;
   const year = Math.floor(day / 365);
-  return `${year}년 전`;
+  return en ? ago(year, 'year') : `${year}년 전`;
 }
 
 const YT_API_KEY = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY ?? '';
@@ -94,9 +120,9 @@ export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTu
     return MOCK_VIDEOS;
   }
 
-  const query = encodeURIComponent(ingredients.slice(0, 3).join(' ') + ' 레시피');
+  const query = encodeURIComponent(ingredients.slice(0, 3).join(' ') + ' ' + recipeWord());
   const searchRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&order=viewCount&type=video&maxResults=6&regionCode=KR&relevanceLanguage=ko&key=${YT_API_KEY}`
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&order=viewCount&type=video&maxResults=6${ytLangParams()}&key=${YT_API_KEY}`
   );
   const searchData = await searchRes.json();
   if (!searchData.items) return MOCK_VIDEOS;
@@ -141,12 +167,12 @@ export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTu
 }
 
 export function openYouTubeSearch(ingredients: string[]) {
-  const query = encodeURIComponent(ingredients.slice(0, 3).join(' ') + ' 레시피');
+  const query = encodeURIComponent(ingredients.slice(0, 3).join(' ') + ' ' + recipeWord());
   Linking.openURL(`https://www.youtube.com/results?search_query=${query}&sp=CAM%3D`);
 }
 
 export function openYouTubeByName(recipeName: string) {
-  const query = encodeURIComponent(recipeName + ' 레시피');
+  const query = encodeURIComponent(recipeName + ' ' + recipeWord());
   Linking.openURL(`https://www.youtube.com/results?search_query=${query}&sp=CAM%3D`);
 }
 
@@ -199,17 +225,17 @@ export interface YTSearchResult {
 }
 
 export async function searchYoutubeForRecipe(recipeName: string): Promise<YTSearchResult[]> {
-  if (!YT_API_KEY) throw new Error('YouTube API 키가 없어요 (.env 확인)');
+  if (!YT_API_KEY) throw new Error('Missing YouTube API key (check .env)');
 
-  const q = encodeURIComponent(`${recipeName} 레시피`);
+  const q = encodeURIComponent(`${recipeName} ${recipeWord()}`);
   const searchRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&maxResults=12&order=relevance&regionCode=KR&relevanceLanguage=ko&key=${YT_API_KEY}`
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&type=video&maxResults=12&order=relevance${ytLangParams()}&key=${YT_API_KEY}`
   );
   const searchData = await searchRes.json();
 
   if (searchData.error) {
-    const msg = searchData.error.errors?.[0]?.reason || searchData.error.message || 'YouTube API 오류';
-    throw new Error(`YouTube 오류: ${msg}`);
+    const msg = searchData.error.errors?.[0]?.reason || searchData.error.message || 'YouTube API error';
+    throw new Error(`YouTube error: ${msg}`);
   }
   if (!searchData.items?.length) return [];
 
@@ -244,8 +270,11 @@ export async function getVideoDescription(videoId: string): Promise<string> {
 
 export async function fetchVideoTranscript(videoId: string): Promise<string> {
   try {
+    const prefLang = getLang(); // 'ko' | 'en'
     const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { 'Accept-Language': 'ko-KR,ko;q=0.9' },
+      headers: {
+        'Accept-Language': prefLang === 'en' ? 'en-US,en;q=0.9' : 'ko-KR,ko;q=0.9',
+      },
     });
     const html = await pageRes.text();
 
@@ -268,11 +297,11 @@ export async function fetchVideoTranscript(videoId: string): Promise<string> {
     let tracks: any[];
     try { tracks = JSON.parse(html.slice(start, end + 1)); } catch { return ''; }
 
-    // 한국어 수동 자막 > 한국어 자동 자막 > 첫 번째 트랙 순으로 시도
+    // 사용자 언어 수동 자막 > 사용자 언어 자동 자막 > 첫 번째 트랙 순으로 시도
     const track =
-      tracks.find(t => t.languageCode === 'ko' && t.kind !== 'asr') ||
-      tracks.find(t => t.languageCode === 'ko') ||
-      tracks.find(t => t.languageCode?.startsWith('ko')) ||
+      tracks.find(t => t.languageCode === prefLang && t.kind !== 'asr') ||
+      tracks.find(t => t.languageCode === prefLang) ||
+      tracks.find(t => t.languageCode?.startsWith(prefLang)) ||
       tracks[0];
     if (!track?.baseUrl) return '';
 

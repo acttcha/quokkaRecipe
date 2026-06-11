@@ -12,7 +12,7 @@ import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
 import {
   getBalance, LeafBalance, FREE_DAILY_LEAVES,
-  LEAF_COST, ACTION_LABEL, LeafAction, AD_REWARD,
+  LEAF_COST, LeafAction, AD_REWARD,
   getAdWatchesLeft, getAdCooldownRemaining, AD_DAILY_LIMIT,
 } from '../services/leaves';
 import { watchAdForLeaves } from '../services/leafGate';
@@ -20,6 +20,7 @@ import { loadPreferences } from '../services/preferences';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
+import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -83,7 +84,7 @@ export default function HomeScreen({ navigate }: NavProps) {
     if (!q) return;
     if (!mockMode && !HAS_API_KEY) {
       haptic.error();
-      Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
+      Alert.alert(t('home.apiKeyNeededTitle'), t('home.apiKeyNeededMsg'), [{ text: t('home.confirm') }]);
       return;
     }
     haptic.medium();
@@ -114,7 +115,7 @@ export default function HomeScreen({ navigate }: NavProps) {
       if (ok) {
         haptic.success();
         await loadUsage();
-        Alert.alert('잎사귀 충전 완료 🍃', `잎사귀 ${AD_REWARD}개가 충전됐어요!`);
+        Alert.alert(t('home.chargedTitle'), t('home.chargedMsg', { count: AD_REWARD }));
       }
     } finally {
       setAdLoading(false);
@@ -124,7 +125,7 @@ export default function HomeScreen({ navigate }: NavProps) {
   const handleRecommend = async () => {
     if (!mockMode && !HAS_API_KEY) {
       haptic.error();
-      Alert.alert('API 키 필요', '앱에 API 키가 설정되어 있지 않아요.', [{ text: '확인' }]);
+      Alert.alert(t('home.apiKeyNeededTitle'), t('home.apiKeyNeededMsg'), [{ text: t('home.confirm') }]);
       return;
     }
     haptic.medium();
@@ -159,7 +160,7 @@ export default function HomeScreen({ navigate }: NavProps) {
         >
           <LeafIcon size={26} />
           <Text style={styles.usageChipText}>
-            남은 잎사귀{' '}
+            {t('home.leavesLeft')}{' '}
             <Text style={styles.usageChipCount}>
               {balance ? (balance.isUnlimited ? '∞' : balance.total) : '·'}
             </Text>
@@ -172,8 +173,8 @@ export default function HomeScreen({ navigate }: NavProps) {
       <View style={styles.charWrap}>
         <View style={styles.bubbleOuter}>
           <View style={styles.bubble}>
-            <Text style={styles.bubbleText}>오늘 뭐 드실 건가요? 🍽️</Text>
-            <Text style={styles.bubbleSub}>냉장고 재료로 레시피 뚝딱!</Text>
+            <Text style={styles.bubbleText}>{t('home.bubbleTitle')}</Text>
+            <Text style={styles.bubbleSub}>{t('home.bubbleSub')}</Text>
           </View>
           <View style={styles.bubbleTail} />
         </View>
@@ -184,12 +185,12 @@ export default function HomeScreen({ navigate }: NavProps) {
       <View style={styles.panel}>
         {mockMode && (
           <View style={styles.testBadge}>
-            <Text style={styles.testBadgeText}>🧪 테스트 모드</Text>
+            <Text style={styles.testBadgeText}>{t('home.testMode')}</Text>
           </View>
         )}
         {!mockMode && !HAS_API_KEY && (
           <TouchableOpacity style={styles.warnBanner} onPress={() => navigate({ name: 'Settings' })}>
-            <Text style={styles.warnText}>⚠️ API 키 설정이 필요해요 →</Text>
+            <Text style={styles.warnText}>{t('home.apiKeyWarn')}</Text>
           </TouchableOpacity>
         )}
 
@@ -204,8 +205,8 @@ export default function HomeScreen({ navigate }: NavProps) {
               <IconFridge />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.tileTitle}>보유 재료 추천</Text>
-              <Text style={styles.tileSub}>냉장고에 있는 걸로</Text>
+              <Text style={styles.tileTitle}>{t('home.tileFridgeTitle')}</Text>
+              <Text style={styles.tileSub}>{t('home.tileFridgeSub')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -221,8 +222,8 @@ export default function HomeScreen({ navigate }: NavProps) {
               <IconSearch />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.tileTitle}>만들고 싶은 요리</Text>
-              <Text style={styles.tileSub}>이름으로 검색</Text>
+              <Text style={styles.tileTitle}>{t('home.tileDishTitle')}</Text>
+              <Text style={styles.tileSub}>{t('home.tileDishSub')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -244,11 +245,11 @@ export default function HomeScreen({ navigate }: NavProps) {
             <View style={styles.umHeader}>
               <LeafIcon size={28} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.umTitle}>잎사귀 잔액</Text>
+                <Text style={styles.umTitle}>{t('home.balanceTitle')}</Text>
                 <Text style={styles.umSub}>
                   {balance?.isUnlimited
-                    ? 'PRO 구독 중 — 무제한 사용 가능'
-                    : `매일 자정에 무료 잎사귀 ${FREE_DAILY_LEAVES}개가 충전돼요`}
+                    ? t('home.balanceUnlimited')
+                    : t('home.balanceDaily', { count: FREE_DAILY_LEAVES })}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setUsageModalVisible(false)} style={styles.umClose}>
@@ -263,11 +264,11 @@ export default function HomeScreen({ navigate }: NavProps) {
               </Text>
               <View style={styles.leafBigUnitRow}>
                 <LeafIcon size={24} />
-                <Text style={styles.leafBigUnit}>사용 가능</Text>
+                <Text style={styles.leafBigUnit}>{t('home.available')}</Text>
               </View>
               {balance && !balance.isUnlimited && (
                 <Text style={styles.leafBigBreakdown}>
-                  오늘 무료 {balance.daily} · 보너스 {balance.bonus}
+                  {t('home.breakdown', { daily: balance.daily, bonus: balance.bonus })}
                 </Text>
               )}
             </View>
@@ -276,7 +277,7 @@ export default function HomeScreen({ navigate }: NavProps) {
             <View style={styles.costGrid}>
               {(['scan', 'recipe', 'qa'] as LeafAction[]).map(a => (
                 <View key={a} style={styles.costItem}>
-                  <Text style={styles.costLabel}>{ACTION_LABEL[a]}</Text>
+                  <Text style={styles.costLabel}>{t(`leaf.action.${a}`)}</Text>
                   <View style={styles.costValRow}>
                     <LeafIcon size={30} />
                     <Text style={styles.costVal}>{LEAF_COST[a]}</Text>
@@ -297,7 +298,7 @@ export default function HomeScreen({ navigate }: NavProps) {
               activeOpacity={0.85}
             >
               <LeafIcon size={22} />
-              <Text style={styles.rechargeBtnText}>잎사귀 충전하기</Text>
+              <Text style={styles.rechargeBtnText}>{t('home.recharge')}</Text>
               <Text style={styles.rechargeBtnArrow}>›</Text>
             </TouchableOpacity>
 
@@ -315,21 +316,21 @@ export default function HomeScreen({ navigate }: NavProps) {
                 >
                   <Text style={styles.umAdEmoji}>📺</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.umAdTitle}>광고 보고 잎사귀 받기</Text>
+                    <Text style={styles.umAdTitle}>{t('home.watchAdTitle')}</Text>
                     <Text style={styles.umAdSub}>
                       {adLoading
-                        ? '광고를 불러오는 중…'
+                        ? t('home.adLoading')
                         : dailyDone
-                          ? '오늘 충전 완료 · 내일 다시 가능해요'
+                          ? t('home.adDailyDone')
                           : onCooldown
-                            ? `약 ${cooldownMin}분 뒤에 다시 가능해요`
-                            : `광고 시청 = 잎사귀 ${AD_REWARD}개 · 오늘 ${adLeft}/${AD_DAILY_LIMIT}회`}
+                            ? t('home.adCooldown', { min: cooldownMin })
+                            : t('home.adAvailable', { count: AD_REWARD, left: adLeft, limit: AD_DAILY_LIMIT })}
                     </Text>
                   </View>
                   {adLoading
                     ? <ActivityIndicator size="small" color={Colors.orangeDeep} />
                     : <Text style={styles.umAdBadge}>
-                        {dailyDone ? '내일 만나요' : onCooldown ? '⏳' : `+${AD_REWARD}🍃`}
+                        {dailyDone ? t('home.adBadgeTomorrow') : onCooldown ? '⏳' : `+${AD_REWARD}🍃`}
                       </Text>}
                 </TouchableOpacity>
               );
@@ -354,8 +355,8 @@ export default function HomeScreen({ navigate }: NavProps) {
             <View style={styles.dishHeader}>
               <Text style={styles.dishEmoji}>🔍</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.dishTitle}>만들고 싶은 요리 검색</Text>
-                <Text style={styles.dishSub}>요리 이름을 입력하면 레시피를 만들어드려요</Text>
+                <Text style={styles.dishTitle}>{t('home.dishSearchTitle')}</Text>
+                <Text style={styles.dishSub}>{t('home.dishSearchSub')}</Text>
               </View>
               <TouchableOpacity onPress={closeDishModal} style={styles.dishClose}>
                 <Text style={styles.dishCloseText}>✕</Text>
@@ -366,7 +367,7 @@ export default function HomeScreen({ navigate }: NavProps) {
               style={styles.dishInput}
               value={dishQuery}
               onChangeText={setDishQuery}
-              placeholder="예: 김치찌개, 파스타, 오므라이스"
+              placeholder={t('home.dishPlaceholder')}
               placeholderTextColor={Colors.inkMute}
               returnKeyType="search"
               onSubmitEditing={handleSearchDish}
@@ -375,19 +376,26 @@ export default function HomeScreen({ navigate }: NavProps) {
 
             {/* 빠른 선택 칩 */}
             <View style={styles.dishQuickWrap}>
-              {['김치찌개', '파스타', '볶음밥', '국밥', '카레', '비빔밥'].map(q => (
+              {[
+                { value: t('home.quickKimchiStew'), label: t('home.quickKimchiStew') },
+                { value: t('home.quickPasta'), label: t('home.quickPasta') },
+                { value: t('home.quickFriedRice'), label: t('home.quickFriedRice') },
+                { value: t('home.quickGukbap'), label: t('home.quickGukbap') },
+                { value: t('home.quickCurry'), label: t('home.quickCurry') },
+                { value: t('home.quickBibimbap'), label: t('home.quickBibimbap') },
+              ].map(q => (
                 <TouchableOpacity
-                  key={q}
+                  key={q.value}
                   style={styles.dishQuickChip}
-                  onPress={() => setDishQuery(q)}
+                  onPress={() => setDishQuery(q.value)}
                 >
-                  <Text style={styles.dishQuickText}>{q}</Text>
+                  <Text style={styles.dishQuickText}>{q.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* 몇 인분 */}
-            <Text style={styles.dishServingsLabel}>👥 몇 인분</Text>
+            <Text style={styles.dishServingsLabel}>{t('home.servingsLabel')}</Text>
             <View style={styles.dishServingsChips}>
               {[1, 2, 3, 4].map(n => {
                 const active = dishServings === n;
@@ -398,7 +406,7 @@ export default function HomeScreen({ navigate }: NavProps) {
                     onPress={() => { haptic.light(); setDishServings(n); }}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.dishServingsChipText, active && styles.dishServingsChipTextActive]}>{n}인분</Text>
+                    <Text style={[styles.dishServingsChipText, active && styles.dishServingsChipTextActive]}>{t('home.servings', { count: n })}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -410,7 +418,7 @@ export default function HomeScreen({ navigate }: NavProps) {
               disabled={!dishQuery.trim()}
               activeOpacity={0.85}
             >
-              <Text style={styles.dishSubmitText}>레시피 찾기 🍽️</Text>
+              <Text style={styles.dishSubmitText}>{t('home.findRecipe')}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>

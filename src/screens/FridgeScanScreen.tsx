@@ -10,6 +10,7 @@ import { identifyIngredients } from '../services/claude';
 import { addIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
+import { t } from '../i18n';
 
 type Props = NavProps & { imageBase64: string; mimeType: string };
 type Step = 'scanning' | 'review' | 'error';
@@ -62,10 +63,10 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
       <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
         <View style={styles.heroOverlay}>
           <TouchableOpacity onPress={() => navigate({ name: 'Fridge' })} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 돌아가기</Text>
+            <Text style={styles.backBtnText}>{t('scan.fridgeScan.back')}</Text>
           </TouchableOpacity>
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-          <Text style={styles.heroSub}>재료 스캔</Text>
+          <Text style={styles.heroSub}>{t('scan.fridgeScan.heroSub')}</Text>
         </View>
       </ImageBackground>
 
@@ -74,7 +75,7 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
         {step === 'scanning' && (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={Colors.accent} />
-            <Text style={styles.loadingText}>재료를 분석하고 있어요...</Text>
+            <Text style={styles.loadingText}>{t('scan.fridgeScan.loading')}</Text>
           </View>
         )}
 
@@ -83,20 +84,20 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
             <Text style={styles.errorIcon}>😢</Text>
             <Text style={styles.errorText}>{errorMsg}</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={scan}>
-              <Text style={styles.retryBtnText}>다시 시도</Text>
+              <Text style={styles.retryBtnText}>{t('scan.fridgeScan.retry')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {step === 'review' && (
           <>
-            <Text style={styles.sectionHead}>인식된 재료</Text>
-            <Text style={styles.sectionSub}>추가하거나 필요 없는 재료는 × 로 제거하세요</Text>
+            <Text style={styles.sectionHead}>{t('scan.fridgeScan.recognizedHead')}</Text>
+            <Text style={styles.sectionSub}>{t('scan.fridgeScan.recognizedSub')}</Text>
 
             {ingredients.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>인식된 재료가 없어요</Text>
-                <Text style={styles.emptyTextSub}>아래에서 직접 추가해보세요</Text>
+                <Text style={styles.emptyText}>{t('scan.fridgeScan.emptyTitle')}</Text>
+                <Text style={styles.emptyTextSub}>{t('scan.fridgeScan.emptySub')}</Text>
               </View>
             ) : (
               <View style={styles.chipGrid}>
@@ -114,19 +115,19 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
               </View>
             )}
 
-            <Text style={[styles.sectionHead, { marginTop: 28 }]}>재료 추가</Text>
+            <Text style={[styles.sectionHead, { marginTop: 28 }]}>{t('scan.fridgeScan.addHead')}</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
                 value={newIng}
                 onChangeText={setNewIng}
-                placeholder="빠진 재료가 있나요?"
+                placeholder={t('scan.fridgeScan.inputPlaceholder')}
                 placeholderTextColor={Colors.textMuted}
                 returnKeyType="done"
                 onSubmitEditing={handleAddIng}
               />
               <TouchableOpacity style={styles.addBtn} onPress={handleAddIng}>
-                <Text style={styles.addBtnText}>추가</Text>
+                <Text style={styles.addBtnText}>{t('scan.fridgeScan.add')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -136,7 +137,7 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
       {step === 'review' && (
         <View style={[styles.footer, { paddingBottom: 16 + Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={styles.saveBtnText}>🧊  냉장고에 추가하기</Text>
+            <Text style={styles.saveBtnText}>{t('scan.fridgeScan.saveToFridge')}</Text>
           </TouchableOpacity>
         </View>
       )}

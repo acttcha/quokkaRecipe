@@ -14,6 +14,7 @@ import { isFridgeSetupDone } from './src/services/fridge';
 import { loadDevSettings } from './src/services/devSettings';
 import { loadSubscription } from './src/services/subscription';
 import { loadLeaves } from './src/services/leaves';
+import { loadLocale, useLang } from './src/services/locale';
 import { initAds } from './src/services/ads';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
@@ -124,6 +125,7 @@ export default function App() {
 }
 
 function AppInner() {
+  useLang();  // 언어 변경 시 전체 리렌더 (i18n 즉시 반영)
   const insets = useSafeAreaInsets();
   const [appState, setAppState]       = useState<AppState>('loading');
   const [onboardingDone, setOnboardingDone] = useState(false);
@@ -142,6 +144,7 @@ function AppInner() {
       loadDevSettings(),
       loadSubscription(),
       loadLeaves(),
+      loadLocale(),
       Asset.loadAsync([
         require('./assets/background.png'),
         require('./assets/main_logo.png'),

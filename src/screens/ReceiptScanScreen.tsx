@@ -10,6 +10,7 @@ import { identifyReceiptItems } from '../services/claude';
 import { addIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
+import { t } from '../i18n';
 
 interface Props extends NavProps {
   imageBase64: string;
@@ -59,7 +60,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
 
   const handleConfirm = async () => {
     if (selected.size === 0) {
-      Alert.alert('앗!', '추가할 재료를 선택해주세요');
+      Alert.alert(t('scan.receiptScan.alertOopsTitle'), t('scan.receiptScan.alertSelectMsg'));
       return;
     }
     setSaving(true);
@@ -67,7 +68,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
       await addIngredients(Array.from(selected));
       navigate({ name: 'Fridge' });
     } catch (e) {
-      Alert.alert('오류', String(e));
+      Alert.alert(t('scan.receiptScan.alertErrorTitle'), String(e));
       setSaving(false);
     }
   };
@@ -79,10 +80,10 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
       <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
         <View style={styles.heroOverlay}>
           <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-            <Text style={styles.backBtnText}>← 다시 찍기</Text>
+            <Text style={styles.backBtnText}>{t('scan.receiptScan.backRetake')}</Text>
           </TouchableOpacity>
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-          <Text style={styles.heroSub}>🧾 영수증 스캔 결과</Text>
+          <Text style={styles.heroSub}>{t('scan.receiptScan.heroSub')}</Text>
         </View>
       </ImageBackground>
 
@@ -91,27 +92,27 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
         {loading ? (
           <View style={styles.centerBox}>
             <ActivityIndicator size="large" color={Colors.accent} style={{ marginBottom: 16 }} />
-            <Text style={styles.centerTitle}>영수증 분석 중...</Text>
-            <Text style={styles.centerSub}>AI가 식재료를 추출하고 있어요 🤖</Text>
+            <Text style={styles.centerTitle}>{t('scan.receiptScan.loadingTitle')}</Text>
+            <Text style={styles.centerSub}>{t('scan.receiptScan.loadingSub')}</Text>
           </View>
 
         ) : error ? (
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>😵</Text>
-            <Text style={styles.centerTitle}>분석에 실패했어요</Text>
+            <Text style={styles.centerTitle}>{t('scan.receiptScan.failTitle')}</Text>
             <Text style={styles.centerSub}>{error}</Text>
             <TouchableOpacity style={styles.actionBtn} onPress={scan}>
-              <Text style={styles.actionBtnText}>다시 시도</Text>
+              <Text style={styles.actionBtnText}>{t('scan.receiptScan.retry')}</Text>
             </TouchableOpacity>
           </View>
 
         ) : items.length === 0 ? (
           <View style={styles.centerBox}>
             <Text style={styles.centerEmoji}>🔍</Text>
-            <Text style={styles.centerTitle}>식재료를 찾지 못했어요</Text>
-            <Text style={styles.centerSub}>영수증 전체가 잘 보이도록{'\n'}다시 촬영해보세요</Text>
+            <Text style={styles.centerTitle}>{t('scan.receiptScan.notFoundTitle')}</Text>
+            <Text style={styles.centerSub}>{t('scan.receiptScan.notFoundSub')}</Text>
             <TouchableOpacity style={styles.actionBtn} onPress={goBack}>
-              <Text style={styles.actionBtnText}>다시 찍기</Text>
+              <Text style={styles.actionBtnText}>{t('scan.receiptScan.retake')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -119,12 +120,12 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
           <>
             <View style={styles.headerRow}>
               <View>
-                <Text style={styles.sectionHead}>{items.length}개 식재료 발견</Text>
-                <Text style={styles.sectionSub}>추가할 재료를 선택하세요</Text>
+                <Text style={styles.sectionHead}>{t('scan.receiptScan.foundCount', { count: items.length })}</Text>
+                <Text style={styles.sectionSub}>{t('scan.receiptScan.selectPrompt')}</Text>
               </View>
               <TouchableOpacity style={styles.toggleAllBtn} onPress={toggleAll}>
                 <Text style={styles.toggleAllText}>
-                  {selected.size === items.length ? '전체 해제' : '전체 선택'}
+                  {selected.size === items.length ? t('scan.receiptScan.deselectAll') : t('scan.receiptScan.selectAll')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -154,7 +155,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
       {!loading && !error && items.length > 0 && (
         <View style={[styles.footer, { paddingBottom: 16 + Math.max(insets.bottom, 12) }]}>
           <TouchableOpacity style={styles.cancelBtn} onPress={goBack}>
-            <Text style={styles.cancelBtnText}>취소</Text>
+            <Text style={styles.cancelBtnText}>{t('scan.receiptScan.cancel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.confirmBtn, (saving || selected.size === 0) && styles.confirmBtnDisabled]}
@@ -162,7 +163,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
             disabled={saving || selected.size === 0}
           >
             <Text style={styles.confirmBtnText}>
-              {saving ? '추가 중...' : `냉장고에 추가  (${selected.size}개)`}
+              {saving ? t('scan.receiptScan.adding') : t('scan.receiptScan.addToFridge', { count: selected.size })}
             </Text>
           </TouchableOpacity>
         </View>

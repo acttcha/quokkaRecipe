@@ -18,7 +18,8 @@ import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
-import { POPULAR_INGREDIENTS } from '../constants/ingredients';
+import { filterPopularIngredients } from '../constants/ingredients';
+import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -31,32 +32,32 @@ type Step = 'identifying' | 'review' | 'generating' | 'results' | 'error';
 type Tab = 'ai' | 'youtube';
 
 const DIFF = {
-  Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
-  Medium: { label: '보통이에요', color: '#D97706',      bg: Colors.yellowLight },
-  Hard:   { label: '어려워요',  color: Colors.coral,   bg: Colors.coralLight },
+  Easy:   { label: t('recipe.diffEasy'),    color: Colors.accent,  bg: Colors.accentLight },
+  Medium: { label: t('recipe.diffMedium'), color: '#D97706',      bg: Colors.yellowLight },
+  Hard:   { label: t('recipe.diffHard'),  color: Colors.coral,   bg: Colors.coralLight },
 };
 
 function getRecipeEmoji(name: string, ingredients: string[]): string {
   const t = (name + ' ' + ingredients.join(' ')).toLowerCase();
-  if (/비빔밥|덮밥/.test(t))            return '🍱';
-  if (/볶음밥|필라프/.test(t))           return '🍚';
-  if (/김치/.test(t))                   return '🥬';
-  if (/계란|달걀/.test(t))              return '🍳';
-  if (/찌개|전골/.test(t))              return '🍲';
-  if (/국|탕|스프|죽/.test(t))          return '🥣';
-  if (/면|국수|파스타|라면|우동/.test(t)) return '🍜';
-  if (/닭|치킨/.test(t))                return '🍗';
-  if (/소고기|갈비|스테이크/.test(t))    return '🥩';
-  if (/돼지|삼겹|항정/.test(t))         return '🥓';
-  if (/새우/.test(t))                   return '🦐';
-  if (/생선|연어|참치|고등어|조기/.test(t)) return '🐟';
-  if (/카레/.test(t))                   return '🍛';
-  if (/샐러드/.test(t))                 return '🥗';
-  if (/전|부침/.test(t))                return '🥞';
-  if (/볶음/.test(t))                   return '🥘';
-  if (/구이/.test(t))                   return '🍖';
-  if (/두부/.test(t))                   return '🫕';
-  if (/나물|무침/.test(t))              return '🥦';
+  if (/비빔밥|덮밥|bibimbap|rice bowl|donburi/.test(t))            return '🍱';
+  if (/볶음밥|필라프|fried rice|pilaf|risotto/.test(t))            return '🍚';
+  if (/김치|kimchi/.test(t))                                      return '🥬';
+  if (/계란|달걀|egg|omelet|frittata/.test(t))                    return '🍳';
+  if (/찌개|전골|stew|hot ?pot/.test(t))                          return '🍲';
+  if (/국|탕|스프|죽|soup|broth|porridge|congee/.test(t))         return '🥣';
+  if (/면|국수|파스타|라면|우동|noodle|pasta|ramen|udon|spaghetti/.test(t)) return '🍜';
+  if (/닭|치킨|chicken/.test(t))                                  return '🍗';
+  if (/소고기|갈비|스테이크|beef|steak|brisket/.test(t))          return '🥩';
+  if (/돼지|삼겹|항정|pork|bacon|ham/.test(t))                    return '🥓';
+  if (/새우|shrimp|prawn/.test(t))                                return '🦐';
+  if (/생선|연어|참치|고등어|조기|fish|salmon|tuna|mackerel/.test(t)) return '🐟';
+  if (/카레|curry/.test(t))                                       return '🍛';
+  if (/샐러드|salad/.test(t))                                     return '🥗';
+  if (/전|부침|pancake|fritter/.test(t))                          return '🥞';
+  if (/볶음|stir.?fry|saut/.test(t))                              return '🥘';
+  if (/구이|grill|roast|bbq/.test(t))                             return '🍖';
+  if (/두부|tofu/.test(t))                                        return '🫕';
+  if (/나물|무침|namul|seasoned veg/.test(t))                     return '🥦';
   return '🍽️';
 }
 
@@ -149,7 +150,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   }, [propsServings]);
 
   const handleGetRecipes = async () => {
-    if (ingredients.length === 0) { Alert.alert('앗!', '재료를 1개 이상 추가해주세요 🥺'); return; }
+    if (ingredients.length === 0) { Alert.alert(t('recipe.oopsTitle'), t('recipe.addAtLeastOne')); return; }
     if (!await checkLeafOrAlert('recipe')) return;
     setStep('generating');
     try {
@@ -185,7 +186,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setExpanded(null);
       await loadSaved();
     } catch (e: unknown) {
-      Alert.alert('앗, 오류가 생겼어요', e instanceof Error ? e.message : String(e));
+      Alert.alert(t('recipe.errorTitle'), e instanceof Error ? e.message : String(e));
     } finally {
       setReRolling(false);
     }
@@ -213,22 +214,20 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       '',
       r.description,
       '',
-      `⏱ ${r.cookTime}  |  👥 ${r.servings}인분  |  ${diffLabel}`,
+      `⏱ ${r.cookTime}  |  👥 ${t('recipe.servings', { n: r.servings })}  |  ${diffLabel}`,
       '',
-      '🧂 재료',
+      t('recipe.shareIngredients'),
       r.ingredients.join(', '),
       '',
-      '👨‍🍳 만드는 법',
+      t('recipe.shareSteps'),
       ...r.steps.map((s, i) => `${i + 1}. ${s}`),
       '',
-      '🐾 쿼카레시피 앱으로 만들었어요',
+      t('recipe.shareFooter'),
     ].join('\n');
     try { await Share.share({ message: text }); } catch {}
   };
 
-  const reviewSuggestions = newIng.trim().length > 0
-    ? POPULAR_INGREDIENTS.filter(item => !ingredients.includes(item) && item.includes(newIng.trim()))
-    : [];
+  const reviewSuggestions = filterPopularIngredients(newIng, ingredients);
 
   const toggleSave = async (r: Recipe) => {
     const wasSaved = savedNames.has(r.name);
@@ -249,7 +248,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       await loadSaved();
     } catch (e) {
       await loadSaved(); // 실패 시 실제 상태로 복원
-      Alert.alert('저장 오류', String(e));
+      Alert.alert(t('recipe.saveErrorTitle'), String(e));
     }
   };
 
@@ -267,7 +266,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setAnswer(res);
       haptic.success();
     } catch {
-      setAnswer('앗, 오류가 생겼어요. 다시 시도해주세요 🙏');
+      setAnswer(t('recipe.askError'));
       haptic.error();
     } finally {
       setAsking(false);
@@ -288,8 +287,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         />
         <View style={styles.loadCard}>
           <ActivityIndicator size="large" color={Colors.accent} style={{ marginBottom: 14 }} />
-          <Text style={styles.loadTitle}>{isId ? '재료를 인식하는 중...' : '레시피를 만드는 중...'}</Text>
-          <Text style={styles.loadSub}>{isId ? 'AI가 이미지를 분석하고 있어요' : '쿼카 셰프가 열심히 요리 중이에요 🍳'}</Text>
+          <Text style={styles.loadTitle}>{isId ? t('recipe.loadingIdentifyTitle') : t('recipe.loadingGenerateTitle')}</Text>
+          <Text style={styles.loadSub}>{isId ? t('recipe.loadingIdentifySub') : t('recipe.loadingGenerateSub')}</Text>
         </View>
       </ImageBackground>
     );
@@ -302,13 +301,13 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <View style={styles.loadCard}>
           <Text style={styles.loadIcon}>😵</Text>
-          <Text style={styles.loadTitle}>문제가 생겼어요</Text>
+          <Text style={styles.loadTitle}>{t('recipe.errorScreenTitle')}</Text>
           <Text style={styles.loadSub}>{errorMsg}</Text>
           <TouchableOpacity style={styles.greenBtn} onPress={identify}>
-            <Text style={styles.greenBtnText}>다시 시도하기</Text>
+            <Text style={styles.greenBtnText}>{t('recipe.retry')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={goBack} style={styles.textBtn}>
-            <Text style={styles.textBtnText}>돌아가기</Text>
+            <Text style={styles.textBtnText}>{t('recipe.goBack')}</Text>
           </TouchableOpacity>
         </View>
       </ImageBackground>
@@ -322,21 +321,21 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.reviewHero}>
           <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← 다시 찍기</Text>
+            <Text style={styles.backBtnText}>{t('recipe.retakePhoto')}</Text>
           </TouchableOpacity>
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-          <Text style={styles.reviewSub}>탭하면 삭제돼요 · 재료 추가도 가능해요</Text>
+          <Text style={styles.reviewSub}>{t('recipe.reviewSub')}</Text>
         </LinearGradient>
 
         <ScrollView style={styles.reviewBody} contentContainerStyle={styles.reviewContent} keyboardShouldPersistTaps="handled">
           <View style={styles.addRow}>
             <TextInput
               style={styles.addInput} value={newIng} onChangeText={setNewIng}
-              placeholder="예) 두부, 된장, 파..." placeholderTextColor={Colors.textMuted}
+              placeholder={t('recipe.addPlaceholder')} placeholderTextColor={Colors.textMuted}
               onSubmitEditing={addIng} returnKeyType="done"
             />
             <TouchableOpacity style={styles.addBtn} onPress={addIng}>
-              <Text style={styles.addBtnText}>추가</Text>
+              <Text style={styles.addBtnText}>{t('recipe.add')}</Text>
             </TouchableOpacity>
           </View>
           {reviewSuggestions.length > 0 && (
@@ -364,12 +363,12 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             ))}
           </View>
           {ingredients.length === 0 && (
-            <View style={styles.emptyCard}><Text style={styles.emptyCardText}>😅 재료를 직접 추가해보세요!</Text></View>
+            <View style={styles.emptyCard}><Text style={styles.emptyCardText}>{t('recipe.emptyAddYourself')}</Text></View>
           )}
 
           {/* 몇 인분 */}
           <View style={styles.servingsRow}>
-            <Text style={styles.servingsLabel}>👥 몇 인분으로 만들까요?</Text>
+            <Text style={styles.servingsLabel}>{t('recipe.servingsQuestion')}</Text>
             <View style={styles.servingsChips}>
               {[1, 2, 3, 4].map(n => {
                 const active = servings === n;
@@ -380,7 +379,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                     onPress={() => { haptic.light(); setServings(n); }}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.servingsChipText, active && styles.servingsChipTextActive]}>{n}인분</Text>
+                    <Text style={[styles.servingsChipText, active && styles.servingsChipTextActive]}>{t('recipe.servings', { n })}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -388,7 +387,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           </View>
 
           <TouchableOpacity style={styles.greenBtn} onPress={handleGetRecipes}>
-            <Text style={styles.greenBtnText}>👨‍🍳  레시피 추천받기</Text>
+            <Text style={styles.greenBtnText}>{t('recipe.getRecipes')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -406,20 +405,20 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           style={styles.backBtn}
         >
           <Text style={styles.backBtnText}>
-            {dishName ? '← 돌아가기' : '← 재료 수정'}
+            {dishName ? t('recipe.backToHome') : t('recipe.editIngredients')}
           </Text>
         </TouchableOpacity>
         <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
         <Text style={styles.resultsSub} numberOfLines={1}>
-          {ingredients.slice(0, 3).join(' · ')}{ingredients.length > 3 ? ` +${ingredients.length - 3}개` : ''}
+          {ingredients.slice(0, 3).join(' · ')}{ingredients.length > 3 ? t('recipe.moreCount', { n: ingredients.length - 3 }) : ''}
         </Text>
       </LinearGradient>
 
       {/* 탭 */}
       <View style={styles.tabWrap}>
         {[
-          { id: 'ai' as Tab, label: '🤖 AI 레시피' },
-          { id: 'youtube' as Tab, label: '📺 유튜브' },
+          { id: 'ai' as Tab, label: t('recipe.tabAi') },
+          { id: 'youtube' as Tab, label: t('recipe.tabYoutube') },
         ].map(t => (
           <TouchableOpacity
             key={t.id}
@@ -444,7 +443,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
               <View style={styles.cardTopRow}>
                 <Text style={styles.recipeName}>{r.name}</Text>
                 <TouchableOpacity style={styles.shareBtn} onPress={() => shareRecipe(r)}>
-                  <Text style={styles.shareBtnText}>공유 ↗</Text>
+                  <Text style={styles.shareBtnText}>{t('recipe.share')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.bookmarkBtn} onPress={() => toggleSave(r)}>
                   <Text style={styles.bookmarkIcon}>{isSaved ? '♥' : '♡'}</Text>
@@ -463,18 +462,18 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                     <Text style={[styles.diffText, { color: diff.color }]}>{diff.label}</Text>
                   </View>
                   <View style={styles.metaChip}><Text style={styles.metaChipText}>⏱ {r.cookTime}</Text></View>
-                  <View style={styles.metaChip}><Text style={styles.metaChipText}>👥 {r.servings}인분</Text></View>
+                  <View style={styles.metaChip}><Text style={styles.metaChipText}>👥 {t('recipe.servings', { n: r.servings })}</Text></View>
                   {r.nutrition && (
                     <View style={styles.metaChip}><Text style={styles.metaChipText}>🔥 {r.nutrition.calories}kcal</Text></View>
                   )}
                   {(() => {
                     const missing = getMissingIngredients(availableIngredients, r.ingredients).length;
                     return missing === 0
-                      ? <View style={styles.ingOkChip}><Text style={styles.ingOkText}>재료 완비 ✓</Text></View>
-                      : <View style={styles.ingMissingChip}><Text style={styles.ingMissingText}>{missing}개 부족</Text></View>;
+                      ? <View style={styles.ingOkChip}><Text style={styles.ingOkText}>{t('recipe.allIngredients')}</Text></View>
+                      : <View style={styles.ingMissingChip}><Text style={styles.ingMissingText}>{t('recipe.missingCount', { n: missing })}</Text></View>;
                   })()}
                   <View style={styles.expandBtn}>
-                    <Text style={styles.expandBtnText}>{open ? '접기 ▲' : '레시피 보기 ▼'}</Text>
+                    <Text style={styles.expandBtnText}>{open ? t('recipe.collapse') : t('recipe.viewRecipe')}</Text>
                   </View>
                 </View>
 
@@ -486,10 +485,10 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                     {r.nutrition && (
                       <View style={styles.nutritionBox}>
                         {[
-                          { label: '칼로리', val: `${r.nutrition.calories}kcal`, color: '#FF9F7F' },
-                          { label: '단백질', val: `${r.nutrition.protein}g`,     color: '#74C0FC' },
-                          { label: '탄수화물', val: `${r.nutrition.carbs}g`,     color: '#FFD166' },
-                          { label: '지방', val: `${r.nutrition.fat}g`,           color: '#C77DFF' },
+                          { label: t('recipe.calories'), val: `${r.nutrition.calories}kcal`, color: '#FF9F7F' },
+                          { label: t('recipe.protein'), val: `${r.nutrition.protein}g`,     color: '#74C0FC' },
+                          { label: t('recipe.carbs'), val: `${r.nutrition.carbs}g`,     color: '#FFD166' },
+                          { label: t('recipe.fat'), val: `${r.nutrition.fat}g`,           color: '#C77DFF' },
                         ].map(n => (
                           <View key={n.label} style={styles.nutritionItem}>
                             <Text style={[styles.nutritionVal, { color: n.color }]}>{n.val}</Text>
@@ -499,7 +498,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       </View>
                     )}
 
-                    <Text style={styles.detailHead}>🧂 재료</Text>
+                    <Text style={styles.detailHead}>{t('recipe.ingredientsHead')}</Text>
                     <View style={styles.ingredientGrid}>
                       {r.ingredients.map((ing, n) => {
                         const have = matchesFridge(availableIngredients, ing);
@@ -513,7 +512,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       })}
                     </View>
 
-                    <Text style={[styles.detailHead, { marginTop: 16 }]}>👨‍🍳 만드는 법</Text>
+                    <Text style={[styles.detailHead, { marginTop: 16 }]}>{t('recipe.stepsHead')}</Text>
                     {r.steps.map((s, n) => (
                       <View key={n} style={styles.stepRow}>
                         <View style={styles.stepNum}>
@@ -529,7 +528,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       onPress={() => { setAskModal(r); setQuestion(''); setAnswer(''); }}
                     >
                       <Image source={require('../../assets/quokka.png')} style={styles.askBtnQuokka} resizeMode="contain" />
-                      <Text style={styles.askBtnText}>쿼카에게 질문하기 🐾</Text>
+                      <Text style={styles.askBtnText}>{t('recipe.askQuokka')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -550,7 +549,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
               <ActivityIndicator size="small" color={Colors.forest} />
             ) : (
               <>
-                <Text style={styles.moreBtnText}>🔄  다른 레시피 추천받기</Text>
+                <Text style={styles.moreBtnText}>{t('recipe.moreRecipes')}</Text>
                 <View style={styles.moreBtnLeaf}>
                   <LeafIcon size={15} />
                   <Text style={styles.moreBtnLeafText}>1</Text>
@@ -564,9 +563,9 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         {tab === 'youtube' && (
           <View>
             <View style={styles.ytHeader}>
-              <Text style={styles.ytHeaderText}>인기 영상 🔥</Text>
+              <Text style={styles.ytHeaderText}>{t('recipe.popularVideos')}</Text>
               <TouchableOpacity style={styles.ytMoreBtn} onPress={() => openYouTubeSearch(ingredients)}>
-                <Text style={styles.ytMoreText}>유튜브에서 보기 →</Text>
+                <Text style={styles.ytMoreText}>{t('recipe.seeOnYoutube')}</Text>
               </TouchableOpacity>
             </View>
             {videos.map((v, i) => {
@@ -581,7 +580,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       ) : (
                         <Text style={styles.thumbEmoji}>{v.thumbnailEmoji}</Text>
                       )}
-                      <View style={styles.rankBadge}><Text style={styles.rankText}>{i + 1}위</Text></View>
+                      <View style={styles.rankBadge}><Text style={styles.rankText}>{t('recipe.rank', { n: i + 1 })}</Text></View>
                       {!!durationText && (
                         <View style={styles.durationBadge}>
                           <Text style={styles.durationText}>{durationText}</Text>
@@ -609,7 +608,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       <View style={styles.ytLogo}>
                         <Text style={styles.ytLogoPlay}>▶</Text>
                       </View>
-                      <Text style={styles.videoOpenBtnText}>유튜브로 이동</Text>
+                      <Text style={styles.videoOpenBtnText}>{t('recipe.openYoutube')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.videoAnalyzeBtn}
@@ -622,7 +621,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       }}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.videoAnalyzeBtnText}>🤖 레시피 분석</Text>
+                      <Text style={styles.videoAnalyzeBtnText}>{t('recipe.analyzeRecipe')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -637,8 +636,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           if (allMissing.length === 0) return null;
           return (
             <View style={styles.coupangBar}>
-              <Text style={styles.coupangBarLabel}>🛒 없는 재료 바로 구매</Text>
-              <Text style={styles.coupangBarSub}>집에 없는 재료만 쿠팡에서 바로 주문해요</Text>
+              <Text style={styles.coupangBarLabel}>{t('recipe.coupangLabel')}</Text>
+              <Text style={styles.coupangBarSub}>{t('recipe.coupangSub')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {allMissing.map(ing => (
@@ -654,7 +653,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         })()}
 
         <TouchableOpacity style={styles.homeBtn} onPress={() => navigate({ name: 'Home' })}>
-          <Text style={styles.homeBtnText}>🏠  처음으로 돌아가기</Text>
+          <Text style={styles.homeBtnText}>{t('recipe.backToStart')}</Text>
         </TouchableOpacity>
 
         <AdBanner />
@@ -670,7 +669,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             <View style={styles.modalHeader}>
               <Image source={require('../../assets/quokka.png')} style={styles.modalQuokka} resizeMode="contain" />
               <View style={styles.modalHeaderText}>
-                <Text style={styles.modalTitle}>쿼카에게 물어보기</Text>
+                <Text style={styles.modalTitle}>{t('recipe.modalTitle')}</Text>
                 <Text style={styles.modalSub} numberOfLines={1}>{askModal?.name}</Text>
               </View>
               <TouchableOpacity onPress={() => setAskModal(null)} style={styles.modalClose}>
@@ -682,7 +681,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             {asking && (
               <View style={styles.answerBox}>
                 <ActivityIndicator size="small" color={Colors.accent} />
-                <Text style={styles.answerLoading}>쿼카가 생각하는 중... 🐾</Text>
+                <Text style={styles.answerLoading}>{t('recipe.thinking')}</Text>
               </View>
             )}
             {!!answer && !asking && (
@@ -706,7 +705,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 style={styles.modalInput}
                 value={question}
                 onChangeText={setQuestion}
-                placeholder="궁금한 것을 물어보세요..."
+                placeholder={t('recipe.questionPlaceholder')}
                 placeholderTextColor={Colors.textMuted}
                 multiline
               />
@@ -715,7 +714,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 onPress={handleAsk}
                 disabled={!question.trim() || asking}
               >
-                <Text style={styles.sendBtnText}>전송</Text>
+                <Text style={styles.sendBtnText}>{t('recipe.send')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -726,11 +725,11 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 }
 
 const QUICK_QUESTIONS = [
-  '더 쉽게 만들 수 있어?',
-  '칼로리 낮추려면?',
-  '이 재료 대신 뭐 써도 돼?',
-  '보관은 어떻게 해?',
-  '맛있게 하는 팁 있어?',
+  t('recipe.quickEasier'),
+  t('recipe.quickLowerCalorie'),
+  t('recipe.quickSubstitute'),
+  t('recipe.quickStorage'),
+  t('recipe.quickTips'),
 ];
 
 const styles = StyleSheet.create({

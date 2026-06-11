@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, shadow } from '../constants/colors';
 import { addIngredients, markFridgeSetupDone } from '../services/fridge';
+import { t } from '../i18n';
 
 interface Props { onDone: () => void }
 
@@ -35,7 +36,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
   };
 
   const finish = async () => {
-    if (selected.length > 0) await addIngredients(selected);
+    if (selected.length > 0) await addIngredients(selected.map(i => t(`fridgeSetup.ing.${i}`)));
     await markFridgeSetupDone();
     onDone();
   };
@@ -60,7 +61,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
         </TouchableOpacity>
         <Image source={require('../../assets/main_logo.png')} style={styles.logo} resizeMode="contain" />
         <TouchableOpacity onPress={skip} style={styles.skipBtn}>
-          <Text style={styles.skipBtnText}>건너뛰기</Text>
+          <Text style={styles.skipBtnText}>{t('fridgeSetup.skip')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -73,7 +74,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
       <View style={styles.charArea}>
         <View style={styles.bubbleOuter}>
           <View style={styles.bubble}>
-            <Text style={styles.bubbleText}>{'냉장고에 있는\n기본 재료를 골라주세요!'}</Text>
+            <Text style={styles.bubbleText}>{t('fridgeSetup.bubble')}</Text>
           </View>
           <View style={styles.bubbleTail} />
         </View>
@@ -93,7 +94,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.hint}>
-            여러 개 선택 가능 · 나중에 냉장고에서 수정 가능해요
+            {t('fridgeSetup.hint')}
           </Text>
           <View style={styles.chipWrap}>
             {FRIDGE_ALL.map(item => {
@@ -105,7 +106,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
                   onPress={() => toggle(item)}
                 >
                   <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                    {active ? '✓ ' : ''}{item}
+                    {active ? '✓ ' : ''}{t(`fridgeSetup.ing.${item}`)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -114,7 +115,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
         </ScrollView>
         <View style={styles.btnBar}>
           <TouchableOpacity style={styles.nextBtn} onPress={finish} activeOpacity={0.85}>
-            <Text style={styles.nextBtnText}>완료</Text>
+            <Text style={styles.nextBtnText}>{t('fridgeSetup.done')}</Text>
           </TouchableOpacity>
         </View>
       </View>

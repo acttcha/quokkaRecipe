@@ -9,7 +9,8 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { getFridgeIngredients, addIngredient, removeIngredient, clearFridge } from '../services/fridge';
 import { haptic } from '../services/haptics';
-import { POPULAR_INGREDIENTS } from '../constants/ingredients';
+import { filterPopularIngredients } from '../constants/ingredients';
+import { t } from '../i18n';
 
 function IconCamera() {
   return (
@@ -86,10 +87,7 @@ export default function FridgeScreen({ navigate }: NavProps) {
     await load();
   };
 
-  const suggestions = input.trim().length > 0
-    ? POPULAR_INGREDIENTS
-        .filter(item => !ingredients.includes(item) && item.includes(input.trim()))
-    : [];
+  const suggestions = filterPopularIngredients(input, ingredients);
 
   const handleRemove = async (item: string) => {
     await removeIngredient(item);
@@ -97,10 +95,10 @@ export default function FridgeScreen({ navigate }: NavProps) {
   };
 
   const handleClear = () => {
-    Alert.alert('냉장고 비우기', '모든 재료를 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
+    Alert.alert(t('fridge.clearTitle'), t('fridge.clearMessage'), [
+      { text: t('fridge.cancel'), style: 'cancel' },
       {
-        text: '비우기', style: 'destructive',
+        text: t('fridge.clearConfirm'), style: 'destructive',
         onPress: async () => { await clearFridge(); await load(); },
       },
     ]);
@@ -108,7 +106,7 @@ export default function FridgeScreen({ navigate }: NavProps) {
 
   const handleMakeRecipe = () => {
     if (ingredients.length === 0) {
-      Alert.alert('재료가 없어요', '재료를 먼저 추가해주세요 🥺');
+      Alert.alert(t('fridge.noIngredientsTitle'), t('fridge.noIngredientsMessage'));
       return;
     }
     navigate({ name: 'FridgeRecipes', ingredients });
@@ -122,9 +120,9 @@ export default function FridgeScreen({ navigate }: NavProps) {
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.header}>
         <View style={styles.headerSpacer} />
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>내 냉장고</Text>
+          <Text style={styles.headerTitle}>{t('fridge.headerTitle')}</Text>
           <Text style={styles.headerSub}>
-            {ingredients.length > 0 ? `총 ${ingredients.length}개 재료가 들어있어요` : '재료를 추가해보세요'}
+            {ingredients.length > 0 ? t('fridge.headerCount', { count: ingredients.length }) : t('fridge.headerEmpty')}
           </Text>
         </View>
         <View style={styles.headerHairline} />
@@ -148,8 +146,8 @@ export default function FridgeScreen({ navigate }: NavProps) {
               <IconCamera />
             </View>
             <View>
-              <Text style={styles.tileTitle}>재료 스캔</Text>
-              <Text style={styles.tileSub}>사진으로 추가</Text>
+              <Text style={styles.tileTitle}>{t('fridge.scanIngredients')}</Text>
+              <Text style={styles.tileSub}>{t('fridge.scanIngredientsSub')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -162,27 +160,27 @@ export default function FridgeScreen({ navigate }: NavProps) {
               <IconReceipt />
             </View>
             <View>
-              <Text style={styles.tileTitle}>영수증 스캔</Text>
-              <Text style={styles.tileSub}>영수증으로 추가</Text>
+              <Text style={styles.tileTitle}>{t('fridge.scanReceipt')}</Text>
+              <Text style={styles.tileSub}>{t('fridge.scanReceiptSub')}</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         {/* 직접 추가 */}
-        <Text style={styles.addLabel}>직접 추가</Text>
+        <Text style={styles.addLabel}>{t('fridge.addLabel')}</Text>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder="예: 두부, 파, 된장..."
+            placeholder={t('fridge.inputPlaceholder')}
             placeholderTextColor={Colors.inkMute}
             returnKeyType="done"
             onSubmitEditing={handleAdd}
           />
           <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.85}>
             <IconPlus />
-            <Text style={styles.addBtnText}>추가</Text>
+            <Text style={styles.addBtnText}>{t('fridge.addBtn')}</Text>
           </TouchableOpacity>
         </View>
         {suggestions.length > 0 && (
@@ -203,14 +201,14 @@ export default function FridgeScreen({ navigate }: NavProps) {
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>
-              재료 목록{'  '}
+              {t('fridge.listTitle')}{'  '}
               {ingredients.length > 0 && (
                 <Text style={styles.cardCount}>{ingredients.length}</Text>
               )}
             </Text>
             {ingredients.length > 0 && (
               <TouchableOpacity onPress={handleClear}>
-                <Text style={styles.clearText}>전체 삭제</Text>
+                <Text style={styles.clearText}>{t('fridge.clearAll')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -218,8 +216,8 @@ export default function FridgeScreen({ navigate }: NavProps) {
           {ingredients.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>🧊</Text>
-              <Text style={styles.emptyText}>냉장고가 비어있어요</Text>
-              <Text style={styles.emptySub}>재료를 스캔하거나 직접 추가해보세요</Text>
+              <Text style={styles.emptyText}>{t('fridge.emptyTitle')}</Text>
+              <Text style={styles.emptySub}>{t('fridge.emptySub')}</Text>
             </View>
           ) : (
             <View style={styles.chipGrid}>
@@ -249,7 +247,7 @@ export default function FridgeScreen({ navigate }: NavProps) {
           activeOpacity={0.85}
         >
           <IconPan />
-          <Text style={styles.ctaBtnText}>이 재료로 레시피 만들기</Text>
+          <Text style={styles.ctaBtnText}>{t('fridge.cta')}</Text>
         </TouchableOpacity>
       </View>
     </View>

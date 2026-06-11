@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   ActivityIndicator, Image, StatusBar, Alert, TextInput,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import { checkLeafOrAlert } from '../services/leafGate';
 import { saveRecipe, isRecipeSaved } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
+import { t } from '../i18n';
 
 type Props = NavProps & {
   recipeName?: string;
@@ -26,10 +27,10 @@ type Props = NavProps & {
 };
 type Stage = 'input' | 'searching' | 'results' | 'analyzing' | 'done' | 'error';
 
-const DIFF: Record<string, { label: string; color: string; bg: string }> = {
-  Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
-  Medium: { label: '보통이에요', color: '#D97706',      bg: Colors.yellowLight },
-  Hard:   { label: '어려워요',  color: Colors.coral,   bg: Colors.coralLight },
+const DIFF: Record<string, { labelKey: string; color: string; bg: string }> = {
+  Easy:   { labelKey: 'youtube.diffEasy',   color: Colors.accent,  bg: Colors.accentLight },
+  Medium: { labelKey: 'youtube.diffMedium', color: '#D97706',      bg: Colors.yellowLight },
+  Hard:   { labelKey: 'youtube.diffHard',   color: Colors.coral,   bg: Colors.coralLight },
 };
 
 function IconYoutube() {
@@ -81,12 +82,12 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
     setStage('searching');
     try {
       const items = await searchYoutubeForRecipe(query);
-      if (!items.length) { setErrorMsg(`"${query}" 관련 영상을 찾지 못했어요`); setStage('error'); return; }
+      if (!items.length) { setErrorMsg(t('youtube.noResults', { query })); setStage('error'); return; }
       setVideos(items);
       setStage('results');
     } catch (e: any) {
       console.error('[YT Search]', e);
-      setErrorMsg(e.message || '검색 중 오류가 생겼어요');
+      setErrorMsg(e.message || t('youtube.searchError'));
       setStage('error');
     }
   };
@@ -99,7 +100,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
     if (videoId) {
       const mockVideo: YTSearchResult = {
         videoId,
-        title: 'YouTube 영상',
+        title: t('youtube.mockVideoTitle'),
         channelTitle: '',
         thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
         viewCount: 0,
@@ -132,7 +133,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
       setStage('done');
     } catch (e: any) {
       haptic.error();
-      Alert.alert('분석 실패', e.message || '다시 시도해주세요');
+      Alert.alert(t('youtube.analyzeFailTitle'), e.message || t('youtube.tryAgain'));
       setStage('results');
     }
   };
@@ -170,7 +171,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <IconYoutube />
-            <Text style={styles.headerTitle}>유튜브 레시피 분석</Text>
+            <Text style={styles.headerTitle}>{t('youtube.headerTitle')}</Text>
           </View>
           <View style={styles.headerRight} />
         </View>
@@ -185,12 +186,12 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
       {stage === 'input' && (
         <KeyboardAvoidingView style={styles.inputStage} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.inputCard}>
-            <Text style={styles.inputLabel}>유튜브 링크 또는 요리 이름</Text>
+            <Text style={styles.inputLabel}>{t('youtube.inputLabel')}</Text>
             <TextInput
               style={styles.inputField}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="된장찌개  또는  youtube.com/watch?v=..."
+              placeholder={t('youtube.inputPlaceholder')}
               placeholderTextColor={Colors.inkMute}
               autoFocus
               returnKeyType="search"
@@ -199,15 +200,15 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
               autoCorrect={false}
             />
             <View style={styles.inputHints}>
-              <Text style={styles.inputHint}>🔗 유튜브 링크를 붙여넣으면 바로 분석해요</Text>
-              <Text style={styles.inputHint}>🔍 요리 이름을 입력하면 관련 영상을 검색해요</Text>
+              <Text style={styles.inputHint}>{t('youtube.inputHintLink')}</Text>
+              <Text style={styles.inputHint}>{t('youtube.inputHintSearch')}</Text>
             </View>
             <TouchableOpacity
               style={[styles.inputSubmitBtn, !inputText.trim() && styles.inputSubmitDisabled]}
               onPress={handleInputSubmit}
               disabled={!inputText.trim()}
             >
-              <Text style={styles.inputSubmitText}>시작하기</Text>
+              <Text style={styles.inputSubmitText}>{t('youtube.startBtn')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -217,7 +218,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
       {stage === 'searching' && (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color={Colors.forest} />
-          <Text style={styles.loadingText}>유튜브 영상 검색 중...</Text>
+          <Text style={styles.loadingText}>{t('youtube.searching')}</Text>
         </View>
       )}
 
@@ -230,8 +231,8 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
             <Text style={styles.analyzingChannel}>{selected.channelTitle}</Text>
           </View>
           <ActivityIndicator size="large" color={Colors.forest} style={{ marginTop: 28 }} />
-          <Text style={styles.loadingText}>자막 추출 및 레시피 분석 중...</Text>
-          <Text style={styles.loadingSubText}>30초 정도 걸릴 수 있어요</Text>
+          <Text style={styles.loadingText}>{t('youtube.analyzing')}</Text>
+          <Text style={styles.loadingSubText}>{t('youtube.analyzingSub')}</Text>
         </View>
       )}
 
@@ -241,7 +242,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
           <Text style={styles.errorEmoji}>😢</Text>
           <Text style={styles.errorText}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => search(queryLabel)}>
-            <Text style={styles.retryBtnText}>다시 시도</Text>
+            <Text style={styles.retryBtnText}>{t('youtube.retry')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -249,7 +250,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
       {/* 검색 결과 */}
       {stage === 'results' && (
         <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.resultsHint}>영상을 선택하면 레시피를 분석해드려요</Text>
+          <Text style={styles.resultsHint}>{t('youtube.resultsHint')}</Text>
           {videos.map(v => (
             <TouchableOpacity key={v.videoId} style={styles.videoCard} onPress={() => analyze(v)} activeOpacity={0.85}>
               <Image source={{ uri: v.thumbnail }} style={styles.videoThumb} />
@@ -262,7 +263,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
                     <Text style={styles.viewsText}>{formatViewCount(v.viewCount)}</Text>
                   </View>
                   <View style={styles.analyzeBtn}>
-                    <Text style={styles.analyzeBtnText}>분석하기 →</Text>
+                    <Text style={styles.analyzeBtnText}>{t('youtube.analyzeBtn')}</Text>
                   </View>
                 </View>
               </View>
@@ -276,13 +277,21 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
         <>
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
 
-            {/* 출처 영상 */}
-            <TouchableOpacity style={styles.sourceCard} activeOpacity={0.85}>
+            {/* 출처 영상 — 탭하면 유튜브로 이동 */}
+            <TouchableOpacity
+              style={styles.sourceCard}
+              activeOpacity={0.85}
+              onPress={() => {
+                haptic.light();
+                Linking.openURL(`https://www.youtube.com/watch?v=${selected.videoId}`);
+              }}
+            >
               <Image source={{ uri: selected.thumbnail }} style={styles.sourceThumb} />
               <View style={styles.sourceInfo}>
-                <Text style={styles.sourceLabel}>출처 영상</Text>
+                <Text style={styles.sourceLabel}>{t('youtube.sourceLabel')}</Text>
                 <Text style={styles.sourceTitle} numberOfLines={2}>{selected.title}</Text>
                 <Text style={styles.sourceChannel}>{selected.channelTitle}</Text>
+                <Text style={styles.sourceWatch}>{t('youtube.watchOnYoutube')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -292,21 +301,21 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
               <View style={styles.chipRow}>
                 {diff && (
                   <View style={[styles.chip, { backgroundColor: diff.bg }]}>
-                    <Text style={[styles.chipText, { color: diff.color }]}>{diff.label}</Text>
+                    <Text style={[styles.chipText, { color: diff.color }]}>{t(diff.labelKey)}</Text>
                   </View>
                 )}
                 <View style={styles.chip}>
                   <Text style={styles.chipText}>⏱ {result.cookTime}</Text>
                 </View>
                 <View style={styles.chip}>
-                  <Text style={styles.chipText}>👥 {result.servings}인분</Text>
+                  <Text style={styles.chipText}>{t('youtube.servings', { count: result.servings })}</Text>
                 </View>
               </View>
             </View>
 
             {/* 재료 */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🧂 재료</Text>
+              <Text style={styles.sectionTitle}>{t('youtube.ingredientsTitle')}</Text>
               <View style={styles.ingredientGrid}>
                 {result.ingredients.map((ing, i) => (
                   <View key={i} style={styles.ingredientChip}>
@@ -318,7 +327,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
 
             {/* 만드는 법 */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>👨‍🍳 만드는 법</Text>
+              <Text style={styles.sectionTitle}>{t('youtube.stepsTitle')}</Text>
               {result.steps.map((step, i) => (
                 <View key={i} style={styles.stepRow}>
                   <View style={styles.stepNum}>
@@ -332,7 +341,7 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
             {/* 팁 */}
             {result.tips.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>💡 요리 팁</Text>
+                <Text style={styles.sectionTitle}>{t('youtube.tipsTitle')}</Text>
                 {result.tips.map((tip, i) => (
                   <View key={i} style={styles.tipRow}>
                     <Text style={styles.tipBullet}>•</Text>
@@ -349,14 +358,14 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
               style={styles.reanalzeBtn}
               onPress={() => { setStage('results'); setSelected(null); setResult(null); setSaved(false); }}
             >
-              <Text style={styles.reanalyzeBtnText}>다른 영상</Text>
+              <Text style={styles.reanalyzeBtnText}>{t('youtube.otherVideo')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.saveBtn, saved && styles.saveBtnDone]}
               onPress={handleSave}
               disabled={saved}
             >
-              <Text style={styles.saveBtnText}>{saved ? '✓ 저장됨' : '♥ 레시피 저장'}</Text>
+              <Text style={styles.saveBtnText}>{saved ? t('youtube.saved') : t('youtube.save')}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -457,6 +466,7 @@ const styles = StyleSheet.create({
   sourceLabel: { fontSize: 10, fontWeight: '700', color: Colors.inkMute, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 },
   sourceTitle: { fontSize: 12, fontWeight: '700', color: Colors.ink, lineHeight: 16 },
   sourceChannel: { fontSize: 11, color: Colors.inkSoft, marginTop: 2 },
+  sourceWatch: { fontSize: 12, fontWeight: '800', color: '#FF0000', marginTop: 6 },
 
   recipeHeader: {
     backgroundColor: Colors.white, borderRadius: 16,

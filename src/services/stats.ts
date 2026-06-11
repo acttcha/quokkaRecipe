@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { t } from '../i18n';
 
 const SCAN_COUNT_KEY = 'scan_count';
 const NICKNAME_KEY = 'user_nickname';
@@ -15,7 +16,7 @@ export async function getScanCount(): Promise<number> {
 
 export async function getNickname(): Promise<string> {
   const val = await SecureStore.getItemAsync(NICKNAME_KEY);
-  return val || '쿼카 유저';
+  return val || t('profile.defaultNickname');
 }
 
 export async function saveNickname(name: string): Promise<void> {

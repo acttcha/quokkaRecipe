@@ -14,6 +14,7 @@ import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SearchIcon } from '../components/ui';
 import { AdBanner } from '../components/AdBanner';
 import { haptic } from '../services/haptics';
+import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -101,9 +102,9 @@ function IconCheck() {
   );
 }
 
-const DIFF_LABEL: Record<string, string> = {
-  Easy: '쉬워요', Medium: '보통이에요', Hard: '어려워요',
-};
+const diffLabelMap = (): Record<string, string> => ({
+  Easy: t('saved.diffEasy'), Medium: t('saved.diffMedium'), Hard: t('saved.diffHard'),
+});
 
 interface SavedScreenProps extends NavProps {
   onFolderBarScroll?: (scrolling: boolean) => void;
@@ -151,9 +152,9 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
 
   const handleDelete = (r: SavedRecipe) => {
     haptic.warning();
-    Alert.alert('삭제할까요?', `"${r.name}"을 저장 목록에서 삭제해요.`, [
-      { text: '취소', style: 'cancel' },
-      { text: '삭제', style: 'destructive', onPress: async () => { await removeRecipe(r.id); await load(); } },
+    Alert.alert(t('saved.deleteTitle'), t('saved.deleteMsg', { name: r.name }), [
+      { text: t('saved.cancel'), style: 'cancel' },
+      { text: t('saved.delete'), style: 'destructive', onPress: async () => { await removeRecipe(r.id); await load(); } },
     ]);
   };
 
@@ -162,19 +163,19 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
     if (inFolder.length > 0) {
       haptic.warning();
       Alert.alert(
-        '폴더를 비워주세요',
-        `"${folder.name}"에 레시피가 ${inFolder.length}개 있어요.\n레시피를 모두 이동하거나 삭제한 후 폴더를 삭제할 수 있어요.`,
-        [{ text: '확인' }]
+        t('saved.folderNotEmptyTitle'),
+        t('saved.folderNotEmptyMsg', { name: folder.name, n: inFolder.length }),
+        [{ text: t('saved.ok') }]
       );
       return;
     }
     Alert.alert(
-      `"${folder.name}" 폴더 삭제`,
-      '빈 폴더를 삭제할게요.',
+      t('saved.deleteFolderTitle', { name: folder.name }),
+      t('saved.deleteFolderMsg'),
       [
-        { text: '취소', style: 'cancel' },
+        { text: t('saved.cancel'), style: 'cancel' },
         {
-          text: '삭제', style: 'destructive',
+          text: t('saved.delete'), style: 'destructive',
           onPress: async () => {
             haptic.warning();
             await deleteFolder(folder.id);
@@ -237,7 +238,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
         <View style={styles.headerSpacer} />
         <View style={styles.headerContent}>
           <View style={styles.headerTitleRow}>
-            <Text style={styles.headerTitle}>저장한 레시피</Text>
+            <Text style={styles.headerTitle}>{t('saved.headerTitle')}</Text>
             <TouchableOpacity
               style={styles.ytAnalyzeBtn}
               onPress={() => { haptic.light(); navigate({ name: 'YoutubeRecipe' }); }}
@@ -247,11 +248,11 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                 <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.97C5.12 20 12 20 12 20s6.88 0 8.59-.45a2.78 2.78 0 0 0 1.95-1.97A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58Z" fill="#FF0000" />
                 <Path d="m9.75 15.02 5.75-3.02-5.75-3.02v6.04Z" fill="#fff" />
               </Svg>
-              <Text style={styles.ytAnalyzeBtnText}>유튜브 레시피 분석</Text>
+              <Text style={styles.ytAnalyzeBtnText}>{t('saved.ytAnalyze')}</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.headerSub}>
-            {recipes.length > 0 ? `${recipes.length}개의 레시피를 보관 중이에요` : '아직 저장된 레시피가 없어요'}
+            {recipes.length > 0 ? t('saved.headerSubCount', { n: recipes.length }) : t('saved.headerSubEmpty')}
           </Text>
         </View>
         <View style={styles.headerHairline} />
@@ -281,7 +282,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
           activeOpacity={0.8}
         >
           <IconAllRecipes active={selectedFolderId === null} />
-          <Text style={[styles.folderTabText, selectedFolderId === null && styles.folderTabTextActive]}>전체</Text>
+          <Text style={[styles.folderTabText, selectedFolderId === null && styles.folderTabTextActive]}>{t('saved.all')}</Text>
           <Text style={[styles.folderTabCount, selectedFolderId !== null && styles.folderTabCountInactive]}>
             {recipes.length}
           </Text>
@@ -325,7 +326,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
           activeOpacity={0.8}
         >
           <IconPlusCircle />
-          <Text style={styles.folderTabAddText}>폴더</Text>
+          <Text style={styles.folderTabAddText}>{t('saved.folder')}</Text>
         </TouchableOpacity>
       </ScrollView>
       </View>
@@ -338,7 +339,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="레시피 이름 검색..."
+            placeholder={t('saved.searchPlaceholder')}
             placeholderTextColor={Colors.inkMute}
             autoFocus
             returnKeyType="search"
@@ -355,26 +356,26 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
         {recipes.length === 0 ? (
           <View style={styles.emptyWrap}>
             <Image source={require('../../assets/quokka.png')} style={styles.emptyQuokka} resizeMode="contain" />
-            <Text style={styles.emptyTitle}>저장된 레시피가 없어요</Text>
-            <Text style={styles.emptySub}>레시피 화면에서 ♥ 버튼으로 저장해보세요!</Text>
+            <Text style={styles.emptyTitle}>{t('saved.emptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('saved.emptySub')}</Text>
             <TouchableOpacity style={styles.scanBtn} onPress={() => navigate({ name: 'Camera' })}>
-              <Text style={styles.scanBtnText}>📸  재료 스캔하러 가기</Text>
+              <Text style={styles.scanBtnText}>{t('saved.scanBtn')}</Text>
             </TouchableOpacity>
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyTitle}>
-              {searchQuery ? '검색 결과가 없어요' : '이 폴더에 레시피가 없어요'}
+              {searchQuery ? t('saved.noSearchTitle') : t('saved.noFolderTitle')}
             </Text>
             <Text style={styles.emptySub}>
               {searchQuery
-                ? `"${searchQuery}"와 일치하는 레시피가 없어요`
-                : '레시피 카드의 📁 버튼으로 폴더에 추가해보세요'}
+                ? t('saved.noSearchSub', { q: searchQuery })
+                : t('saved.noFolderSub')}
             </Text>
           </View>
         ) : (
           filtered.map((r) => {
-            const diffLabel = DIFF_LABEL[r.difficulty] ?? r.difficulty;
+            const diffLabel = diffLabelMap()[r.difficulty] ?? r.difficulty;
             const d = new Date(r.savedAt);
             const savedDate = `${d.getFullYear()}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getDate().toString().padStart(2,'0')}`;
             const folder = r.folderId ? folders.find(f => f.id === r.folderId) : null;
@@ -424,8 +425,8 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                     {fridgeItems.length > 0 && (() => {
                       const missing = getMissingIngredients(fridgeItems, r.ingredients).length;
                       return missing === 0
-                        ? <Text style={styles.ingOkBadge}>재료 완비 ✓</Text>
-                        : <Text style={styles.ingMissingBadge}>{missing}개 부족</Text>;
+                        ? <Text style={styles.ingOkBadge}>{t('saved.ingOk')}</Text>
+                        : <Text style={styles.ingMissingBadge}>{t('saved.ingMissing', { n: missing })}</Text>;
                     })()}
                     <Text style={styles.savedDate}>{savedDate}</Text>
                   </View>
@@ -456,7 +457,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
             <TouchableOpacity activeOpacity={1} onPress={() => {}}>
               <View style={styles.pickerSheet}>
                 <View style={styles.pickerHandle} />
-                <Text style={styles.pickerTitle}>폴더 이동</Text>
+                <Text style={styles.pickerTitle}>{t('saved.pickerTitle')}</Text>
                 {pickerRecipe && (
                   <Text style={styles.pickerSub} numberOfLines={1}>{pickerRecipe.name}</Text>
                 )}
@@ -469,7 +470,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                     <IconFolderSheet selected={!pickerRecipe?.folderId} />
                   </View>
                   <Text style={[styles.folderOptionText, !pickerRecipe?.folderId && styles.folderOptionTextActive]}>
-                    분류 없음
+                    {t('saved.noCategory')}
                   </Text>
                   {!pickerRecipe?.folderId && <IconCheck />}
                 </TouchableOpacity>
@@ -489,7 +490,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                         {folder.name}
                       </Text>
                       <Text style={styles.folderOptionCount}>
-                        {recipes.filter(rx => rx.folderId === folder.id).length}개
+                        {t('saved.folderCount', { n: recipes.filter(rx => rx.folderId === folder.id).length })}
                       </Text>
                       {isSelected && <IconCheck />}
                     </TouchableOpacity>
@@ -504,7 +505,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                       style={styles.newFolderInput}
                       value={newFolderName}
                       onChangeText={setNewFolderName}
-                      placeholder="새 폴더 이름"
+                      placeholder={t('saved.newFolderNamePlaceholder')}
                       placeholderTextColor={Colors.inkMute}
                       autoFocus
                       returnKeyType="done"
@@ -514,7 +515,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                       style={[styles.newFolderBtn, !newFolderName.trim() && styles.btnDisabled]}
                       onPress={handleCreateFolderInPicker}
                     >
-                      <Text style={styles.newFolderBtnText}>만들기</Text>
+                      <Text style={styles.newFolderBtnText}>{t('saved.create')}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -522,7 +523,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                     <View style={styles.folderOptionIconWrap}>
                       <IconPlusCircle />
                     </View>
-                    <Text style={styles.folderOptionAddText}>새 폴더 만들기</Text>
+                    <Text style={styles.folderOptionAddText}>{t('saved.newFolder')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -537,12 +538,12 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <TouchableOpacity activeOpacity={1} onPress={() => {}}>
               <View style={styles.newFolderModal}>
-                <Text style={styles.newFolderModalTitle}>새 폴더 만들기</Text>
+                <Text style={styles.newFolderModalTitle}>{t('saved.newFolder')}</Text>
                 <TextInput
                   style={styles.newFolderModalInput}
                   value={tabModalName}
                   onChangeText={setTabModalName}
-                  placeholder="폴더 이름"
+                  placeholder={t('saved.folderNamePlaceholder')}
                   placeholderTextColor={Colors.inkMute}
                   autoFocus
                   returnKeyType="done"
@@ -553,13 +554,13 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
                     style={styles.newFolderModalCancelBtn}
                     onPress={() => setTabModalVisible(false)}
                   >
-                    <Text style={styles.newFolderModalCancelText}>취소</Text>
+                    <Text style={styles.newFolderModalCancelText}>{t('saved.cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.newFolderModalConfirmBtn, !tabModalName.trim() && styles.btnDisabled]}
                     onPress={handleCreateFolderFromTab}
                   >
-                    <Text style={styles.newFolderModalConfirmText}>만들기</Text>
+                    <Text style={styles.newFolderModalConfirmText}>{t('saved.create')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

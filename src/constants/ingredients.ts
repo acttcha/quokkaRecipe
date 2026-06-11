@@ -1,4 +1,10 @@
-export const POPULAR_INGREDIENTS = [
+import { getLang } from '../services/locale';
+
+// 자동완성 재료 목록 — 언어별로 독립.
+// 한국어: 한식 위주 식재료. 영어: 서양·글로벌 식재료.
+// (직역이 아니라 각 문화권에서 실제로 흔히 쓰는 재료로 구성)
+
+export const POPULAR_INGREDIENTS_KO = [
   // 달걀·유제품
   '달걀', '우유', '버터', '치즈', '슬라이스치즈', '모짜렐라치즈',
   '파마산치즈', '크림치즈', '생크림', '요거트', '사워크림', '두유',
@@ -129,3 +135,130 @@ export const POPULAR_INGREDIENTS = [
   '바나나', '키위', '망고', '파인애플', '파파야',
   '무화과', '석류',
 ];
+
+export const POPULAR_INGREDIENTS_EN = [
+  // Eggs & dairy
+  'Eggs', 'Milk', 'Butter', 'Cheese', 'Cheddar', 'Mozzarella',
+  'Parmesan', 'Cream Cheese', 'Heavy Cream', 'Yogurt', 'Greek Yogurt',
+  'Sour Cream', 'Soy Milk',
+
+  // Vegetables — basic
+  'Onion', 'Red Onion', 'Garlic', 'Green Onion', 'Scallion', 'Ginger', 'Shallot', 'Leek',
+  'Carrot', 'Potato', 'Sweet Potato', 'Radish', 'Turnip', 'Beet',
+  'Cabbage', 'Red Cabbage', 'Napa Cabbage', 'Bok Choy',
+  'Spinach', 'Lettuce', 'Romaine', 'Arugula', 'Kale', 'Swiss Chard',
+
+  // Vegetables — fruiting & more
+  'Zucchini', 'Squash', 'Pumpkin', 'Butternut Squash', 'Cucumber', 'Eggplant',
+  'Tomato', 'Cherry Tomato', 'Avocado',
+  'Bell Pepper', 'Red Pepper', 'Green Pepper', 'Jalapeño', 'Chili Pepper',
+  'Corn', 'Peas', 'Green Beans', 'Edamame',
+  'Broccoli', 'Cauliflower', 'Brussels Sprouts', 'Asparagus', 'Celery', 'Artichoke',
+
+  // Herbs
+  'Basil', 'Parsley', 'Cilantro', 'Dill', 'Rosemary', 'Thyme', 'Mint',
+  'Oregano', 'Sage', 'Chives', 'Bay Leaf',
+
+  // Mushrooms
+  'Mushroom', 'Button Mushroom', 'Cremini', 'Portobello', 'Shiitake',
+  'Oyster Mushroom', 'Enoki', 'Truffle',
+
+  // Tofu & beans
+  'Tofu', 'Silken Tofu', 'Firm Tofu', 'Tempeh',
+  'Chickpeas', 'Black Beans', 'Kidney Beans', 'White Beans', 'Lentils', 'Soybeans',
+
+  // Chicken
+  'Chicken Breast', 'Chicken Thigh', 'Chicken Wings', 'Chicken Drumstick',
+  'Whole Chicken', 'Ground Chicken', 'Rotisserie Chicken',
+
+  // Pork
+  'Pork Belly', 'Pork Shoulder', 'Pork Loin', 'Pork Chop', 'Pork Ribs',
+  'Bacon', 'Ham', 'Ground Pork', 'Prosciutto',
+
+  // Beef
+  'Beef', 'Ground Beef', 'Steak', 'Ribeye', 'Sirloin',
+  'Short Ribs', 'Brisket', 'Beef Tenderloin', 'Stew Beef',
+
+  // Other meat
+  'Duck', 'Lamb', 'Turkey', 'Spam',
+
+  // Sausage & deli
+  'Sausage', 'Italian Sausage', 'Pepperoni', 'Hot Dog', 'Deli Meat', 'Salami',
+
+  // Seafood — fish
+  'Salmon', 'Tuna', 'Cod', 'Mackerel', 'Tilapia', 'Halibut',
+  'Sea Bass', 'Trout', 'Sardine', 'Anchovy', 'Catfish', 'Snapper',
+
+  // Seafood — shellfish
+  'Shrimp', 'Prawn', 'Crab', 'Lobster',
+  'Squid', 'Octopus', 'Clam', 'Mussel', 'Oyster', 'Scallop',
+
+  // Canned & frozen
+  'Canned Tuna', 'Fish Cake', 'Crab Stick', 'Dumplings',
+  'Frozen Shrimp', 'Frozen Vegetables',
+
+  // Dried & seaweed
+  'Dried Anchovy', 'Seaweed', 'Nori', 'Kelp', 'Wakame',
+
+  // Grains
+  'Rice', 'White Rice', 'Brown Rice', 'Jasmine Rice', 'Basmati Rice',
+  'Quinoa', 'Barley', 'Oats', 'Oatmeal', 'Couscous', 'Cornmeal',
+
+  // Noodles & pasta
+  'Spaghetti', 'Penne', 'Fusilli', 'Macaroni', 'Lasagna', 'Egg Noodles',
+  'Ramen', 'Udon', 'Soba', 'Rice Noodles', 'Glass Noodles',
+
+  // Bread & flour
+  'Bread', 'White Bread', 'Baguette', 'Croissant', 'Tortilla', 'Pita',
+  'Flour', 'All-Purpose Flour', 'Bread Flour', 'Cornstarch',
+  'Breadcrumbs', 'Panko', 'Baking Powder', 'Baking Soda', 'Yeast',
+
+  // Pickles & ferments
+  'Kimchi', 'Pickles', 'Olives', 'Capers', 'Sauerkraut',
+
+  // Sauces, condiments & pastes
+  'Soy Sauce', 'Ketchup', 'Mustard', 'Dijon Mustard', 'Mayonnaise',
+  'Oyster Sauce', 'Fish Sauce', 'Hoisin Sauce', 'Sriracha', 'Hot Sauce',
+  'Tabasco', 'Worcestershire Sauce', 'BBQ Sauce', 'Teriyaki Sauce',
+  'Tomato Paste', 'Tomato Sauce', 'Marinara Sauce', 'Pasta Sauce', 'Salsa',
+  'Pesto', 'Gochujang', 'Doenjang', 'Miso', 'Curry Paste', 'Tahini', 'Peanut Butter',
+
+  // Oils & vinegar
+  'Olive Oil', 'Vegetable Oil', 'Canola Oil', 'Sesame Oil', 'Coconut Oil',
+  'Vinegar', 'Balsamic Vinegar', 'Apple Cider Vinegar', 'Rice Vinegar', 'White Vinegar',
+
+  // Sweeteners & alcohol
+  'Honey', 'Maple Syrup', 'Agave Syrup', 'Corn Syrup', 'Sugar', 'Brown Sugar',
+  'Cooking Wine', 'White Wine', 'Red Wine', 'Mirin', 'Sake',
+
+  // Spices & seasonings
+  'Salt', 'Black Pepper', 'White Pepper', 'Chili Powder', 'Paprika',
+  'Curry Powder', 'Turmeric', 'Cumin', 'Coriander', 'Cinnamon', 'Nutmeg',
+  'Cloves', 'Star Anise', 'Garlic Powder', 'Onion Powder', 'Cayenne',
+  'Chili Flakes', 'Italian Seasoning', 'Vanilla Extract', 'Minced Garlic',
+
+  // Seeds & nuts
+  'Sesame Seeds', 'Peanuts', 'Almonds', 'Walnuts', 'Cashews', 'Pine Nuts',
+  'Pistachios', 'Sunflower Seeds', 'Pumpkin Seeds', 'Chia Seeds', 'Flax Seeds',
+  'Coconut Milk', 'Shredded Coconut',
+
+  // Fruit
+  'Apple', 'Pear', 'Lemon', 'Lime', 'Orange', 'Grapefruit',
+  'Strawberry', 'Grapes', 'Blueberry', 'Raspberry', 'Cherry',
+  'Peach', 'Plum', 'Apricot', 'Watermelon', 'Melon', 'Cantaloupe',
+  'Banana', 'Kiwi', 'Mango', 'Pineapple', 'Papaya', 'Fig', 'Pomegranate',
+];
+
+/** 현재 앱 언어에 맞는 자동완성 재료 목록. */
+export function getPopularIngredients(): string[] {
+  return getLang() === 'en' ? POPULAR_INGREDIENTS_EN : POPULAR_INGREDIENTS_KO;
+}
+
+/** 입력어로 재료 추천 필터 (대소문자 무시 — 영어 대응). */
+export function filterPopularIngredients(query: string, exclude: string[] = []): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return getPopularIngredients().filter(
+    item => !exclude.includes(item) && item.toLowerCase().includes(q),
+  );
+}

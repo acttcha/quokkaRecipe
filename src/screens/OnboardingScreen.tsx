@@ -7,96 +7,101 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, shadow } from '../constants/colors';
 import { UserPreferences } from '../types/preferences';
 import { savePreferences } from '../services/preferences';
+import { t } from '../i18n';
 
 interface Props { onDone: () => void }
 
 const { width } = Dimensions.get('window');
+
+// 다국어 매칭용 exclusive 값 (옵션 value 와 동일한 t() 결과를 사용해야 함)
+const ALLERGY_NONE = t('onboarding.allergyNoneValue');
+const CUISINE_ANY = t('onboarding.cuisineAnyValue');
 
 
 // ── 질문 데이터 ──────────────────────────────────────────────────
 const STEPS = [
   {
     id: 'allergies', type: 'multi' as const,
-    question: '혹시 못 드시는 재료가\n있으신가요?',
-    hint: '여러 개 선택 가능해요',
-    exclusive: '없음',
+    question: t('onboarding.allergiesQuestion'),
+    hint: t('onboarding.allergiesHint'),
+    exclusive: ALLERGY_NONE,
     options: [
-      { label: '없어요', value: '없음' },
-      { label: '견과류', value: '견과류' },
-      { label: '유제품', value: '유제품' },
-      { label: '해산물', value: '해산물' },
-      { label: '글루텐', value: '글루텐' },
-      { label: '계란', value: '계란' },
-      { label: '돼지고기', value: '돼지고기' },
-      { label: '소고기', value: '소고기' },
+      { label: t('onboarding.allergyNoneLabel'), value: ALLERGY_NONE },
+      { label: t('onboarding.allergyNutsLabel'), value: t('onboarding.allergyNutsValue') },
+      { label: t('onboarding.allergyDairyLabel'), value: t('onboarding.allergyDairyValue') },
+      { label: t('onboarding.allergySeafoodLabel'), value: t('onboarding.allergySeafoodValue') },
+      { label: t('onboarding.allergyGlutenLabel'), value: t('onboarding.allergyGlutenValue') },
+      { label: t('onboarding.allergyEggLabel'), value: t('onboarding.allergyEggValue') },
+      { label: t('onboarding.allergyPorkLabel'), value: t('onboarding.allergyPorkValue') },
+      { label: t('onboarding.allergyBeefLabel'), value: t('onboarding.allergyBeefValue') },
     ],
   },
   {
     id: 'spiceLevel', type: 'single' as const,
-    question: '매운 음식은 얼마나\n잘 드세요?',
+    question: t('onboarding.spiceQuestion'),
     options: [
-      { label: '전혀 못 먹어요', emoji: '🥛', value: '매운 음식 전혀 못 먹음' },
-      { label: '조금만요', emoji: '🌶️', value: '약간 매운 정도만 가능' },
-      { label: '보통이요', emoji: '🌶️🌶️', value: '보통 매운 음식 가능' },
-      { label: '잘 먹어요', emoji: '🌶️🌶️🌶️', value: '매운 음식 잘 먹음' },
-      { label: '마라도 OK!', emoji: '🔥', value: '아주 매운 음식도 좋아함' },
+      { label: t('onboarding.spiceNoneLabel'), emoji: '🥛', value: t('onboarding.spiceNoneValue') },
+      { label: t('onboarding.spiceMildLabel'), emoji: '🌶️', value: t('onboarding.spiceMildValue') },
+      { label: t('onboarding.spiceMediumLabel'), emoji: '🌶️🌶️', value: t('onboarding.spiceMediumValue') },
+      { label: t('onboarding.spiceHotLabel'), emoji: '🌶️🌶️🌶️', value: t('onboarding.spiceHotValue') },
+      { label: t('onboarding.spiceExtremeLabel'), emoji: '🔥', value: t('onboarding.spiceExtremeValue') },
     ],
   },
   {
     id: 'cookingTime', type: 'single' as const,
-    question: '요리에 얼마나 시간을\n쓸 수 있어요?',
+    question: t('onboarding.timeQuestion'),
     options: [
-      { label: '10분 이내', emoji: '⚡', value: '10분 이내 초간단 요리' },
-      { label: '30분 이내', emoji: '🕐', value: '30분 이내' },
-      { label: '1시간 이내', emoji: '🕑', value: '1시간 이내' },
-      { label: '시간 여유 있어요', emoji: '🍱', value: '시간 여유 있어 정성 요리 가능' },
+      { label: t('onboarding.time10Label'), emoji: '⚡', value: t('onboarding.time10Value') },
+      { label: t('onboarding.time30Label'), emoji: '🕐', value: t('onboarding.time30Value') },
+      { label: t('onboarding.time60Label'), emoji: '🕑', value: t('onboarding.time60Value') },
+      { label: t('onboarding.timeRelaxedLabel'), emoji: '🍱', value: t('onboarding.timeRelaxedValue') },
     ],
   },
   {
     id: 'dietType', type: 'single' as const,
-    question: '식단 제한이\n있으신가요?',
+    question: t('onboarding.dietQuestion'),
     options: [
-      { label: '없어요', emoji: '🍽️', value: '일반 (제한 없음)' },
-      { label: '채식', emoji: '🥗', value: '채식 (육류 제외)' },
-      { label: '비건', emoji: '🌱', value: '비건 (동물성 식품 모두 제외)' },
-      { label: '저탄수화물', emoji: '💪', value: '저탄수화물/키토' },
-      { label: '다이어트 중', emoji: '⚖️', value: '저칼로리 다이어트식' },
+      { label: t('onboarding.dietNoneLabel'), emoji: '🍽️', value: t('onboarding.dietNoneValue') },
+      { label: t('onboarding.dietVegetarianLabel'), emoji: '🥗', value: t('onboarding.dietVegetarianValue') },
+      { label: t('onboarding.dietVeganLabel'), emoji: '🌱', value: t('onboarding.dietVeganValue') },
+      { label: t('onboarding.dietLowCarbLabel'), emoji: '💪', value: t('onboarding.dietLowCarbValue') },
+      { label: t('onboarding.dietDietingLabel'), emoji: '⚖️', value: t('onboarding.dietDietingValue') },
     ],
   },
   {
     id: 'cookingSkill', type: 'single' as const,
-    question: '요리 실력이\n어느 정도예요?',
+    question: t('onboarding.skillQuestion'),
     options: [
-      { label: '요린이예요', emoji: '👶', value: '초보 (쉬운 레시피만)' },
-      { label: '가정 요리 가능', emoji: '🏠', value: '중급 (일반 가정 요리)' },
-      { label: '요리 좋아해요', emoji: '👨‍🍳', value: '중상급 (다양한 요리 도전 가능)' },
-      { label: '집밥 고수!', emoji: '⭐', value: '고급 (복잡한 레시피도 가능)' },
+      { label: t('onboarding.skillBeginnerLabel'), emoji: '👶', value: t('onboarding.skillBeginnerValue') },
+      { label: t('onboarding.skillHomeLabel'), emoji: '🏠', value: t('onboarding.skillHomeValue') },
+      { label: t('onboarding.skillLoverLabel'), emoji: '👨‍🍳', value: t('onboarding.skillLoverValue') },
+      { label: t('onboarding.skillMasterLabel'), emoji: '⭐', value: t('onboarding.skillMasterValue') },
     ],
   },
   {
     id: 'servings', type: 'single' as const,
-    question: '보통 몇 인분으로\n요리하세요?',
+    question: t('onboarding.servingsQuestion'),
     options: [
-      { label: '1인분 (혼밥)', emoji: '🙂', value: '1' },
-      { label: '2인분', emoji: '🍽️', value: '2' },
-      { label: '3인분', emoji: '👨‍👩‍👦', value: '3' },
-      { label: '4인분 이상', emoji: '👨‍👩‍👧‍👦', value: '4' },
+      { label: t('onboarding.servings1Label'), emoji: '🙂', value: '1' },
+      { label: t('onboarding.servings2Label'), emoji: '🍽️', value: '2' },
+      { label: t('onboarding.servings3Label'), emoji: '👨‍👩‍👦', value: '3' },
+      { label: t('onboarding.servings4Label'), emoji: '👨‍👩‍👧‍👦', value: '4' },
     ],
   },
   {
     id: 'cuisineStyles', type: 'multi' as const,
-    question: '좋아하는 음식 스타일이\n있나요?',
-    hint: '여러 개 선택 가능 · 건너뛸 수 있어요',
-    exclusive: '상관없음',
+    question: t('onboarding.cuisineQuestion'),
+    hint: t('onboarding.cuisineHint'),
+    exclusive: CUISINE_ANY,
     options: [
-      { label: '한식', value: '한식' },
-      { label: '양식', value: '양식' },
-      { label: '중식', value: '중식' },
-      { label: '일식', value: '일식' },
-      { label: '동남아', value: '동남아' },
-      { label: '멕시코', value: '멕시코' },
-      { label: '인도', value: '인도' },
-      { label: '상관없어요', value: '상관없음' },
+      { label: t('onboarding.cuisineKoreanLabel'), value: t('onboarding.cuisineKoreanValue') },
+      { label: t('onboarding.cuisineWesternLabel'), value: t('onboarding.cuisineWesternValue') },
+      { label: t('onboarding.cuisineChineseLabel'), value: t('onboarding.cuisineChineseValue') },
+      { label: t('onboarding.cuisineJapaneseLabel'), value: t('onboarding.cuisineJapaneseValue') },
+      { label: t('onboarding.cuisineSeaLabel'), value: t('onboarding.cuisineSeaValue') },
+      { label: t('onboarding.cuisineMexicanLabel'), value: t('onboarding.cuisineMexicanValue') },
+      { label: t('onboarding.cuisineIndianLabel'), value: t('onboarding.cuisineIndianValue') },
+      { label: t('onboarding.cuisineAnyLabel'), value: CUISINE_ANY },
     ],
   },
 ];
@@ -139,12 +144,12 @@ export default function OnboardingScreen({ onDone }: Props) {
 
   const finish = async () => {
     const prefs: UserPreferences = {
-      allergies:     allergies.filter(a => a !== '없음'),
+      allergies:     allergies.filter(a => a !== ALLERGY_NONE),
       spiceLevel,
       cookingTime,
       dietType,
       cookingSkill,
-      cuisineStyles: cuisineStyles.filter(c => c !== '상관없음'),
+      cuisineStyles: cuisineStyles.filter(c => c !== CUISINE_ANY),
       servings,
     };
     await savePreferences(prefs);
@@ -238,7 +243,7 @@ export default function OnboardingScreen({ onDone }: Props) {
           })}
         </View>
         <TouchableOpacity style={styles.nextBtn} onPress={goNext} activeOpacity={0.85}>
-          <Text style={styles.nextBtnText}>{isLast ? '완료! 레시피 보러가기 🎉' : '다음으로 →'}</Text>
+          <Text style={styles.nextBtnText}>{isLast ? t('onboarding.finishBtn') : t('onboarding.nextBtn')}</Text>
         </TouchableOpacity>
       </>
     );
@@ -259,7 +264,7 @@ export default function OnboardingScreen({ onDone }: Props) {
         </TouchableOpacity>
         <Image source={require('../../assets/main_logo.png')} style={styles.logo} resizeMode="contain" />
         <TouchableOpacity onPress={onDone} style={styles.skipBtn}>
-          <Text style={styles.skipBtnText}>건너뛰기</Text>
+          <Text style={styles.skipBtnText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       </View>
 

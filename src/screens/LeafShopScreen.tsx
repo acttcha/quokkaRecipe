@@ -10,6 +10,7 @@ import { LeafIcon } from '../components/LeafIcon';
 import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
 import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES } from '../services/leaves';
 import { haptic } from '../services/haptics';
+import { t } from '../i18n';
 
 export default function LeafShopScreen({ goBack }: NavProps) {
   const [balance, setBalance] = useState<LeafBalance | null>(null);
@@ -22,18 +23,18 @@ export default function LeafShopScreen({ goBack }: NavProps) {
   const handlePurchase = (pkg: LeafPackage) => {
     haptic.light();
     Alert.alert(
-      '곧 지원돼요',
-      `"${pkg.name}" 결제 기능은 준비 중이에요.\n사업자등록 후 결제 시스템 연동되면 바로 구매 가능합니다 🐾`,
-      [{ text: '확인' }],
+      t('leafShop.comingSoonTitle'),
+      t('leafShop.purchaseComingSoon', { name: t(`leafPackage.${pkg.id}`) }),
+      [{ text: t('leafShop.ok') }],
     );
   };
 
   const handleSubscribe = () => {
     haptic.light();
     Alert.alert(
-      '곧 지원돼요',
-      '쿼카 패스 구독은 준비 중이에요 🐾',
-      [{ text: '확인' }],
+      t('leafShop.comingSoonTitle'),
+      t('leafShop.subscribeComingSoon'),
+      [{ text: t('leafShop.ok') }],
     );
   };
 
@@ -44,10 +45,10 @@ export default function LeafShopScreen({ goBack }: NavProps) {
       {/* Header */}
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.header}>
         <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 돌아가기</Text>
+          <Text style={styles.backBtnText}>{t('leafShop.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>잎사귀 충전</Text>
-        <Text style={styles.headerSub}>AI 호출에 사용되는 잎사귀를 구매해요</Text>
+        <Text style={styles.headerTitle}>{t('leafShop.title')}</Text>
+        <Text style={styles.headerSub}>{t('leafShop.subtitle')}</Text>
       </LinearGradient>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
@@ -57,21 +58,21 @@ export default function LeafShopScreen({ goBack }: NavProps) {
           <View style={styles.balanceRow}>
             <LeafIcon size={44} />
             <View style={styles.balanceTexts}>
-              <Text style={styles.balanceLabel}>현재 잔액</Text>
+              <Text style={styles.balanceLabel}>{t('leafShop.currentBalance')}</Text>
               <Text style={styles.balanceValue}>
-                {balance ? (balance.isUnlimited ? '∞ 무제한' : `${balance.total}🍃`) : '·'}
+                {balance ? (balance.isUnlimited ? t('leafShop.unlimited') : `${balance.total}🍃`) : '·'}
               </Text>
             </View>
           </View>
           {balance && !balance.isUnlimited && (
             <Text style={styles.balanceBreakdown}>
-              오늘 무료 {balance.daily} · 보너스 풀 {balance.bonus}
+              {t('leafShop.balanceBreakdown', { daily: balance.daily, bonus: balance.bonus })}
             </Text>
           )}
         </View>
 
         {/* 패키지 리스트 */}
-        <Text style={styles.sectionLabel}>충전 패키지</Text>
+        <Text style={styles.sectionLabel}>{t('leafShop.packagesSection')}</Text>
         {LEAF_PACKAGES.map(pkg => (
           <TouchableOpacity
             key={pkg.id}
@@ -81,36 +82,36 @@ export default function LeafShopScreen({ goBack }: NavProps) {
           >
             {pkg.featured && (
               <View style={styles.featuredBadge}>
-                <Text style={styles.featuredBadgeText}>🔥 인기</Text>
+                <Text style={styles.featuredBadgeText}>{t('leafShop.popular')}</Text>
               </View>
             )}
             <View style={styles.pkgLeft}>
               <Image source={pkg.image} style={styles.pkgImage} resizeMode="contain" />
               <View>
-                <Text style={styles.pkgName}>{pkg.name}</Text>
+                <Text style={styles.pkgName}>{t(`leafPackage.${pkg.id}`)}</Text>
                 <View style={styles.pkgLeavesRow}>
                   <LeafIcon size={18} />
-                  <Text style={styles.pkgLeavesText}>{pkg.leaves}개</Text>
+                  <Text style={styles.pkgLeavesText}>{t('leafShop.leafCount', { n: pkg.leaves })}</Text>
                   {pkg.bonusPercent && (
                     <View style={styles.bonusChip}>
-                      <Text style={styles.bonusChipText}>+{pkg.bonusPercent}% 더</Text>
+                      <Text style={styles.bonusChipText}>{t('leafShop.bonusPercent', { percent: pkg.bonusPercent })}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.pkgPerUnit}>개당 {pricePerLeaf(pkg)}원</Text>
+                <Text style={styles.pkgPerUnit}>{t('leafShop.perUnit', { price: pricePerLeaf(pkg) })}</Text>
               </View>
             </View>
             <View style={styles.pkgRight}>
               <Text style={styles.pkgPrice}>{formatKrw(pkg.price)}</Text>
               <View style={styles.pkgBuyBtn}>
-                <Text style={styles.pkgBuyBtnText}>구매</Text>
+                <Text style={styles.pkgBuyBtnText}>{t('leafShop.buy')}</Text>
               </View>
             </View>
           </TouchableOpacity>
         ))}
 
         {/* 구독 안내 */}
-        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>매일 쓴다면</Text>
+        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{t('leafShop.dailyUseSection')}</Text>
         <TouchableOpacity style={styles.subCard} onPress={handleSubscribe} activeOpacity={0.85}>
           <Image
             source={require('../../assets/quokka_pass.webp')}
@@ -120,22 +121,19 @@ export default function LeafShopScreen({ goBack }: NavProps) {
           <View style={styles.subBadge}>
             <Text style={styles.subBadgeText}>PRO</Text>
           </View>
-          <Text style={styles.subTitle}>쿼카 패스</Text>
-          <Text style={styles.subPrice}>₩4,900<Text style={styles.subPricePer}>/월</Text></Text>
+          <Text style={styles.subTitle}>{t('leafShop.passTitle')}</Text>
+          <Text style={styles.subPrice}>₩4,900<Text style={styles.subPricePer}>{t('leafShop.perMonth')}</Text></Text>
           <View style={styles.subBenefits}>
-            <Text style={styles.subBenefit}>✓ 잎사귀 매달 {PRO_MONTHLY_LEAVES}개</Text>
-            <Text style={styles.subBenefit}>✓ 광고 완전 제거</Text>
+            <Text style={styles.subBenefit}>{t('leafShop.benefitMonthlyLeaves', { n: PRO_MONTHLY_LEAVES })}</Text>
+            <Text style={styles.subBenefit}>{t('leafShop.benefitNoAds')}</Text>
           </View>
-          <Text style={styles.subHint}>하루 3회 이상 사용 시 더 이득</Text>
+          <Text style={styles.subHint}>{t('leafShop.subHint')}</Text>
         </TouchableOpacity>
 
         {/* 정책 안내 */}
         <View style={styles.policyBox}>
           <Text style={styles.policyText}>
-            • 결제 후 잎사귀는 즉시 보너스 풀에 적립돼요{'\n'}
-            • 보너스 풀은 만료되지 않아요 (영구 보관){'\n'}
-            • 일일 무료 잎사귀가 먼저 차감되고, 부족분만 보너스에서 차감돼요{'\n'}
-            • 환불은 Google Play 정책을 따라요
+            {t('leafShop.policy')}
           </Text>
         </View>
 

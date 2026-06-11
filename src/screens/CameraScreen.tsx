@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
+import { t } from '../i18n';
 
 interface Props extends NavProps { fridgeMode?: boolean; receiptMode?: boolean; }
 
@@ -35,13 +36,13 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
           <View style={styles.permIconWrap}>
             <Text style={styles.permIcon}>📷</Text>
           </View>
-          <Text style={styles.permTitle}>카메라 권한이{'\n'}필요해요</Text>
-          <Text style={styles.permSub}>재료를 인식하려면{'\n'}카메라 접근을 허용해주세요</Text>
+          <Text style={styles.permTitle}>{t('camera.permTitle')}</Text>
+          <Text style={styles.permSub}>{t('camera.permSub')}</Text>
           <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
-            <Text style={styles.permBtnText}>권한 허용</Text>
+            <Text style={styles.permBtnText}>{t('camera.permAllow')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={goBack} style={styles.cancelBtn}>
-            <Text style={styles.cancelText}>취소</Text>
+            <Text style={styles.cancelText}>{t('camera.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -56,7 +57,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
       // base64를 직접 받지 않고 파일로 저장 후 읽음 — Android 메모리/파일시스템 호환성
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (!photo?.uri) {
-        Alert.alert('앗!', '사진을 가져오지 못했어요');
+        Alert.alert(t('camera.oops'), t('camera.captureFailedGet'));
         return;
       }
       const base64 = await FileSystem.readAsStringAsync(photo.uri, {
@@ -72,7 +73,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn('[Camera] capture error:', msg);
-      Alert.alert('촬영 실패', msg);
+      Alert.alert(t('camera.captureFailed'), msg);
     } finally {
       setCapturing(false);
     }
@@ -98,7 +99,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn('[Gallery] error:', msg);
-      Alert.alert('갤러리 오류', msg);
+      Alert.alert(t('camera.galleryError'), msg);
     }
   };
 
@@ -114,7 +115,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
             </TouchableOpacity>
             <View style={styles.hintChip}>
               <Text style={styles.hintChipText}>
-                {receiptMode ? '영수증 전체가 보이게 찍어요 🧾' : '재료가 잘 보이게 찍어요 🌿'}
+                {receiptMode ? t('camera.hintReceipt') : t('camera.hintIngredients')}
               </Text>
             </View>
             <TouchableOpacity style={styles.glassBtn} onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}>
@@ -126,7 +127,7 @@ export default function CameraScreen({ navigate, goBack, fridgeMode, receiptMode
           <View style={styles.bottomBar}>
             <TouchableOpacity style={styles.galleryBtn} onPress={handleGallery}>
               <Text style={styles.galleryIcon}>🖼️</Text>
-              <Text style={styles.galleryLabel}>갤러리</Text>
+              <Text style={styles.galleryLabel}>{t('camera.gallery')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

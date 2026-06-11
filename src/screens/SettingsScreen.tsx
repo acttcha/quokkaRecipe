@@ -17,251 +17,32 @@ import {
   ModelKey,
   getRecipeModelKey, setRecipeModelKey, RecipeModelKey, RECIPE_MODELS,
 } from '../services/devSettings';
+import { getLang, setLang, AppLang } from '../services/locale';
 import { isPro, setIsPro } from '../services/subscription';
+import { t } from '../i18n';
 
 const APP_VERSION = (require('../../app.json') as { expo: { version: string } }).expo.version;
 
 type InfoModal = 'guide' | 'update' | 'terms' | 'privacy' | null;
 
-const MODAL_CONTENT: Record<NonNullable<InfoModal>, { title: string; body: string }> = {
+const getModalContent = (): Record<NonNullable<InfoModal>, { title: string; body: string }> => ({
   guide: {
-    title: '이용 방법',
-    body: `1️⃣  재료 스캔
-냉장고나 장바구니의 재료를 카메라로 찍어요.
-
-2️⃣  AI 레시피 생성
-Claude AI가 재료를 인식하고 맞춤 레시피 3가지를 추천해요.
-
-3️⃣  영양정보 확인
-각 레시피의 칼로리, 단백질, 탄수화물, 지방을 확인할 수 있어요.
-
-4️⃣  레시피 저장
-마음에 드는 레시피는 ♥ 버튼으로 저장해두세요.
-
-5️⃣  쿼카에게 질문
-재료 대체, 칼로리 조절 등 궁금한 것을 쿼카에게 물어보세요.
-
-6️⃣  없는 재료 구매
-집에 없는 재료는 쿠팡에서 바로 주문할 수 있어요.`,
+    title: t('settings.guideTitle'),
+    body: t('settings.guideBody'),
   },
   update: {
-    title: '업데이트 노트',
-    body: `🎉  v1.0.0 — 첫 출시
-
-• AI 재료 인식 기능
-• 맞춤 레시피 3종 추천
-• 영양정보 (칼로리·단백질·탄수화물·지방)
-• 레시피 저장 & 북마크
-• 쿼카에게 질문하기
-• 없는 재료 쿠팡 연동
-• 유튜브 레시피 영상 검색
-• 식이 선호도 설정 (알레르기·매운맛·식단 등)`,
+    title: t('settings.updateTitle'),
+    body: t('settings.updateBody'),
   },
   terms: {
-    title: '이용약관',
-    body: `쿼카레시피 이용약관
-
-본 앱을 설치, 다운로드 또는 이용하는 경우 본 약관 및 개인정보처리방침에 동의한 것으로 봅니다.
-
-제1조 (목적)
-본 약관은 차소프트(이하 "회사")가 제공하는 쿼카레시피 앱 및 관련 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리·의무 및 책임사항을 규정함을 목적으로 합니다.
-
-제2조 (정의)
-1. "서비스"란 AI 기술을 활용한 레시피 추천 및 관련 부가 기능을 말합니다.
-2. "이용자"란 본 약관에 따라 서비스를 이용하는 자를 말합니다.
-3. "잎사귀"란 AI 기능 호출에 사용되는 서비스 내 재화를 말하며, 무료 잎사귀와 유료(구매·보너스) 잎사귀로 구분됩니다.
-4. "쿼카 패스"란 월 단위로 자동 갱신되는 유료 정기결제 상품을 말합니다.
-
-제3조 (약관의 효력 및 변경)
-1. 본 약관은 서비스 화면에 게시함으로써 효력이 발생합니다.
-2. 회사는 관련 법령을 위반하지 않는 범위에서 약관을 변경할 수 있으며, 변경 시 시행일 7일 전(이용자에게 불리한 변경은 30일 전)부터 공지합니다.
-3. 이용자가 변경 약관 시행 후에도 서비스를 계속 이용하면 변경에 동의한 것으로 봅니다.
-
-제4조 (서비스의 제공 및 변경)
-1. 회사는 다음의 서비스를 제공합니다.
-· AI 기반 레시피 추천 (재료 사진 인식, 재료 직접 입력, 음식명 검색)
-· 영수증 인식을 통한 재료 등록
-· 냉장고 재료 관리
-· 레시피 저장·폴더·메모·질문(Q&A)
-· 유튜브 레시피 영상 검색
-2. 회사는 연중무휴 서비스 제공을 원칙으로 하나, 시스템 점검·외부 API 장애 등의 사유로 일시 중단될 수 있습니다.
-3. 회사는 운영상·기술상 필요에 따라 서비스의 내용을 변경하거나 중단할 수 있으며, 유료서비스에 중대한 영향을 주는 경우 사전 공지합니다.
-
-제5조 (유료서비스 및 결제)
-1. 유료서비스는 "잎사귀 충전 패키지"(일회성)와 "쿼카 패스"(정기결제)로 구성됩니다.
-2. 모든 결제는 Google Play 또는 Apple App Store의 결제 시스템을 통해 이루어지며, 결제 금액·통화·세금은 각 스토어에 표시된 바에 따릅니다.
-3. 유료 잎사귀는 결제 완료 즉시 적립되며, 구매·보너스 잎사귀는 별도 유효기간 없이 보관됩니다(서비스 종료 시 제외).
-
-제6조 (정기결제 및 해지)
-1. 쿼카 패스는 결제 후 매 결제주기마다 자동으로 갱신·결제됩니다.
-2. 이용자는 다음 결제일 최소 24시간 전까지 각 스토어의 구독 관리 화면에서 언제든 해지할 수 있습니다.
-3. 해지 시 이미 결제된 이용기간의 종료일까지 서비스가 유지되며, 그 후 자동 갱신이 중단됩니다.
-4. 앱을 삭제하더라도 구독은 자동으로 해지되지 않으며, 해지는 반드시 각 스토어의 구독 관리 화면에서 진행해야 합니다.
-
-제7조 (청약철회 및 환불)
-1. 환불은 원칙적으로 결제가 이루어진 Google Play 또는 Apple App Store의 환불 정책 및 절차에 따릅니다.
-2. 「전자상거래 등에서의 소비자보호에 관한 법률」에 따라, 아직 사용하지 않은 유료 잎사귀 등은 결제일로부터 7일 이내에 청약철회를 할 수 있습니다.
-3. 다만 이미 사용하였거나 즉시 소비되어 그 가치가 소멸한 디지털 콘텐츠 및 이미 제공이 개시된 부분에 대하여는 청약철회가 제한될 수 있으며, 회사는 이를 구매 전 고지합니다.
-4. 미성년자가 법정대리인의 동의 없이 결제한 경우, 본인 또는 법정대리인은 해당 결제를 취소할 수 있습니다.
-
-제8조 (잎사귀의 이용)
-1. 무료 잎사귀는 매일 자정에 일정량으로 초기화되며 다음 날로 이월되지 않습니다.
-2. 유료·보너스 잎사귀는 현금으로 환급되지 않으며(환불 절차에 따른 경우 제외), 타인에게 양도할 수 없습니다.
-
-제9조 (데이터의 저장 및 손실)
-1. 서비스는 별도의 회원 계정 및 서버 백업 기능을 제공하지 않으며, 이용자의 데이터(저장한 레시피·폴더·메모, 냉장고 재료, 설정, 잎사귀 잔액 등)는 이용자의 기기 내에만 저장됩니다.
-2. 기기 변경, 앱 삭제, 운영체제 변경, 기기 오류 등의 사유로 저장된 데이터가 삭제·손실될 수 있으며 복구가 불가능할 수 있습니다.
-3. 회사는 위 사유로 인한 데이터 손실에 대하여 고의 또는 중대한 과실이 없는 한 책임을 지지 않습니다. 이용자는 필요한 정보를 별도로 보관하시기 바랍니다.
-
-제10조 (광고)
-1. 회사는 무료 이용자에게 광고를 제공할 수 있습니다.
-2. 이용자가 보상형 광고를 시청하면 잎사귀가 지급되며, 부정 이용 방지를 위해 일일 횟수 및 시청 간격에 제한이 적용됩니다.
-3. 쿼카 패스 이용자에게는 광고가 표시되지 않습니다.
-
-제11조 (이용자의 의무)
-이용자는 다음 행위를 하여서는 안 됩니다.
-1. 비정상적인 방법으로 광고 보상·잎사귀를 취득하는 행위
-2. 서비스를 역설계하거나 부정하게 접근하는 행위
-3. 서비스 콘텐츠를 무단으로 복제·배포하는 행위
-4. 관련 법령 및 본 약관을 위반하는 행위
-
-제12조 (면책)
-1. 서비스가 제공하는 레시피 및 정보는 생성형 AI가 생성한 참고용 정보이며, 회사는 그 정확성·완전성·최신성·적합성을 보장하지 않습니다.
-2. 이용자는 조리 전 재료의 신선도, 유통기한, 알레르기 유발 여부 및 조리 안전성을 직접 확인해야 합니다.
-3. 회사는 서비스 이용 과정에서 발생한 조리 결과 및 식품 안전 문제에 대하여 고의 또는 중대한 과실이 없는 한 책임을 지지 않습니다.
-4. 회사는 천재지변, 외부 API·플랫폼 장애 등 회사의 합리적 통제를 벗어난 사유로 인한 손해에 대하여 책임을 지지 않습니다.
-
-제13조 (지식재산권)
-서비스 및 관련 콘텐츠에 대한 저작권 등 지식재산권은 회사에 귀속됩니다.
-
-제14조 (이용제한 및 계약해지)
-이용자가 본 약관을 위반한 경우, 회사는 사전 통지 후(긴급한 경우 사후 통지) 서비스 이용을 제한하거나 계약을 해지할 수 있습니다.
-
-제15조 (분쟁해결 및 준거법)
-1. 본 약관은 대한민국 법령에 따라 해석됩니다.
-2. 서비스 이용과 관련한 분쟁은 「전자상거래법」 등 관련 법령 및 소비자분쟁해결기준에 따릅니다.
-
-제16조 (문의)
-서비스 관련 문의는 앱 내 "의견 보내기" 또는 이메일(chasoft.official@gmail.com)로 연락주시기 바랍니다.
-
-부칙
-본 약관은 2026년 6월 8일부터 시행합니다.`,
+    title: t('settings.termsTitle'),
+    body: t('settings.termsBody'),
   },
   privacy: {
-    title: '개인정보처리방침',
-    body: `최종 업데이트: 2026.06.08
-
-쿼카레시피(이하 "본 앱")는 사용자의 개인정보를 소중히 다루며, 「개인정보 보호법」을 비롯한 관련 법령을 준수합니다. 본 방침은 본 앱이 수집·이용·제공하는 정보의 종류와 그 처리 방법에 대해 설명합니다.
-
-1. 수집하는 정보
-
-1.1 사용자가 직접 입력·제공하는 정보
-· 식재료 사진 (카메라 촬영 또는 사진 라이브러리에서 선택)
-· 영수증 사진 (사용 시)
-· 직접 입력한 재료 이름
-· 식이 선호도 (알레르기, 매운맛 선호도, 조리 시간, 식단 유형, 요리 실력, 선호 음식 스타일)
-· 레시피에 대한 메모 및 질문 내용
-
-1.2 자동으로 수집되는 정보
-· 앱 사용 통계 (재료 스캔 횟수)
-· 저장한 레시피 정보 (사용자가 ♥ 버튼으로 저장한 경우)
-
-1.3 수집하지 않는 정보
-· 이름, 이메일, 전화번호 등 개인 식별 정보
-· 위치 정보
-· 연락처, 통화 기록 등 기기 내 다른 앱의 정보
-· 광고 식별자(IDFA/AAID)
-
-2. 정보의 저장 위치
-
-본 앱은 별도의 회원 가입을 요구하지 않으며, 다음과 같이 정보를 저장합니다.
-
-2.1 기기 내 저장 (외부 서버에 영구 저장되지 않음)
-· 식이 선호도
-· 저장한 레시피, 폴더, 메모
-· 쿼카 Q&A 기록
-· 냉장고 재료 목록
-· 앱 사용 통계
-
-위 정보는 사용자의 기기 내 보안 저장소(iOS Keychain, Android KeyStore)에만 저장되며, 회사(차소프트)의 서버에 영구 저장되지 않습니다.
-
-2.2 외부 서비스로 전송되는 정보
-일부 기능 제공을 위해 다음 정보가 외부 서비스로 전송됩니다. 상세 내용은 제3항을 참고하세요.
-
-3. 외부 서비스로의 정보 제공
-
-본 앱은 핵심 기능 제공을 위해 다음 외부 서비스를 이용합니다.
-
-3.1 Anthropic Claude API
-· 전송되는 정보: 촬영한 식재료/영수증 이미지, 입력한 재료 텍스트, 식이 선호도, 레시피 정보, 사용자가 입력한 질문
-· 이용 목적: 이미지에서 식재료 인식, 레시피 생성, 레시피 관련 Q&A 응답, 유튜브 영상의 자막·설명 분석
-· 전송 방식: 회사(차소프트)가 운영하는 서버(Supabase)를 경유하여 Anthropic으로 전송되며, 회사는 해당 내용을 서버에 별도로 저장하지 않습니다.
-· 제공 처: Anthropic, PBC (미국)
-· 개인정보 처리 정책: https://www.anthropic.com/legal/privacy
-
-3.2 Google YouTube Data API
-· 전송되는 정보: 재료명 기반 검색어
-· 이용 목적: 레시피 영상 검색
-· 제공 처: Google LLC (미국)
-· 개인정보 처리 정책: https://policies.google.com/privacy
-
-3.3 쿠팡 파트너스
-· 전송되는 정보: 재료명 (사용자가 "쿠팡에서 구매하기" 링크를 클릭한 경우에 한함)
-· 이용 목적: 재료 구매 페이지 연결
-· 제공 처: 쿠팡 주식회사
-· 개인정보 처리 정책: https://www.coupang.com/np/privacy
-
-본 앱은 위 서비스 외에 다른 제3자에게 사용자의 정보를 제공하지 않습니다.
-
-4. 권한 사용
-
-본 앱은 다음 권한을 사용하며, 사용자의 명시적 동의 없이 다른 용도로 사용하지 않습니다.
-· 카메라: 식재료 및 영수증 촬영 — 선택 (거부 시 갤러리 사용 가능)
-· 사진 라이브러리: 갤러리에서 식재료 사진 선택 — 선택 (거부 시 카메라 사용 가능)
-
-권한은 언제든지 기기 설정에서 변경할 수 있습니다.
-
-5. 정보의 보유 및 파기
-
-5.1 기기 내 저장 정보
-· 보유 기간: 사용자가 앱을 삭제하거나 앱 내 "데이터 초기화" 기능을 사용할 때까지
-· 파기 방법: 앱 삭제 또는 초기화 시 즉시 삭제
-
-5.2 외부 서비스로 전송된 정보
-각 외부 서비스의 개인정보 처리 방침에 따릅니다. (Anthropic, Google, 쿠팡 정책 참조)
-
-6. 사용자의 권리
-
-사용자는 본 앱에서 다음 권리를 행사할 수 있습니다.
-· 열람: 앱 내 "냉장고", "저장된 레시피", "마이" 메뉴에서 저장된 정보 확인
-· 수정: 앱 내 해당 메뉴에서 직접 수정
-· 삭제: 개별 데이터 삭제 또는 앱 내 "데이터 초기화"를 통한 일괄 삭제
-· 앱 제거: 앱을 기기에서 삭제하면 모든 로컬 저장 데이터가 함께 삭제됩니다.
-
-7. 만 14세 미만 아동의 정보
-
-본 앱은 만 14세 미만 아동의 개인정보를 의도적으로 수집하지 않습니다. 만 14세 미만 아동이 본 앱을 이용하는 경우, 법정대리인의 동의를 받아 이용해야 합니다.
-
-8. 정보 보안
-
-본 앱은 사용자 정보를 보호하기 위해 다음 조치를 취합니다.
-· 기기 내 데이터는 운영체제가 제공하는 보안 저장소(iOS Keychain, Android KeyStore)에 저장
-· 외부 서비스와의 통신은 HTTPS 암호화 사용
-· 회사(차소프트)는 AI 기능 제공을 위해 경유하는 사용자의 식재료 이미지 및 입력 정보를 서버에 별도로 보관하지 않음
-
-9. 변경 사항
-
-본 방침은 법령 또는 서비스 변경에 따라 수정될 수 있습니다. 변경 시 본 페이지를 통해 공지하며, 중요한 변경은 앱 내 알림을 통해 안내합니다. 최종 업데이트 일자는 본 문서 상단에 표시됩니다.
-
-10. 연락처
-
-본 방침이나 개인정보 처리에 관한 문의는 아래로 연락 주시기 바랍니다.
-· 상호: 차소프트
-· 이메일: chasoft.official@gmail.com
-
-본 앱은 별도의 개인정보보호책임자를 두지 않은 1인 개발 앱이며, 위 연락처로 문의 시 신속히 답변드리겠습니다.`,
+    title: t('settings.privacyTitle'),
+    body: t('settings.privacyBody'),
   },
-};
+});
 
 // ── SVG 아이콘 ──────────────────────────────────────────
 function IcBook() {
@@ -333,7 +114,7 @@ interface Props extends NavProps {
   onResetAllData?: () => void;
 }
 
-const DELETE_CONFIRM_PHRASE = '모든 데이터 삭제';
+const getDeleteConfirmPhrase = () => t('settings.deleteConfirmPhrase');
 
 export default function SettingsScreen({ navigate, onResetPreferences, onResetAllData }: Props) {
   const [openModal, setOpenModal] = useState<InfoModal>(null);
@@ -343,8 +124,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [mockMode, setMockModeState] = useState(getMockMode());
   const [modelKey, setModelKeyState] = useState<ModelKey>(getModelKey());
   const [recipeModelKey, setRecipeModelKeyState] = useState<RecipeModelKey>(getRecipeModelKey());
+  const [lang, setLangState] = useState<AppLang>(getLang());
   const [proMode, setProModeState] = useState(isPro());
-  const canDelete = deleteInput.trim() === DELETE_CONFIRM_PHRASE && !deleting;
+  const deleteConfirmPhrase = getDeleteConfirmPhrase();
+  const canDelete = deleteInput.trim() === deleteConfirmPhrase && !deleting;
+  const modalContent = getModalContent();
 
   const handleToggleMock = async () => {
     const next = !mockMode;
@@ -364,6 +148,12 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     await setModelKey(k);
   };
 
+  const handlePickLang = async (l: AppLang) => {
+    if (l === lang) return;
+    setLangState(l);
+    await setLang(l);
+  };
+
   const handlePickRecipeModel = async (k: RecipeModelKey) => {
     if (k === recipeModelKey) return;
     setRecipeModelKeyState(k);
@@ -371,20 +161,20 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   };
 
   const handleFeedback = () => {
-    Linking.openURL('mailto:acttcha@gmail.com?subject=쿼카레시피 의견').catch(() =>
-      Alert.alert('오류', '이메일 앱을 열 수 없어요.')
+    Linking.openURL(`mailto:acttcha@gmail.com?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`).catch(() =>
+      Alert.alert(t('settings.errorTitle'), t('settings.mailOpenError'))
     );
   };
 
   const handleRemoveAds = () => {
-    Alert.alert('배너 광고 제거', '광고 제거 기능은 곧 지원될 예정이에요! 조금만 기다려주세요 🐾', [
-      { text: '확인' },
+    Alert.alert(t('settings.removeAdsTitle'), t('settings.removeAdsMessage'), [
+      { text: t('settings.confirm') },
     ]);
   };
 
   const handleResetUsage = async () => {
     await resetDailyLeaves();
-    Alert.alert('충전 완료', '오늘 무료 잎사귀가 다시 채워졌어요 🍃');
+    Alert.alert(t('settings.rechargeDoneTitle'), t('settings.rechargeDoneMessage'));
   };
 
   const handleResetAllData = () => {
@@ -407,7 +197,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
       setDeleteInput('');
       onResetAllData?.();
     } catch {
-      Alert.alert('오류', '데이터 삭제 중 문제가 생겼어요. 다시 시도해주세요.');
+      Alert.alert(t('settings.errorTitle'), t('settings.deleteError'));
     } finally {
       setDeleting(false);
     }
@@ -421,8 +211,8 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.header}>
         <View style={styles.headerSpacer} />
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>설정</Text>
-          <Text style={styles.headerSub}>앱 환경과 내 정보를 관리해요</Text>
+          <Text style={styles.headerTitle}>{t('settings.headerTitle')}</Text>
+          <Text style={styles.headerSub}>{t('settings.headerSub')}</Text>
         </View>
         <View style={styles.headerHairline} />
       </LinearGradient>
@@ -435,8 +225,8 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <Image source={require('../../assets/quokka.png')} style={styles.profileImg} resizeMode="contain" />
           </View>
           <View style={styles.profileTexts}>
-            <Text style={styles.profileName}>요리 초보 쿼카</Text>
-            <Text style={styles.profileSub}>내 정보 · 통계 · 선호도 확인</Text>
+            <Text style={styles.profileName}>{t('settings.profileName')}</Text>
+            <Text style={styles.profileSub}>{t('settings.profileSub')}</Text>
           </View>
           <IcChevron />
         </TouchableOpacity>
@@ -456,36 +246,36 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
               <IcRefresh />
             </View>
             <View style={styles.resetTexts}>
-              <Text style={styles.resetTitle}>선호도 다시 설정</Text>
-              <Text style={styles.resetSub}>알레르기·매운맛·조리 시간을 새로 설정해요</Text>
+              <Text style={styles.resetTitle}>{t('settings.resetPrefsTitle')}</Text>
+              <Text style={styles.resetSub}>{t('settings.resetPrefsSub')}</Text>
             </View>
             <IcChevron />
           </LinearGradient>
         </TouchableOpacity>
 
         {/* 앱 안내 */}
-        <Text style={styles.sectionLabel}>앱 안내</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sectionGuide')}</Text>
         <View style={styles.listCard}>
-          <ListRow icon={<IcBook />}   label="이용 방법"     onPress={() => setOpenModal('guide')} />
-          <ListRow icon={<IcChat />}   label="의견 보내기"   onPress={handleFeedback}               divider />
-          <ListRow icon={<IcNoads />}  label="배너 광고 제거" onPress={handleRemoveAds}             divider meta="PRO" />
-          <ListRow icon={<IcSpark />}  label="업데이트 노트" onPress={() => setOpenModal('update')} divider meta="NEW" />
+          <ListRow icon={<IcBook />}   label={t('settings.rowGuide')}     onPress={() => setOpenModal('guide')} />
+          <ListRow icon={<IcChat />}   label={t('settings.rowFeedback')}   onPress={handleFeedback}               divider />
+          <ListRow icon={<IcNoads />}  label={t('settings.rowRemoveAds')} onPress={handleRemoveAds}             divider meta="PRO" />
+          <ListRow icon={<IcSpark />}  label={t('settings.rowUpdate')} onPress={() => setOpenModal('update')} divider meta="NEW" />
         </View>
 
         {/* 법적 고지 */}
-        <Text style={styles.sectionLabel}>법적 고지</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sectionLegal')}</Text>
         <View style={styles.listCard}>
-          <ListRow icon={<IcDoc />}    label="이용약관"          onPress={() => setOpenModal('terms')}   />
-          <ListRow icon={<IcShield />} label="개인정보처리방침"   onPress={() => setOpenModal('privacy')} divider />
+          <ListRow icon={<IcDoc />}    label={t('settings.rowTerms')}          onPress={() => setOpenModal('terms')}   />
+          <ListRow icon={<IcShield />} label={t('settings.rowPrivacy')}   onPress={() => setOpenModal('privacy')} divider />
           <View style={styles.versionRow}>
             <View style={styles.listIconWrap}><Text style={{ fontSize: 14 }}>ℹ️</Text></View>
-            <Text style={styles.listLabel}>앱 버전</Text>
+            <Text style={styles.listLabel}>{t('settings.rowVersion')}</Text>
             <Text style={styles.versionValue}>{APP_VERSION}</Text>
           </View>
         </View>
 
         {/* 데이터 관리 */}
-        <Text style={styles.sectionLabel}>데이터 관리</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sectionData')}</Text>
         <TouchableOpacity
           style={styles.dangerCard}
           onPress={handleResetAllData}
@@ -495,14 +285,14 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <Text style={styles.dangerIcon}>🗑️</Text>
           </View>
           <View style={styles.dangerTexts}>
-            <Text style={styles.dangerTitle}>모든 데이터 삭제</Text>
-            <Text style={styles.dangerSub}>냉장고·레시피·메모·선호도 모두 영구 삭제</Text>
+            <Text style={styles.dangerTitle}>{t('settings.deleteAllTitle')}</Text>
+            <Text style={styles.dangerSub}>{t('settings.deleteAllSub')}</Text>
           </View>
           <IcChevron />
         </TouchableOpacity>
 
         {/* 개발자모드 (출시 전 제거) */}
-        <Text style={styles.sectionLabel}>⚙️ 개발자모드</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sectionDev')}</Text>
         <TouchableOpacity
           style={styles.testCard}
           onPress={handleResetUsage}
@@ -510,8 +300,8 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         >
           <Text style={styles.testIcon}>🍃</Text>
           <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>오늘 무료 잎사귀 다시 채우기</Text>
-            <Text style={styles.testSub}>일일 무료를 3개로 리셋 (보너스 풀은 유지)</Text>
+            <Text style={styles.testTitle}>{t('settings.devRechargeTitle')}</Text>
+            <Text style={styles.testSub}>{t('settings.devRechargeSub')}</Text>
           </View>
           <IcChevron />
         </TouchableOpacity>
@@ -524,11 +314,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         >
           <Text style={styles.testIcon}>{proMode ? '💎' : '🆓'}</Text>
           <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>PRO 구독 (수동 강제)</Text>
+            <Text style={styles.testTitle}>{t('settings.devProTitle')}</Text>
             <Text style={styles.testSub}>
               {proMode
-                ? 'ON — 잎사귀 무제한, 광고 제거 등 PRO 기능 활성'
-                : 'OFF — 무료 사용자'}
+                ? t('settings.devProOn')
+                : t('settings.devProOff')}
             </Text>
           </View>
           <View style={[styles.mockSwitch, proMode && styles.mockSwitchOn]}>
@@ -546,11 +336,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         >
           <Text style={styles.testIcon}>{mockMode ? '🟢' : '⚪'}</Text>
           <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>임시 모드 (API 호출 X)</Text>
+            <Text style={styles.testTitle}>{t('settings.devMockTitle')}</Text>
             <Text style={styles.testSub}>
               {mockMode
-                ? 'ON — 목 데이터로 화면 이동만 (Claude/YouTube 호출 안 함)'
-                : 'OFF — 실제 API 호출'}
+                ? t('settings.devMockOn')
+                : t('settings.devMockOff')}
             </Text>
           </View>
           <View style={[styles.mockSwitch, mockMode && styles.mockSwitchOn]}>
@@ -564,11 +354,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         <View style={styles.testCard}>
           <Text style={styles.testIcon}>🤖</Text>
           <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>Claude API 모델 변경</Text>
+            <Text style={styles.testTitle}>{t('settings.devClaudeModelTitle')}</Text>
             <Text style={styles.testSub}>
               {modelKey === 'auto'
-                ? 'auto — 비전=Sonnet, 그 외=Haiku (코드 기본값)'
-                : `${modelKey} — 모든 호출 강제 override`}
+                ? t('settings.devClaudeModelAuto')
+                : t('settings.devClaudeModelOverride', { model: modelKey })}
             </Text>
             <View style={styles.modelRow}>
               {(['auto', 'haiku', 'sonnet', 'opus'] as ModelKey[]).map(k => {
@@ -594,9 +384,9 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         <View style={styles.testCard}>
           <Text style={styles.testIcon}>🍳</Text>
           <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>레시피 생성 모델</Text>
+            <Text style={styles.testTitle}>{t('settings.devRecipeModelTitle')}</Text>
             <Text style={styles.testSub}>
-              현재: {RECIPE_MODELS[recipeModelKey].label} — 재료/요리명 레시피 생성에만 적용
+              {t('settings.devRecipeModelSub', { model: RECIPE_MODELS[recipeModelKey].label })}
             </Text>
             <View style={styles.modelRow}>
               {(Object.keys(RECIPE_MODELS) as RecipeModelKey[]).map(k => {
@@ -619,6 +409,34 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           </View>
         </View>
 
+        {/* 언어 (AI 응답 언어 — UI 전체 번역은 추후) */}
+        <View style={styles.testCard}>
+          <Text style={styles.testIcon}>🌐</Text>
+          <View style={styles.testTexts}>
+            <Text style={styles.testTitle}>{t('settings.langTitle')}</Text>
+            <Text style={styles.testSub}>
+              {t('settings.langSub', { lang: lang === 'ko' ? t('settings.langKorean') : t('settings.langEnglish') })}
+            </Text>
+            <View style={styles.modelRow}>
+              {(['ko', 'en'] as AppLang[]).map(l => {
+                const active = l === lang;
+                return (
+                  <TouchableOpacity
+                    key={l}
+                    style={[styles.modelChip, active && styles.modelChipActive]}
+                    onPress={() => handlePickLang(l)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
+                      {l === 'ko' ? t('settings.langKorean') : t('settings.langEnglish')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
       </ScrollView>
 
       {/* 데이터 삭제 확인 모달 */}
@@ -630,21 +448,21 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           <View style={styles.deleteModalBackdrop} />
           <View style={styles.deleteModalCard}>
             <Text style={styles.deleteModalIcon}>⚠️</Text>
-            <Text style={styles.deleteModalTitle}>모든 데이터를 삭제할까요?</Text>
+            <Text style={styles.deleteModalTitle}>{t('settings.deleteModalTitle')}</Text>
             <Text style={styles.deleteModalBody}>
-              냉장고, 저장된 레시피, 폴더, 메모, 선호도 등{'\n'}
-              모든 데이터가 <Text style={styles.deleteModalBodyStrong}>영구 삭제</Text>되며{'\n'}
-              되돌릴 수 없어요.
+              {t('settings.deleteModalBodyL1')}{'\n'}
+              {t('settings.deleteModalBodyL2a')}<Text style={styles.deleteModalBodyStrong}>{t('settings.deleteModalBodyStrong')}</Text>{t('settings.deleteModalBodyL2b')}{'\n'}
+              {t('settings.deleteModalBodyL3')}
             </Text>
             <View style={styles.deleteModalHintBox}>
-              <Text style={styles.deleteModalHintLabel}>계속하려면 아래 문구를 정확히 입력해주세요</Text>
-              <Text style={styles.deleteModalKeyword}>{DELETE_CONFIRM_PHRASE}</Text>
+              <Text style={styles.deleteModalHintLabel}>{t('settings.deleteModalHint')}</Text>
+              <Text style={styles.deleteModalKeyword}>{deleteConfirmPhrase}</Text>
             </View>
             <TextInput
               style={[styles.deleteModalInput, canDelete && styles.deleteModalInputMatch]}
               value={deleteInput}
               onChangeText={setDeleteInput}
-              placeholder={DELETE_CONFIRM_PHRASE}
+              placeholder={deleteConfirmPhrase}
               placeholderTextColor={Colors.inkMute}
               autoCapitalize="none"
               autoCorrect={false}
@@ -656,7 +474,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
                 onPress={closeDeleteModal}
                 disabled={deleting}
               >
-                <Text style={styles.deleteCancelText}>취소</Text>
+                <Text style={styles.deleteCancelText}>{t('settings.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.deleteConfirmBtn, !canDelete && styles.deleteConfirmBtnDisabled]}
@@ -665,7 +483,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
                 activeOpacity={0.85}
               >
                 <Text style={[styles.deleteConfirmText, !canDelete && styles.deleteConfirmTextDisabled]}>
-                  {deleting ? '삭제 중...' : '삭제'}
+                  {deleting ? t('settings.deleting') : t('settings.delete')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -680,13 +498,13 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <DraggableSheet
               key={openModal}
               onClose={() => setOpenModal(null)}
-              title={MODAL_CONTENT[openModal].title}
-              body={MODAL_CONTENT[openModal].body}
+              title={modalContent[openModal].title}
+              body={modalContent[openModal].body}
               footerLink={
                 openModal === 'privacy'
-                  ? { label: '웹에서 전체 보기', url: 'https://nettle-satellite-63f.notion.site/36a8ac0e8b1c80bb85ded0cab2cdeca1' }
+                  ? { label: t('settings.viewFullOnWeb'), url: 'https://fuschia-evergreen-84d.notion.site/379fdf7f452480f9a973ee3e4e2cca05' }
                   : openModal === 'terms'
-                    ? { label: '웹에서 전체 보기', url: 'https://nettle-satellite-63f.notion.site/3738ac0e8b1c80c2ab3ccbae80155ddd' }
+                    ? { label: t('settings.viewFullOnWeb'), url: 'https://fuschia-evergreen-84d.notion.site/379fdf7f452480b0b096ce3220b7fbf3' }
                     : undefined
               }
             />
@@ -767,7 +585,7 @@ function DraggableSheet({ onClose, title, body, footerLink }: {
             )}
           </ScrollView>
           <TouchableOpacity style={styles.modalCloseBtn} onPress={dismiss}>
-            <Text style={styles.modalCloseBtnText}>닫기</Text>
+            <Text style={styles.modalCloseBtnText}>{t('settings.close')}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>

@@ -18,19 +18,20 @@ import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../s
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { AdBanner } from '../components/AdBanner';
+import { t } from '../i18n';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
-  Easy:   { label: '쉬워요',    color: Colors.accent,  bg: Colors.accentLight },
-  Medium: { label: '보통이에요', color: '#D97706',      bg: Colors.yellowLight },
-  Hard:   { label: '어려워요',  color: Colors.coral,   bg: Colors.coralLight },
+  Easy:   { label: t('savedDetail.diffEasy'),   color: Colors.accent,  bg: Colors.accentLight },
+  Medium: { label: t('savedDetail.diffMedium'), color: '#D97706',      bg: Colors.yellowLight },
+  Hard:   { label: t('savedDetail.diffHard'),   color: Colors.coral,   bg: Colors.coralLight },
 };
 
 const QUICK_QUESTIONS = [
-  '더 쉽게 만들 수 있어?',
-  '칼로리 낮추려면?',
-  '이 재료 대신 뭐 써도 돼?',
-  '보관은 어떻게 해?',
-  '맛있게 하는 팁 있어?',
+  t('savedDetail.quick1'),
+  t('savedDetail.quick2'),
+  t('savedDetail.quick3'),
+  t('savedDetail.quick4'),
+  t('savedDetail.quick5'),
 ];
 
 function IconEdit() {
@@ -63,7 +64,7 @@ function IconTrash() {
 
 function formatDate(iso: string) {
   const d = new Date(iso);
-  return `${d.getFullYear()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getDate().toString().padStart(2, '0')} 저장`;
+  return t('savedDetail.savedDate', { date: `${d.getFullYear()}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getDate().toString().padStart(2, '0')}` });
 }
 
 function formatTime(iso: string) {
@@ -138,7 +139,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
       const updated = await getQAHistory(r.id);
       setQaHistory(updated);
     } catch {
-      setAnswer('앗, 오류가 생겼어요. 다시 시도해주세요 🙏');
+      setAnswer(t('savedDetail.askError'));
       haptic.error();
     } finally {
       setAsking(false);
@@ -153,25 +154,25 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
       '',
       r.description,
       '',
-      `⏱ ${r.cookTime}  |  👥 ${r.servings}인분  |  ${diffLabel}`,
+      `⏱ ${r.cookTime}  |  👥 ${t('savedDetail.servings', { count: r.servings })}  |  ${diffLabel}`,
       '',
-      '🧂 재료',
+      t('savedDetail.shareIngredients'),
       r.ingredients.join(', '),
       '',
-      '👨‍🍳 만드는 법',
+      t('savedDetail.shareSteps'),
       ...r.steps.map((s, i) => `${i + 1}. ${s}`),
       '',
-      '🐾 쿼카레시피 앱으로 만들었어요',
+      t('savedDetail.shareFooter'),
     ].join('\n');
     try { await Share.share({ message: text }); } catch {}
   };
 
   const handleDeleteQA = (entryId: string) => {
     haptic.warning();
-    Alert.alert('삭제할까요?', '이 질문 기록을 삭제해요.', [
-      { text: '취소', style: 'cancel' },
+    Alert.alert(t('savedDetail.deleteQaTitle'), t('savedDetail.deleteQaMsg'), [
+      { text: t('savedDetail.cancel'), style: 'cancel' },
       {
-        text: '삭제', style: 'destructive',
+        text: t('savedDetail.delete'), style: 'destructive',
         onPress: async () => {
           await deleteQAEntry(r.id, entryId);
           setQaHistory(prev => prev.filter(e => e.id !== entryId));
@@ -241,14 +242,14 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.85]} style={styles.header}>
         <View style={styles.headerNav}>
           <TouchableOpacity onPress={goBack}>
-            <Text style={styles.backBtnText}>← 돌아가기</Text>
+            <Text style={styles.backBtnText}>{t('savedDetail.back')}</Text>
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={styles.editHeaderBtn} onPress={openEdit}>
-              <Text style={styles.editHeaderBtnText}>수정</Text>
+              <Text style={styles.editHeaderBtnText}>{t('savedDetail.edit')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-              <Text style={styles.shareBtnText}>공유 ↗</Text>
+              <Text style={styles.shareBtnText}>{t('savedDetail.share')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -258,10 +259,10 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             <Text style={[styles.diffText, { color: diff.color }]}>{diff.label}</Text>
           </View>
           <View style={styles.metaChip}><Text style={styles.metaChipText}>⏱ {r.cookTime}</Text></View>
-          <View style={styles.metaChip}><Text style={styles.metaChipText}>👥 {r.servings}인분</Text></View>
+          <View style={styles.metaChip}><Text style={styles.metaChipText}>👥 {t('savedDetail.servings', { count: r.servings })}</Text></View>
           <TouchableOpacity style={styles.folderChip} onPress={() => setFolderPickerVisible(true)}>
             <Text style={styles.folderChipText}>
-              {currentDetailFolder ? `📁 ${currentDetailFolder.name}` : '📂 폴더 지정'}
+              {currentDetailFolder ? `📁 ${currentDetailFolder.name}` : t('savedDetail.assignFolder')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -270,11 +271,11 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           <Text style={styles.savedAtDivider}>·</Text>
           {r.source === 'youtube' ? (
             <View style={styles.sourceBadgeYt}>
-              <Text style={styles.sourceBadgeYtText}>유튜브에서 가져온 레시피</Text>
+              <Text style={styles.sourceBadgeYtText}>{t('savedDetail.sourceYoutube')}</Text>
             </View>
           ) : (
             <View style={styles.sourceBadgeAi}>
-              <Text style={styles.sourceBadgeAiText}>쿼카가 알려준 레시피</Text>
+              <Text style={styles.sourceBadgeAiText}>{t('savedDetail.sourceAi')}</Text>
             </View>
           )}
         </View>
@@ -294,11 +295,11 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
               style={styles.ytSourceThumb}
             />
             <View style={styles.ytSourceInfo}>
-              <Text style={styles.ytSourceBadge}>원본 영상</Text>
+              <Text style={styles.ytSourceBadge}>{t('savedDetail.originalVideo')}</Text>
               <Text style={styles.ytSourceTitle} numberOfLines={2}>
-                {r.youtubeTitle ?? '유튜브 영상'}
+                {r.youtubeTitle ?? t('savedDetail.youtubeVideo')}
               </Text>
-              <Text style={styles.ytSourceAction}>유튜브에서 보기 →</Text>
+              <Text style={styles.ytSourceAction}>{t('savedDetail.watchOnYoutube')}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -310,10 +311,10 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
         {r.nutrition && (
           <View style={styles.nutritionBox}>
             {[
-              { label: '칼로리',   val: `${r.nutrition.calories}kcal`, color: '#FF9F7F' },
-              { label: '단백질',   val: `${r.nutrition.protein}g`,     color: '#74C0FC' },
-              { label: '탄수화물', val: `${r.nutrition.carbs}g`,       color: '#FFD166' },
-              { label: '지방',     val: `${r.nutrition.fat}g`,         color: '#C77DFF' },
+              { label: t('savedDetail.calories'), val: `${r.nutrition.calories}kcal`, color: '#FF9F7F' },
+              { label: t('savedDetail.protein'),  val: `${r.nutrition.protein}g`,     color: '#74C0FC' },
+              { label: t('savedDetail.carbs'),    val: `${r.nutrition.carbs}g`,       color: '#FFD166' },
+              { label: t('savedDetail.fat'),      val: `${r.nutrition.fat}g`,         color: '#C77DFF' },
             ].map(n => (
               <View key={n.label} style={styles.nutritionItem}>
                 <Text style={[styles.nutritionVal, { color: n.color }]}>{n.val}</Text>
@@ -325,12 +326,12 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
 
         {/* 재료 */}
         <View style={styles.sectionHeadRow}>
-          <Text style={styles.sectionHead}>🧂 재료</Text>
+          <Text style={styles.sectionHead}>{t('savedDetail.ingredientsHead')}</Text>
           {fridgeItems.length > 0 && (() => {
             const missing = r.ingredients.filter(i => !hasIngredient(i)).length;
             return missing > 0
-              ? <Text style={styles.ingredientMissingBadge}>재료 {missing}개 부족</Text>
-              : <Text style={styles.ingredientOkBadge}>재료 모두 보유 ✓</Text>;
+              ? <Text style={styles.ingredientMissingBadge}>{t('savedDetail.missingBadge', { count: missing })}</Text>
+              : <Text style={styles.ingredientOkBadge}>{t('savedDetail.allHaveBadge')}</Text>;
           })()}
         </View>
         <View style={styles.ingredientGrid}>
@@ -359,7 +360,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
         </View>
 
         {/* 만드는 법 */}
-        <Text style={[styles.sectionHead, { marginTop: 20 }]}>👨‍🍳 만드는 법</Text>
+        <Text style={[styles.sectionHead, { marginTop: 20 }]}>{t('savedDetail.stepsHead')}</Text>
         {r.steps.map((s, n) => (
           <View key={n} style={styles.stepRow}>
             <View style={styles.stepNum}>
@@ -372,11 +373,11 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
         {/* ── 메모 카드 ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>📝 내 메모</Text>
+            <Text style={styles.cardTitle}>{t('savedDetail.myMemo')}</Text>
             {!editingMemo && (
               <TouchableOpacity style={styles.editBtn} onPress={() => { setMemoInput(memo); setEditingMemo(true); }}>
                 <IconEdit />
-                <Text style={styles.editBtnText}>{memo ? '수정' : '추가'}</Text>
+                <Text style={styles.editBtnText}>{memo ? t('savedDetail.edit') : t('savedDetail.add')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -386,17 +387,17 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                 style={styles.memoInput}
                 value={memoInput}
                 onChangeText={setMemoInput}
-                placeholder="레시피에 대한 메모를 남겨보세요..."
+                placeholder={t('savedDetail.memoPlaceholder')}
                 placeholderTextColor={Colors.inkMute}
                 multiline
                 autoFocus
               />
               <View style={styles.memoActions}>
                 <TouchableOpacity style={styles.memoCancelBtn} onPress={() => setEditingMemo(false)}>
-                  <Text style={styles.memoCancelText}>취소</Text>
+                  <Text style={styles.memoCancelText}>{t('savedDetail.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.memoSaveBtn} onPress={handleSaveMemo}>
-                  <Text style={styles.memoSaveText}>저장</Text>
+                  <Text style={styles.memoSaveText}>{t('savedDetail.save')}</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -404,7 +405,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             <Text style={styles.memoText}>{memo}</Text>
           ) : (
             <TouchableOpacity onPress={() => { setMemoInput(''); setEditingMemo(true); }}>
-              <Text style={styles.memoEmpty}>+ 메모를 추가해보세요</Text>
+              <Text style={styles.memoEmpty}>{t('savedDetail.memoEmpty')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -418,17 +419,17 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           >
             <Image source={require('../../assets/quokka_question_mini.png')} style={styles.askQuokka} resizeMode="contain" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>쿼카에게 질문하기</Text>
-              <Text style={styles.cardSub}>레시피에 대해 뭐든 물어보세요 🐾</Text>
+              <Text style={styles.cardTitle}>{t('savedDetail.askQuokkaTitle')}</Text>
+              <Text style={styles.cardSub}>{t('savedDetail.askQuokkaSub')}</Text>
             </View>
             <Text style={styles.rowArrow}>›</Text>
           </TouchableOpacity>
 
           <View style={styles.cardDivider} />
 
-          <Text style={styles.cardSectionLabel}>질문 기록</Text>
+          <Text style={styles.cardSectionLabel}>{t('savedDetail.qaHistoryLabel')}</Text>
           {qaHistory.length === 0 ? (
-            <Text style={styles.qaEmpty}>아직 질문 기록이 없어요</Text>
+            <Text style={styles.qaEmpty}>{t('savedDetail.qaEmpty')}</Text>
           ) : (
             qaHistory.map(entry => (
               <View key={entry.id} style={styles.qaEntry}>
@@ -456,8 +457,8 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           <TouchableOpacity style={styles.linkRow} onPress={() => openYouTubeByName(r.name)} activeOpacity={0.82}>
             <Text style={styles.linkEmoji}>📺</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.linkTitle}>유튜브에서 레시피 보기</Text>
-              <Text style={styles.linkSub}>영상으로 더 쉽게 따라해보세요</Text>
+              <Text style={styles.linkTitle}>{t('savedDetail.youtubeLinkTitle')}</Text>
+              <Text style={styles.linkSub}>{t('savedDetail.youtubeLinkSub')}</Text>
             </View>
             <Text style={styles.rowArrow}>›</Text>
           </TouchableOpacity>
@@ -473,13 +474,13 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                 <View style={styles.linkRowStatic}>
                   <Text style={styles.linkEmoji}>🛒</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.linkTitle}>재료 바로 구매</Text>
+                    <Text style={styles.linkTitle}>{t('savedDetail.buyIngredientsTitle')}</Text>
                     <Text style={styles.linkSub}>
                       {fridgeItems.length > 0
                         ? missing.length === 0
-                          ? '모든 재료를 보유하고 있어요 🎉'
-                          : `부족한 재료 ${missing.length}개 · 쿠팡에서 바로 주문해요`
-                        : '쿠팡에서 필요한 재료를 주문해요'}
+                          ? t('savedDetail.buyAllHave')
+                          : t('savedDetail.buyMissing', { count: missing.length })
+                        : t('savedDetail.buyDefault')}
                     </Text>
                   </View>
                 </View>
@@ -511,7 +512,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             <View style={styles.modalHeader}>
               <Image source={require('../../assets/quokka.png')} style={styles.modalQuokka} resizeMode="contain" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>쿼카에게 물어보기</Text>
+                <Text style={styles.modalTitle}>{t('savedDetail.modalAskTitle')}</Text>
                 <Text style={styles.modalSub} numberOfLines={1}>{r.name}</Text>
               </View>
               <TouchableOpacity onPress={() => setAskVisible(false)} style={styles.modalClose}>
@@ -522,13 +523,13 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             {asking && (
               <View style={styles.answerBox}>
                 <ActivityIndicator size="small" color={Colors.accent} />
-                <Text style={styles.answerLoading}>쿼카가 생각하는 중... 🐾</Text>
+                <Text style={styles.answerLoading}>{t('savedDetail.thinking')}</Text>
               </View>
             )}
             {!!answer && !asking && (
               <View style={styles.answerBox}>
                 <Text style={styles.answerText}>{answer}</Text>
-                <Text style={styles.answerSaved}>✓ 기록에 저장됐어요</Text>
+                <Text style={styles.answerSaved}>{t('savedDetail.answerSaved')}</Text>
               </View>
             )}
 
@@ -545,7 +546,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                 style={styles.modalInput}
                 value={question}
                 onChangeText={setQuestion}
-                placeholder="궁금한 것을 물어보세요..."
+                placeholder={t('savedDetail.questionPlaceholder')}
                 placeholderTextColor={Colors.textMuted}
                 multiline
               />
@@ -554,7 +555,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                 onPress={handleAsk}
                 disabled={!question.trim() || asking}
               >
-                <Text style={styles.sendBtnText}>전송</Text>
+                <Text style={styles.sendBtnText}>{t('savedDetail.send')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -571,13 +572,13 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                 onPress={() => setEditVisible(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.editNavCancelText}>취소</Text>
+                <Text style={styles.editNavCancelText}>{t('savedDetail.cancel')}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.editNavTitle}>레시피 수정</Text>
+            <Text style={styles.editNavTitle}>{t('savedDetail.editRecipeTitle')}</Text>
             <View style={[styles.editNavSide, { alignItems: 'flex-end' }]}>
               <TouchableOpacity onPress={handleSaveEdit} style={styles.editNavSave}>
-                <Text style={styles.editNavSaveText}>저장</Text>
+                <Text style={styles.editNavSaveText}>{t('savedDetail.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -586,31 +587,31 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             <ScrollView contentContainerStyle={styles.editContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
               {/* 기본 정보 */}
-              <Text style={styles.editSectionLabel}>기본 정보</Text>
+              <Text style={styles.editSectionLabel}>{t('savedDetail.basicInfo')}</Text>
               <View style={styles.editCard}>
-                <Text style={styles.editFieldLabel}>요리 이름</Text>
-                <TextInput style={styles.editInput} value={editName} onChangeText={setEditName} placeholder="요리 이름" placeholderTextColor={Colors.inkMute} />
+                <Text style={styles.editFieldLabel}>{t('savedDetail.dishName')}</Text>
+                <TextInput style={styles.editInput} value={editName} onChangeText={setEditName} placeholder={t('savedDetail.dishName')} placeholderTextColor={Colors.inkMute} />
                 <View style={styles.editDivider} />
-                <Text style={styles.editFieldLabel}>설명</Text>
-                <TextInput style={[styles.editInput, styles.editInputMulti]} value={editDesc} onChangeText={setEditDesc} placeholder="요리 설명" placeholderTextColor={Colors.inkMute} multiline />
+                <Text style={styles.editFieldLabel}>{t('savedDetail.descLabel')}</Text>
+                <TextInput style={[styles.editInput, styles.editInputMulti]} value={editDesc} onChangeText={setEditDesc} placeholder={t('savedDetail.descPlaceholder')} placeholderTextColor={Colors.inkMute} multiline />
               </View>
 
               {/* 조리 정보 */}
-              <Text style={styles.editSectionLabel}>조리 정보</Text>
+              <Text style={styles.editSectionLabel}>{t('savedDetail.cookInfo')}</Text>
               <View style={styles.editCard}>
                 <View style={styles.editRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.editFieldLabel}>조리 시간</Text>
-                    <TextInput style={styles.editInput} value={editCookTime} onChangeText={setEditCookTime} placeholder="예: 30분" placeholderTextColor={Colors.inkMute} />
+                    <Text style={styles.editFieldLabel}>{t('savedDetail.cookTimeLabel')}</Text>
+                    <TextInput style={styles.editInput} value={editCookTime} onChangeText={setEditCookTime} placeholder={t('savedDetail.cookTimePlaceholder')} placeholderTextColor={Colors.inkMute} />
                   </View>
                   <View style={styles.editRowDivider} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.editFieldLabel}>인분</Text>
+                    <Text style={styles.editFieldLabel}>{t('savedDetail.servingsLabel')}</Text>
                     <TextInput style={styles.editInput} value={editServings} onChangeText={setEditServings} placeholder="2" placeholderTextColor={Colors.inkMute} keyboardType="number-pad" />
                   </View>
                 </View>
                 <View style={styles.editDivider} />
-                <Text style={styles.editFieldLabel}>난이도</Text>
+                <Text style={styles.editFieldLabel}>{t('savedDetail.difficultyLabel')}</Text>
                 <View style={styles.diffRow}>
                   {(['Easy', 'Medium', 'Hard'] as const).map(d => (
                     <TouchableOpacity
@@ -627,7 +628,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
               </View>
 
               {/* 재료 */}
-              <Text style={styles.editSectionLabel}>재료</Text>
+              <Text style={styles.editSectionLabel}>{t('savedDetail.ingredientsSection')}</Text>
               <View style={styles.editCard}>
                 {editIngredients.map((ing, i) => (
                   <View key={i} style={styles.editListRow}>
@@ -635,7 +636,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                       style={[styles.editInput, { flex: 1 }]}
                       value={ing}
                       onChangeText={v => setEditIngredients(prev => prev.map((x, j) => j === i ? v : x))}
-                      placeholder={`재료 ${i + 1}`}
+                      placeholder={t('savedDetail.ingredientPlaceholder', { num: i + 1 })}
                       placeholderTextColor={Colors.inkMute}
                     />
                     <TouchableOpacity
@@ -648,12 +649,12 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                   </View>
                 ))}
                 <TouchableOpacity style={styles.editAddBtn} onPress={() => setEditIngredients(prev => [...prev, ''])}>
-                  <Text style={styles.editAddBtnText}>+ 재료 추가</Text>
+                  <Text style={styles.editAddBtnText}>{t('savedDetail.addIngredient')}</Text>
                 </TouchableOpacity>
               </View>
 
               {/* 만드는 법 */}
-              <Text style={styles.editSectionLabel}>만드는 법</Text>
+              <Text style={styles.editSectionLabel}>{t('savedDetail.stepsSection')}</Text>
               <View style={styles.editCard}>
                 {editSteps.map((step, i) => (
                   <View key={i} style={styles.editListRow}>
@@ -664,7 +665,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                       style={[styles.editInput, { flex: 1 }]}
                       value={step}
                       onChangeText={v => setEditSteps(prev => prev.map((x, j) => j === i ? v : x))}
-                      placeholder={`${i + 1}단계`}
+                      placeholder={t('savedDetail.stepPlaceholder', { num: i + 1 })}
                       placeholderTextColor={Colors.inkMute}
                       multiline
                     />
@@ -678,7 +679,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                   </View>
                 ))}
                 <TouchableOpacity style={styles.editAddBtn} onPress={() => setEditSteps(prev => [...prev, ''])}>
-                  <Text style={styles.editAddBtnText}>+ 단계 추가</Text>
+                  <Text style={styles.editAddBtnText}>{t('savedDetail.addStep')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -694,7 +695,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             <TouchableOpacity activeOpacity={1} onPress={() => {}}>
               <View style={styles.fpSheet}>
                 <View style={styles.fpHandle} />
-                <Text style={styles.fpTitle}>폴더 이동</Text>
+                <Text style={styles.fpTitle}>{t('savedDetail.moveFolder')}</Text>
                 <Text style={styles.fpSub} numberOfLines={1}>{r.name}</Text>
 
                 <TouchableOpacity
@@ -702,7 +703,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                   onPress={() => handleMoveFolderInDetail(null)}
                 >
                   <Text style={styles.fpOptionIcon}>📂</Text>
-                  <Text style={[styles.fpOptionText, !currentFolderId && styles.fpOptionTextActive]}>분류 없음</Text>
+                  <Text style={[styles.fpOptionText, !currentFolderId && styles.fpOptionTextActive]}>{t('savedDetail.noFolder')}</Text>
                   {!currentFolderId && <IconCheck />}
                 </TouchableOpacity>
 
@@ -726,7 +727,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                       style={styles.fpNewInput}
                       value={newFolderNameInDetail}
                       onChangeText={setNewFolderNameInDetail}
-                      placeholder="새 폴더 이름"
+                      placeholder={t('savedDetail.newFolderPlaceholder')}
                       placeholderTextColor={Colors.inkMute}
                       autoFocus
                       returnKeyType="done"
@@ -736,12 +737,12 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
                       style={[styles.fpNewBtn, !newFolderNameInDetail.trim() && styles.fpNewBtnDisabled]}
                       onPress={handleCreateFolderInDetail}
                     >
-                      <Text style={styles.fpNewBtnText}>만들기</Text>
+                      <Text style={styles.fpNewBtnText}>{t('savedDetail.create')}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <TouchableOpacity style={styles.fpOptionAdd} onPress={() => setShowNewFolderInDetail(true)}>
-                    <Text style={styles.fpOptionAddText}>+ 새 폴더 만들기</Text>
+                    <Text style={styles.fpOptionAddText}>{t('savedDetail.createNewFolder')}</Text>
                   </TouchableOpacity>
                 )}
               </View>

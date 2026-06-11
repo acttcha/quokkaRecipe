@@ -11,6 +11,7 @@ import { getNickname, saveNickname, getScanCount } from '../services/stats';
 import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
+import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -19,7 +20,7 @@ interface Props extends NavProps {
 }
 
 export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
-  const [nickname, setNickname]     = useState('쿼카 유저');
+  const [nickname, setNickname]     = useState(t('profile.defaultNickname'));
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput]   = useState('');
   const [scanCount, setScanCount]   = useState(0);
@@ -43,7 +44,7 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
 
   const startEdit = () => { setNickInput(nickname); setEditingNick(true); };
   const saveNick = async () => {
-    const trimmed = nickInput.trim() || '쿼카 유저';
+    const trimmed = nickInput.trim() || t('profile.defaultNickname');
     await saveNickname(trimmed);
     setNickname(trimmed);
     setEditingNick(false);
@@ -51,13 +52,13 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
   };
 
   const PREF_ROWS = [
-    { icon: '🥗', label: '식단 유형',   value: prefs.dietType    || '설정 전' },
-    { icon: '🌶️', label: '매운 음식',   value: prefs.spiceLevel  || '설정 전' },
-    { icon: '⏱️', label: '조리 시간',   value: prefs.cookingTime || '설정 전' },
-    { icon: '👨‍🍳', label: '요리 실력',   value: prefs.cookingSkill || '설정 전' },
-    { icon: '⚠️', label: '알레르기',    value: prefs.allergies.length > 0 ? prefs.allergies.join(', ') : '없음' },
-    { icon: '🍽️', label: '선호 스타일', value: prefs.cuisineStyles.length > 0 ? prefs.cuisineStyles.join(', ') : '설정 전' },
-    { icon: '👥', label: '기본 인분',   value: prefs.servings ? `${prefs.servings}인분` : '설정 전' },
+    { icon: '🥗', label: t('profile.dietType'),   value: prefs.dietType    || t('profile.notSet') },
+    { icon: '🌶️', label: t('profile.spiceLevel'),   value: prefs.spiceLevel  || t('profile.notSet') },
+    { icon: '⏱️', label: t('profile.cookingTime'),   value: prefs.cookingTime || t('profile.notSet') },
+    { icon: '👨‍🍳', label: t('profile.cookingSkill'),   value: prefs.cookingSkill || t('profile.notSet') },
+    { icon: '⚠️', label: t('profile.allergies'),    value: prefs.allergies.length > 0 ? prefs.allergies.join(', ') : t('profile.none') },
+    { icon: '🍽️', label: t('profile.cuisineStyles'), value: prefs.cuisineStyles.length > 0 ? prefs.cuisineStyles.join(', ') : t('profile.notSet') },
+    { icon: '👥', label: t('profile.servingsLabel'),   value: prefs.servings ? t('profile.servings', { n: prefs.servings }) : t('profile.notSet') },
   ];
 
   return (
@@ -66,10 +67,10 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
 
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.hero}>
         <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← 돌아가기</Text>
+          <Text style={styles.backBtnText}>{t('profile.back')}</Text>
         </TouchableOpacity>
         <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
-        <Text style={styles.heroSub}>내 정보</Text>
+        <Text style={styles.heroSub}>{t('profile.heroSub')}</Text>
       </LinearGradient>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
@@ -89,7 +90,7 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
                 returnKeyType="done"
               />
               <TouchableOpacity style={styles.nickSaveBtn} onPress={saveNick}>
-                <Text style={styles.nickSaveBtnText}>저장</Text>
+                <Text style={styles.nickSaveBtnText}>{t('profile.save')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -98,23 +99,23 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
               <Text style={styles.nickEditIcon}>✏️</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.profileSub}>쿼카레시피 유저 🐾</Text>
+          <Text style={styles.profileSub}>{t('profile.profileSub')}</Text>
         </View>
 
         {/* 통계 */}
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: Colors.forestSoft }]}>
             <Text style={styles.statValue}>{savedCount}</Text>
-            <Text style={styles.statLabel}>저장된 레시피</Text>
+            <Text style={styles.statLabel}>{t('profile.savedRecipes')}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: Colors.orangeSoft }]}>
             <Text style={styles.statValue}>{scanCount}</Text>
-            <Text style={styles.statLabel}>총 스캔 횟수</Text>
+            <Text style={styles.statLabel}>{t('profile.totalScans')}</Text>
           </View>
         </View>
 
         {/* 내 선호도 */}
-        <Text style={styles.sectionHead}>내 선호도</Text>
+        <Text style={styles.sectionHead}>{t('profile.preferencesHead')}</Text>
         <View style={styles.prefCard}>
           {PREF_ROWS.map((row, i) => (
             <View key={row.label} style={[styles.prefRow, i < PREF_ROWS.length - 1 && styles.prefRowBorder]}>
@@ -127,7 +128,7 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
 
         {onResetPreferences && (
           <TouchableOpacity style={styles.editPrefBtn} onPress={onResetPreferences} activeOpacity={0.85}>
-            <Text style={styles.editPrefBtnText}>🔄  선호도 다시 설정하기</Text>
+            <Text style={styles.editPrefBtnText}>{t('profile.resetPreferences')}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

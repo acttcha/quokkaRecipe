@@ -1,9 +1,10 @@
 import { Alert } from 'react-native';
 import {
   canSpend, addBonusLeaves, getAdWatchesLeft, getAdCooldownRemaining, recordAdWatch,
-  LEAF_COST, ACTION_LABEL, LeafAction, AD_REWARD, AD_DAILY_LIMIT,
+  LEAF_COST, LeafAction, AD_REWARD, AD_DAILY_LIMIT,
 } from './leaves';
 import { showRewardedAd, isExpoGo } from './ads';
+import { t } from '../i18n';
 
 /**
  * 보상형 광고를 보여주고, 보상 획득 시 잎사귀를 지급한다.
@@ -12,14 +13,14 @@ import { showRewardedAd, isExpoGo } from './ads';
  */
 export async function watchAdForLeaves(): Promise<boolean> {
   if (isExpoGo) {
-    Alert.alert('실제 앱에서만 가능해요', '광고는 빌드된 앱에서만 재생돼요 (Expo Go 미지원) 🐾');
+    Alert.alert(t('leafGate.onlyRealAppTitle'), t('leafGate.onlyRealAppMsg'));
     return false;
   }
   const left = await getAdWatchesLeft();
   if (left <= 0) {
     Alert.alert(
-      '오늘은 여기까지예요 🌙',
-      `광고로 잎사귀 충전은 하루 ${AD_DAILY_LIMIT}번까지예요.\n내일 자정에 다시 가능해요 🐾`,
+      t('leafGate.dailyDoneTitle'),
+      t('leafGate.dailyDoneMsg', { limit: AD_DAILY_LIMIT }),
     );
     return false;
   }
@@ -27,14 +28,14 @@ export async function watchAdForLeaves(): Promise<boolean> {
   if (cooldown > 0) {
     const min = Math.ceil(cooldown / 60000);
     Alert.alert(
-      '조금 뒤에 다시 와주세요 ⏳',
-      `광고 충전은 30분에 한 번이에요.\n약 ${min}분 뒤에 다시 가능해요 🐾`,
+      t('leafGate.cooldownTitle'),
+      t('leafGate.cooldownMsg', { min }),
     );
     return false;
   }
   const earned = await showRewardedAd();
   if (!earned) {
-    Alert.alert('광고를 불러오지 못했어요', '잠시 후 다시 시도해 주세요 🐾');
+    Alert.alert(t('leafGate.adFailTitle'), t('leafGate.adFailMsg'));
     return false;
   }
   await addBonusLeaves(AD_REWARD);
@@ -52,19 +53,19 @@ export async function checkLeafOrAlert(action: LeafAction): Promise<boolean> {
 
   const cost = LEAF_COST[action];
   Alert.alert(
-    '잎사귀가 부족해요 🍃',
-    `${ACTION_LABEL[action]}에는 잎사귀 ${cost}개가 필요해요.\n광고를 보거나 내일 다시 와주세요 (매일 자정에 새로 충전돼요) 🐾`,
+    t('leafGate.notEnoughTitle'),
+    t('leafGate.notEnoughMsg', { action: t(`leaf.action.${action}`), cost }),
     [
       {
-        text: `📺 광고 보고 +${AD_REWARD}🍃`,
+        text: t('leafGate.watchAdButton', { reward: AD_REWARD }),
         onPress: async () => {
           const ok = await watchAdForLeaves();
           if (ok) {
-            Alert.alert('잎사귀 충전 완료 🍃', `잎사귀 ${AD_REWARD}개가 충전됐어요! 다시 시도해 주세요 🐾`);
+            Alert.alert(t('leafGate.chargedTitle'), t('leafGate.chargedMsg', { reward: AD_REWARD }));
           }
         },
       },
-      { text: '확인', style: 'cancel' },
+      { text: t('leafGate.ok'), style: 'cancel' },
     ],
   );
   return false;
