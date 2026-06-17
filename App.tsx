@@ -15,6 +15,7 @@ import { loadDevSettings } from './src/services/devSettings';
 import { loadSubscription } from './src/services/subscription';
 import { loadLeaves } from './src/services/leaves';
 import { loadLocale, useLang } from './src/services/locale';
+import { t } from './src/i18n';
 import { initAds } from './src/services/ads';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
@@ -33,12 +34,15 @@ import ReceiptScanScreen from './src/screens/ReceiptScanScreen';
 import SavedRecipeDetailScreen from './src/screens/SavedRecipeDetailScreen';
 import YoutubeRecipeScreen from './src/screens/YoutubeRecipeScreen';
 import LeafShopScreen from './src/screens/LeafShopScreen';
+import CookModeScreen from './src/screens/CookModeScreen';
 
 const { width } = Dimensions.get('window');
 
 const TAB_SCREENS = ['Home', 'Fridge', 'Saved', 'Settings'] as const;
 type TabScreenName = typeof TAB_SCREENS[number];
-const TAB_LABELS: Record<TabScreenName, string> = { Home: '홈', Fridge: '냉장고', Saved: '레시피', Settings: '마이' };
+const TAB_LABEL_KEY: Record<TabScreenName, string> = {
+  Home: 'nav.tabHome', Fridge: 'nav.tabFridge', Saved: 'nav.tabSaved', Settings: 'nav.tabSettings',
+};
 
 const C = {
   cream:     '#FBEFD8',
@@ -200,11 +204,11 @@ function AppInner() {
         return true;
       }
       Alert.alert(
-        '앱을 종료할까요?',
+        t('nav.exitTitle'),
         '',
         [
-          { text: '취소', style: 'cancel' },
-          { text: '종료', style: 'destructive', onPress: () => BackHandler.exitApp() },
+          { text: t('nav.exitCancel'), style: 'cancel' },
+          { text: t('nav.exitConfirm'), style: 'destructive', onPress: () => BackHandler.exitApp() },
         ],
       );
       return true;
@@ -256,6 +260,8 @@ function AppInner() {
       return <YoutubeRecipeScreen navigate={navigate} goBack={goBack} recipeName={subScreen.recipeName} directVideo={subScreen.directVideo} />;
     if (subScreen.name === 'LeafShop')
       return <LeafShopScreen navigate={navigate} goBack={goBack} />;
+    if (subScreen.name === 'CookMode')
+      return <CookModeScreen navigate={navigate} goBack={goBack} recipeName={subScreen.recipeName} steps={subScreen.steps} />;
   }
 
   return (
@@ -310,7 +316,7 @@ function AppInner() {
                     <Icon active={active} />
                   </View>
                   <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-                    {TAB_LABELS[name]}
+                    {t(TAB_LABEL_KEY[name])}
                   </Text>
                   <View style={[styles.tabDot, active && styles.tabDotActive]} />
                 </TouchableOpacity>

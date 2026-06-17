@@ -370,6 +370,15 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           </View>
         ))}
 
+        {/* ── 단계별 조리 모드 ── */}
+        <TouchableOpacity
+          style={styles.cookStartBtn}
+          onPress={() => navigate({ name: 'CookMode', recipeName: r.name, steps: r.steps })}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
+        </TouchableOpacity>
+
         {/* ── 메모 카드 ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -831,6 +840,8 @@ const styles = StyleSheet.create({
   ingredientChipTextHave: { color: Colors.forestDeep },
   ingredientChipTextMissing: { color: '#B91C1C' },
 
+  cookStartBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 20, ...shadow.sm },
+  cookStartText: { fontSize: 16, fontWeight: '900', color: '#fff' },
   stepRow: { flexDirection: 'row', gap: 12, marginBottom: 12, alignItems: 'flex-start' },
   stepNum: {
     width: 26, height: 26, borderRadius: 13, flexShrink: 0,

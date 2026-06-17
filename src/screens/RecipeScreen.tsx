@@ -522,6 +522,15 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       </View>
                     ))}
 
+                    {/* 단계별 조리 모드 */}
+                    <TouchableOpacity
+                      style={styles.cookStartBtn}
+                      onPress={() => navigate({ name: 'CookMode', recipeName: r.name, steps: r.steps })}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
+                    </TouchableOpacity>
+
                     {/* 쿼카에게 질문 */}
                     <TouchableOpacity
                       style={styles.askBtn}
@@ -836,6 +845,8 @@ const styles = StyleSheet.create({
   stepNumText: { fontSize: 13, fontWeight: '900', color: Colors.orangeDeep },
   stepText: { fontSize: 14, color: Colors.ink, lineHeight: 22, flex: 1 },
 
+  cookStartBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 16, ...shadow.sm },
+  cookStartText: { fontSize: 16, fontWeight: '900', color: '#fff' },
   askBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.forestSoft, borderRadius: 16, padding: 14, marginTop: 16, gap: 10 },
   askBtnQuokka: { width: 40, height: 40 },
   askBtnText: { fontSize: 14, fontWeight: '800', color: Colors.forestDeep },

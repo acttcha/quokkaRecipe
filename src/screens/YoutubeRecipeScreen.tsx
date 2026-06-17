@@ -51,7 +51,7 @@ function IconChevronLeft() {
   );
 }
 
-export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }: Props) {
+export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, directVideo }: Props) {
   const insets = useSafeAreaInsets();
   const [stage, setStage]         = useState<Stage>(recipeName ? 'searching' : 'input');
   const [inputText, setInputText] = useState('');
@@ -338,6 +338,15 @@ export default function YoutubeRecipeScreen({ goBack, recipeName, directVideo }:
               ))}
             </View>
 
+            {/* 단계별 조리 모드 */}
+            <TouchableOpacity
+              style={styles.cookStartBtn}
+              onPress={() => navigate({ name: 'CookMode', recipeName: result.recipeName, steps: result.steps })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
+            </TouchableOpacity>
+
             {/* 팁 */}
             {result.tips.length > 0 && (
               <View style={styles.section}>
@@ -481,6 +490,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, borderRadius: 16, padding: 16,
     borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
   },
+  cookStartBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, alignItems: 'center', ...shadow.sm },
+  cookStartText: { fontSize: 16, fontWeight: '900', color: '#fff' },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.ink, marginBottom: 12 },
 
   ingredientGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
