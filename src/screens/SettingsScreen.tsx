@@ -53,6 +53,24 @@ function IcBook() {
     </Svg>
   );
 }
+function IcPhoto() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Rect x={3} y={5.5} width={18} height={14} rx={3} stroke={Colors.inkSoft} strokeWidth={1.6} />
+      <Circle cx={8.5} cy={10} r={1.6} stroke={Colors.inkSoft} strokeWidth={1.4} />
+      <Path d="M4 17l4.5-4 3 2.5 3.5-3.5L20 16.5" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcCart() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 4h2l2.2 11.2a1.5 1.5 0 0 0 1.5 1.2h7.8a1.5 1.5 0 0 0 1.5-1.2L20.5 8H6" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={9.5} cy={20} r={1.3} fill={Colors.inkSoft} />
+      <Circle cx={17} cy={20} r={1.3} fill={Colors.inkSoft} />
+    </Svg>
+  );
+}
 function IcChat() {
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
@@ -252,6 +270,18 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <IcChevron />
           </LinearGradient>
         </TouchableOpacity>
+
+        {/* 요리 일기 */}
+        <Text style={styles.sectionLabel}>{t('settings.sectionCookingLog')}</Text>
+        <View style={styles.listCard}>
+          <ListRow icon={<IcPhoto />} label={t('settings.rowCookingLog')} onPress={() => navigate({ name: 'CookingLog' })} />
+        </View>
+
+        {/* 장보기 */}
+        <Text style={styles.sectionLabel}>{t('settings.sectionShopping')}</Text>
+        <View style={styles.listCard}>
+          <ListRow icon={<IcCart />} label={t('settings.rowShopping')} onPress={() => navigate({ name: 'ShoppingList' })} />
+        </View>
 
         {/* 앱 안내 */}
         <Text style={styles.sectionLabel}>{t('settings.sectionGuide')}</Text>

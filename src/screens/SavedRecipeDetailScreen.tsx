@@ -15,6 +15,8 @@ import { haptic } from '../services/haptics';
 import { moveRecipeToFolder, updateRecipe } from '../services/savedRecipes';
 import { getFolders, createFolder } from '../services/folders';
 import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
+import { getCookLogsForRecipe, removeCookLog, CookLog } from '../services/cookingLog';
+import { formatRelativeDate } from '../services/youtube';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { AdBanner } from '../components/AdBanner';
@@ -91,6 +93,8 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
   const [newFolderNameInDetail, setNewFolderNameInDetail] = useState('');
 
   const [fridgeItems, setFridgeItems] = useState<string[]>([]);
+  const [cookPhotos, setCookPhotos]   = useState<CookLog[]>([]);
+  const [photoViewer, setPhotoViewer] = useState<CookLog | null>(null);
 
   const [editVisible, setEditVisible]         = useState(false);
   const [editName, setEditName]               = useState('');
@@ -113,7 +117,8 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
     loadNotes();
     getFolders().then(setDetailFolders);
     getFridgeIngredients().then(setFridgeItems);
-  }, [loadNotes]);
+    getCookLogsForRecipe(r.name).then(setCookPhotos);
+  }, [loadNotes, r.name]);
 
   const hasIngredient = (recipeIng: string) => matchesFridge(fridgeItems, recipeIng);
 
@@ -379,6 +384,21 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
         </TouchableOpacity>
 
+        {/* ── 내가 만든 요리 (완성 사진) ── */}
+        {cookPhotos.length > 0 && (
+          <>
+            <Text style={[styles.sectionHead, { marginTop: 20 }]}>{t('cookLog.savedDetailTitle')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cookPhotoRow}>
+              {cookPhotos.map(p => (
+                <TouchableOpacity key={p.id} activeOpacity={0.85} onPress={() => { haptic.light(); setPhotoViewer(p); }}>
+                  <Image source={{ uri: p.photoUri }} style={styles.cookPhotoThumb} resizeMode="cover" />
+                  <Text style={styles.cookPhotoDate}>{formatRelativeDate(p.cookedAt)}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+
         {/* ── 메모 카드 ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -512,6 +532,45 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
 
         <AdBanner />
       </ScrollView>
+
+      {/* ── 완성 사진 뷰어 ── */}
+      <Modal visible={!!photoViewer} transparent animationType="fade" onRequestClose={() => setPhotoViewer(null)}>
+        <View style={styles.photoViewerOverlay}>
+          {photoViewer && (
+            <>
+              <Image source={{ uri: photoViewer.photoUri }} style={styles.photoViewerImg} resizeMode="contain" />
+              <Text style={styles.photoViewerName}>{r.name}</Text>
+              <Text style={styles.photoViewerDate}>{formatRelativeDate(photoViewer.cookedAt)}</Text>
+              <View style={styles.photoViewerBtns}>
+                <TouchableOpacity
+                  style={styles.photoViewerDelete}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    const target = photoViewer;
+                    Alert.alert(t('cookLog.deleteTitle'), t('cookLog.deleteMsg'), [
+                      { text: t('cookLog.cancel'), style: 'cancel' },
+                      {
+                        text: t('cookLog.delete'), style: 'destructive',
+                        onPress: async () => {
+                          await removeCookLog(target.id);
+                          setPhotoViewer(null);
+                          haptic.success();
+                          setCookPhotos(await getCookLogsForRecipe(r.name));
+                        },
+                      },
+                    ]);
+                  }}
+                >
+                  <Text style={styles.photoViewerDeleteText}>{t('cookLog.delete')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.photoViewerClose} activeOpacity={0.85} onPress={() => setPhotoViewer(null)}>
+                  <Text style={styles.photoViewerCloseText}>{t('cookLog.close')}</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      </Modal>
 
       {/* ── 쿼카 질문 모달 ── */}
       <Modal visible={askVisible} animationType="slide" transparent onRequestClose={() => setAskVisible(false)}>
@@ -842,6 +901,18 @@ const styles = StyleSheet.create({
 
   cookStartBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 20, ...shadow.sm },
   cookStartText: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  cookPhotoRow: { gap: 10, paddingVertical: 10, paddingRight: 8 },
+  cookPhotoThumb: { width: 120, height: 120, borderRadius: 14, backgroundColor: Colors.creamDark, ...shadow.sm },
+  cookPhotoDate: { fontSize: 11, fontWeight: '600', color: Colors.inkMute, marginTop: 5, textAlign: 'center' },
+  photoViewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  photoViewerImg: { width: '100%', height: '60%', borderRadius: 20 },
+  photoViewerName: { fontSize: 18, fontWeight: '900', color: '#fff', marginTop: 20 },
+  photoViewerDate: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)', marginTop: 4 },
+  photoViewerBtns: { flexDirection: 'row', gap: 12, marginTop: 28 },
+  photoViewerDelete: { paddingHorizontal: 28, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)' },
+  photoViewerDeleteText: { fontSize: 15, fontWeight: '800', color: '#FF8A80' },
+  photoViewerClose: { paddingHorizontal: 32, paddingVertical: 13, borderRadius: 14, backgroundColor: '#fff' },
+  photoViewerCloseText: { fontSize: 15, fontWeight: '800', color: Colors.ink },
   stepRow: { flexDirection: 'row', gap: 12, marginBottom: 12, alignItems: 'flex-start' },
   stepNum: {
     width: 26, height: 26, borderRadius: 13, flexShrink: 0,

@@ -5,10 +5,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Speech from 'expo-speech';
+import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
+import { addCookLog } from '../services/cookingLog';
 import { t, useLang } from '../i18n';
 
 type Props = NavProps & { recipeName: string; steps: string[] };
@@ -79,6 +81,7 @@ export default function CookModeScreen({ goBack, recipeName, steps }: Props) {
   const [finished, setFinished] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [auto, setAuto]         = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   // 타이머: setSeconds(설정값) / remaining(진행값, null이면 미시작)
   const parsed = parseStepDuration(steps[idx] ?? '');
@@ -186,14 +189,58 @@ export default function CookModeScreen({ goBack, recipeName, steps }: Props) {
     ]);
   };
 
+  // ── 완성 사진 ──
+  const pickPhoto = async (fromCamera: boolean) => {
+    try {
+      const perm = fromCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(t('cookLog.permTitle'), t('cookLog.permMsg'));
+        return;
+      }
+      const result = fromCamera
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+      if (result.canceled || !result.assets[0]?.uri) return;
+      const entry = await addCookLog(recipeName, result.assets[0].uri);
+      setPhotoUri(entry.photoUri);
+      haptic.success();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      Alert.alert(t('common.errorTitle'), msg);
+    }
+  };
+  const addPhoto = () => {
+    haptic.light();
+    Alert.alert(t('cookLog.addTitle'), undefined, [
+      { text: t('cookLog.camera'), onPress: () => pickPhoto(true) },
+      { text: t('cookLog.gallery'), onPress: () => pickPhoto(false) },
+      { text: t('cookLog.cancel'), style: 'cancel' },
+    ]);
+  };
+
   // ── 완료 화면 ──
   if (finished) {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <Image source={require('../../assets/quokka.png')} style={styles.doneQuokka} resizeMode="contain" />
+        {photoUri ? (
+          <TouchableOpacity activeOpacity={0.9} onPress={addPhoto}>
+            <Image source={{ uri: photoUri }} style={styles.donePhoto} resizeMode="cover" />
+            <Text style={styles.photoSavedText}>{t('cookLog.saved')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Image source={require('../../assets/quokka.png')} style={styles.doneQuokka} resizeMode="contain" />
+        )}
         <Text style={styles.doneTitle}>{t('cookMode.doneTitle')}</Text>
         <Text style={styles.doneSub}>{t('cookMode.doneSub')}</Text>
+
+        {!photoUri && (
+          <TouchableOpacity style={styles.addPhotoBtn} onPress={addPhoto} activeOpacity={0.85}>
+            <Text style={styles.addPhotoText}>{t('cookLog.addPhoto')}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.doneBtn} onPress={() => { haptic.light(); goBack(); }} activeOpacity={0.85}>
           <Text style={styles.doneBtnText}>{t('cookMode.doneClose')}</Text>
         </TouchableOpacity>
@@ -421,8 +468,15 @@ const styles = StyleSheet.create({
   nextText: { fontSize: 16, fontWeight: '900', color: '#fff' },
 
   doneQuokka: { width: 200, height: 200, marginBottom: 8 },
+  donePhoto: { width: 240, height: 240, borderRadius: 24, marginBottom: 10, ...shadow.md },
+  photoSavedText: { fontSize: 13, fontWeight: '800', color: Colors.forestDeep, textAlign: 'center', marginBottom: 6 },
   doneTitle: { fontSize: 30, fontWeight: '900', color: Colors.ink, textAlign: 'center', marginBottom: 12 },
-  doneSub: { fontSize: 16, fontWeight: '600', color: Colors.inkSoft, textAlign: 'center', marginBottom: 36 },
+  doneSub: { fontSize: 16, fontWeight: '600', color: Colors.inkSoft, textAlign: 'center', marginBottom: 28 },
+  addPhotoBtn: {
+    backgroundColor: Colors.orangeSoft, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14,
+    borderWidth: 1.5, borderColor: Colors.orange, marginBottom: 12,
+  },
+  addPhotoText: { fontSize: 15, fontWeight: '800', color: Colors.orangeDeep },
   doneBtn: {
     backgroundColor: Colors.forest, borderRadius: 16, paddingHorizontal: 40, paddingVertical: 15, ...shadow.sm,
   },

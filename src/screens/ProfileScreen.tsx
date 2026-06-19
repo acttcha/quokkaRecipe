@@ -8,6 +8,7 @@ import { NavProps } from '../types';
 import { getSavedRecipes } from '../services/savedRecipes';
 import { loadPreferences } from '../services/preferences';
 import { getNickname, saveNickname, getScanCount } from '../services/stats';
+import { getCookLogCount } from '../services/cookingLog';
 import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
@@ -19,24 +20,27 @@ interface Props extends NavProps {
   onResetPreferences?: () => void;
 }
 
-export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
+export default function ProfileScreen({ navigate, goBack, onResetPreferences }: Props) {
   const [nickname, setNickname]     = useState(t('profile.defaultNickname'));
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput]   = useState('');
   const [scanCount, setScanCount]   = useState(0);
   const [savedCount, setSavedCount] = useState(0);
+  const [cookCount, setCookCount]   = useState(0);
   const [prefs, setPrefs]           = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   const loadAll = useCallback(async () => {
-    const [nick, scan, saved, prefData] = await Promise.all([
+    const [nick, scan, saved, cooked, prefData] = await Promise.all([
       getNickname(),
       getScanCount(),
       getSavedRecipes(),
+      getCookLogCount(),
       loadPreferences(),
     ]);
     setNickname(nick);
     setScanCount(scan);
     setSavedCount(saved.length);
+    setCookCount(cooked);
     setPrefs(prefData);
   }, []);
 
@@ -108,7 +112,16 @@ export default function ProfileScreen({ goBack, onResetPreferences }: Props) {
             <Text style={styles.statValue}>{savedCount}</Text>
             <Text style={styles.statLabel}>{t('profile.savedRecipes')}</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: Colors.orangeSoft }]}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: Colors.orangeSoft }]}
+            activeOpacity={0.85}
+            onPress={() => { haptic.light(); navigate({ name: 'CookingLog' }); }}
+          >
+            <Text style={styles.statValue}>{cookCount}</Text>
+            <Text style={styles.statLabel}>{t('profile.cookedDishes')}</Text>
+            <Text style={styles.statArrow}>›</Text>
+          </TouchableOpacity>
+          <View style={[styles.statCard, { backgroundColor: Colors.skyLight }]}>
             <Text style={styles.statValue}>{scanCount}</Text>
             <Text style={styles.statLabel}>{t('profile.totalScans')}</Text>
           </View>
@@ -167,10 +180,11 @@ const styles = StyleSheet.create({
   nickSaveBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
   profileSub: { fontSize: 13, color: Colors.inkMute, fontWeight: '600' },
 
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  statCard: { flex: 1, borderRadius: 20, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
-  statValue: { fontSize: 36, fontWeight: '900', color: Colors.ink, marginBottom: 4 },
-  statLabel: { fontSize: 12, color: Colors.inkSoft, fontWeight: '700' },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  statCard: { flex: 1, borderRadius: 20, paddingVertical: 18, paddingHorizontal: 10, alignItems: 'center', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
+  statValue: { fontSize: 30, fontWeight: '900', color: Colors.ink, marginBottom: 4 },
+  statLabel: { fontSize: 12, color: Colors.inkSoft, fontWeight: '700', textAlign: 'center' },
+  statArrow: { position: 'absolute', top: 8, right: 10, fontSize: 16, fontWeight: '900', color: Colors.orangeDeep },
 
   sectionHead: { fontSize: 15, fontWeight: '800', color: Colors.ink, marginBottom: 12 },
 

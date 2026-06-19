@@ -35,6 +35,8 @@ import SavedRecipeDetailScreen from './src/screens/SavedRecipeDetailScreen';
 import YoutubeRecipeScreen from './src/screens/YoutubeRecipeScreen';
 import LeafShopScreen from './src/screens/LeafShopScreen';
 import CookModeScreen from './src/screens/CookModeScreen';
+import CookingLogScreen from './src/screens/CookingLogScreen';
+import ShoppingListScreen from './src/screens/ShoppingListScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -262,6 +264,10 @@ function AppInner() {
       return <LeafShopScreen navigate={navigate} goBack={goBack} />;
     if (subScreen.name === 'CookMode')
       return <CookModeScreen navigate={navigate} goBack={goBack} recipeName={subScreen.recipeName} steps={subScreen.steps} />;
+    if (subScreen.name === 'CookingLog')
+      return <CookingLogScreen navigate={navigate} goBack={goBack} />;
+    if (subScreen.name === 'ShoppingList')
+      return <ShoppingListScreen navigate={navigate} goBack={goBack} />;
   }
 
   return (
