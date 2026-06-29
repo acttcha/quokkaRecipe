@@ -16,6 +16,7 @@ import { moveRecipeToFolder, updateRecipe } from '../services/savedRecipes';
 import { getFolders, createFolder } from '../services/folders';
 import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { getCookLogsForRecipe, removeCookLog, CookLog } from '../services/cookingLog';
+import { BackButton } from '../components/BackButton';
 import { formatRelativeDate } from '../services/youtube';
 import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
@@ -246,9 +247,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
       {/* 헤더 */}
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.85]} style={styles.header}>
         <View style={styles.headerNav}>
-          <TouchableOpacity onPress={goBack}>
-            <Text style={styles.backBtnText}>{t('savedDetail.back')}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={goBack} label={t('savedDetail.back')} />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={styles.editHeaderBtn} onPress={openEdit}>
               <Text style={styles.editHeaderBtnText}>{t('savedDetail.edit')}</Text>

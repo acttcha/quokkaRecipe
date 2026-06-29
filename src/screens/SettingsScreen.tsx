@@ -13,8 +13,6 @@ import { resetAllData } from '../services/reset';
 import { resetDailyLeaves } from '../services/leaves';
 import {
   getMockMode, setMockMode,
-  getModelKey, setModelKey,
-  ModelKey,
   getRecipeModelKey, setRecipeModelKey, RecipeModelKey, RECIPE_MODELS,
 } from '../services/devSettings';
 import { getLang, setLang, AppLang } from '../services/locale';
@@ -127,6 +125,42 @@ function IcChevron() {
   );
 }
 
+// 개발자 섹션 아이콘 (앰버 톤 라인 아이콘)
+const DEV_IC = '#B45309';
+function IcLeaf() {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 19C5 11 10 6 19 5c.6 8-3.5 13-11 13a3 3 0 0 1-3-3Z" stroke={DEV_IC} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M9 16c1.6-2.6 4-4.6 7-5.6" stroke={DEV_IC} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcCrown() {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 8.5l3.6 3.2L12 5.5l4.4 6.2L20 8.5l-1.4 9H5.4L4 8.5Z" stroke={DEV_IC} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M5.4 20.2h13.2" stroke={DEV_IC} strokeWidth={1.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcFlask() {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+      <Path d="M9.5 3v6.3L5.2 16.5A2 2 0 0 0 7 19.5h10a2 2 0 0 0 1.8-3L14.5 9.3V3" stroke={DEV_IC} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M8.5 3h7M7.6 14.5h8.8" stroke={DEV_IC} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcChip() {
+  return (
+    <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+      <Rect x={6} y={6} width={12} height={12} rx={2.5} stroke={DEV_IC} strokeWidth={1.6} />
+      <Rect x={9.5} y={9.5} width={5} height={5} rx={1} stroke={DEV_IC} strokeWidth={1.4} />
+      <Path d="M9 3v2.5M15 3v2.5M9 18.5V21M15 18.5V21M3 9h2.5M3 15h2.5M18.5 9H21M18.5 15H21" stroke={DEV_IC} strokeWidth={1.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 interface Props extends NavProps {
   onResetPreferences?: () => void;
   onResetAllData?: () => void;
@@ -140,7 +174,6 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [mockMode, setMockModeState] = useState(getMockMode());
-  const [modelKey, setModelKeyState] = useState<ModelKey>(getModelKey());
   const [recipeModelKey, setRecipeModelKeyState] = useState<RecipeModelKey>(getRecipeModelKey());
   const [lang, setLangState] = useState<AppLang>(getLang());
   const [proMode, setProModeState] = useState(isPro());
@@ -158,12 +191,6 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     const next = !proMode;
     setProModeState(next);
     await setIsPro(next);
-  };
-
-  const handlePickModel = async (k: ModelKey) => {
-    if (k === modelKey) return;
-    setModelKeyState(k);
-    await setModelKey(k);
   };
 
   const handlePickLang = async (l: AppLang) => {
@@ -249,38 +276,43 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           <IcChevron />
         </TouchableOpacity>
 
-        {/* 선호도 리셋 */}
-        <TouchableOpacity
-          style={styles.resetCard}
-          onPress={async () => { await resetOnboarding(); onResetPreferences?.(); }}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={[Colors.orangeSoft, '#FFE9D0']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={styles.resetGradient}
-          >
-            <View style={styles.resetIconWrap}>
-              <IcRefresh />
-            </View>
-            <View style={styles.resetTexts}>
-              <Text style={styles.resetTitle}>{t('settings.resetPrefsTitle')}</Text>
-              <Text style={styles.resetSub}>{t('settings.resetPrefsSub')}</Text>
-            </View>
-            <IcChevron />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* 요리 일기 */}
-        <Text style={styles.sectionLabel}>{t('settings.sectionCookingLog')}</Text>
+        {/* 나의 기록 */}
+        <Text style={styles.sectionLabel}>{t('settings.sectionMyRecords')}</Text>
         <View style={styles.listCard}>
           <ListRow icon={<IcPhoto />} label={t('settings.rowCookingLog')} onPress={() => navigate({ name: 'CookingLog' })} />
+          <ListRow icon={<IcCart />} label={t('settings.rowShopping')} onPress={() => navigate({ name: 'ShoppingList' })} divider />
         </View>
 
-        {/* 장보기 */}
-        <Text style={styles.sectionLabel}>{t('settings.sectionShopping')}</Text>
+        {/* 환경설정 */}
+        <Text style={styles.sectionLabel}>{t('settings.sectionPrefs')}</Text>
         <View style={styles.listCard}>
-          <ListRow icon={<IcCart />} label={t('settings.rowShopping')} onPress={() => navigate({ name: 'ShoppingList' })} />
+          <ListRow
+            icon={<IcRefresh />}
+            label={t('settings.resetPrefsTitle')}
+            onPress={async () => { await resetOnboarding(); onResetPreferences?.(); }}
+          />
+          <View style={listStyles.divider} />
+          <View style={listStyles.row}>
+            <View style={listStyles.iconWrap}><Text style={{ fontSize: 16 }}>🌐</Text></View>
+            <Text style={listStyles.label}>{t('settings.langTitle')}</Text>
+            <View style={styles.langChips}>
+              {(['ko', 'en'] as AppLang[]).map(l => {
+                const active = l === lang;
+                return (
+                  <TouchableOpacity
+                    key={l}
+                    style={[styles.langChip, active && styles.langChipOn]}
+                    onPress={() => handlePickLang(l)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.langChipText, active && styles.langChipTextOn]}>
+                      {l === 'ko' ? t('settings.langKorean') : t('settings.langEnglish')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
         </View>
 
         {/* 앱 안내 */}
@@ -328,7 +360,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           onPress={handleResetUsage}
           activeOpacity={0.85}
         >
-          <Text style={styles.testIcon}>🍃</Text>
+          <View style={styles.testIconWrap}><IcLeaf /></View>
           <View style={styles.testTexts}>
             <Text style={styles.testTitle}>{t('settings.devRechargeTitle')}</Text>
             <Text style={styles.testSub}>{t('settings.devRechargeSub')}</Text>
@@ -342,7 +374,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           onPress={handleTogglePro}
           activeOpacity={0.85}
         >
-          <Text style={styles.testIcon}>{proMode ? '💎' : '🆓'}</Text>
+          <View style={styles.testIconWrap}><IcCrown /></View>
           <View style={styles.testTexts}>
             <Text style={styles.testTitle}>{t('settings.devProTitle')}</Text>
             <Text style={styles.testSub}>
@@ -364,7 +396,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           onPress={handleToggleMock}
           activeOpacity={0.85}
         >
-          <Text style={styles.testIcon}>{mockMode ? '🟢' : '⚪'}</Text>
+          <View style={styles.testIconWrap}><IcFlask /></View>
           <View style={styles.testTexts}>
             <Text style={styles.testTitle}>{t('settings.devMockTitle')}</Text>
             <Text style={styles.testSub}>
@@ -380,39 +412,9 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           </View>
         </TouchableOpacity>
 
-        {/* Claude 모델 변경 */}
+        {/* AI 모델 변경 (레시피 생성) */}
         <View style={styles.testCard}>
-          <Text style={styles.testIcon}>🤖</Text>
-          <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>{t('settings.devClaudeModelTitle')}</Text>
-            <Text style={styles.testSub}>
-              {modelKey === 'auto'
-                ? t('settings.devClaudeModelAuto')
-                : t('settings.devClaudeModelOverride', { model: modelKey })}
-            </Text>
-            <View style={styles.modelRow}>
-              {(['auto', 'haiku', 'sonnet', 'opus'] as ModelKey[]).map(k => {
-                const active = k === modelKey;
-                return (
-                  <TouchableOpacity
-                    key={k}
-                    style={[styles.modelChip, active && styles.modelChipActive]}
-                    onPress={() => handlePickModel(k)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
-                      {k}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-
-        {/* 레시피 생성 모델 변경 */}
-        <View style={styles.testCard}>
-          <Text style={styles.testIcon}>🍳</Text>
+          <View style={styles.testIconWrap}><IcChip /></View>
           <View style={styles.testTexts}>
             <Text style={styles.testTitle}>{t('settings.devRecipeModelTitle')}</Text>
             <Text style={styles.testSub}>
@@ -431,34 +433,6 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
                   >
                     <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
                       {short}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-
-        {/* 언어 (AI 응답 언어 — UI 전체 번역은 추후) */}
-        <View style={styles.testCard}>
-          <Text style={styles.testIcon}>🌐</Text>
-          <View style={styles.testTexts}>
-            <Text style={styles.testTitle}>{t('settings.langTitle')}</Text>
-            <Text style={styles.testSub}>
-              {t('settings.langSub', { lang: lang === 'ko' ? t('settings.langKorean') : t('settings.langEnglish') })}
-            </Text>
-            <View style={styles.modelRow}>
-              {(['ko', 'en'] as AppLang[]).map(l => {
-                const active = l === lang;
-                return (
-                  <TouchableOpacity
-                    key={l}
-                    style={[styles.modelChip, active && styles.modelChipActive]}
-                    onPress={() => handlePickLang(l)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.modelChipText, active && styles.modelChipTextActive]}>
-                      {l === 'ko' ? t('settings.langKorean') : t('settings.langEnglish')}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -698,6 +672,15 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 15, fontWeight: '800', color: Colors.ink, letterSpacing: -0.3 },
   profileSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 3 },
 
+  langChips: { flexDirection: 'row', gap: 6 },
+  langChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    borderWidth: 1.5, borderColor: Colors.line, backgroundColor: Colors.white,
+  },
+  langChipOn: { backgroundColor: Colors.forest, borderColor: Colors.forest },
+  langChipText: { fontSize: 12, fontWeight: '800', color: Colors.inkSoft },
+  langChipTextOn: { color: '#fff' },
+
   resetCard: { borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: '#F2994A40', ...shadow.sm },
   resetGradient: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
 
@@ -726,6 +709,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   testIcon: { fontSize: 22, width: 38, textAlign: 'center' },
+  testIconWrap: { width: 38, alignItems: 'center', justifyContent: 'center' },
   testTexts: { flex: 1 },
   testTitle: { fontSize: 14, fontWeight: '800', color: '#92400E' },
   testSub: { fontSize: 12, color: '#A16207', marginTop: 2 },

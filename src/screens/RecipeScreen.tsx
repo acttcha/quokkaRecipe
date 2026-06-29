@@ -17,6 +17,7 @@ import { loadPreferences } from '../services/preferences';
 import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
 import { Colors, shadow } from '../constants/colors';
+import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
 import { filterPopularIngredients } from '../constants/ingredients';
 import { t } from '../i18n';
@@ -320,9 +321,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       <View style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.reviewHero}>
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>{t('recipe.retakePhoto')}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={goBack} label={t('recipe.retakePhoto')} style={styles.backBtn} />
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
           <Text style={styles.reviewSub}>{t('recipe.reviewSub')}</Text>
         </LinearGradient>
@@ -400,14 +399,11 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.resultsHero}>
-        <TouchableOpacity
+        <BackButton
           onPress={() => dishName ? goBack() : setStep('review')}
+          label={dishName ? t('recipe.backToHome') : t('recipe.editIngredients')}
           style={styles.backBtn}
-        >
-          <Text style={styles.backBtnText}>
-            {dishName ? t('recipe.backToHome') : t('recipe.editIngredients')}
-          </Text>
-        </TouchableOpacity>
+        />
         <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
         <Text style={styles.resultsSub} numberOfLines={1}>
           {ingredients.slice(0, 3).join(' · ')}{ingredients.length > 3 ? t('recipe.moreCount', { n: ingredients.length - 3 }) : ''}

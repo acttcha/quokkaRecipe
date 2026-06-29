@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
+import { BackButton } from '../components/BackButton';
 import { identifyReceiptItems } from '../services/claude';
 import { addIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
@@ -79,9 +80,7 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
 
       <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
         <View style={styles.heroOverlay}>
-          <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-            <Text style={styles.backBtnText}>{t('scan.receiptScan.backRetake')}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={goBack} label={t('scan.receiptScan.backRetake')} style={styles.backBtn} />
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
           <Text style={styles.heroSub}>{t('scan.receiptScan.heroSub')}</Text>
         </View>
@@ -181,7 +180,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end',
   },
   backBtn:     { marginBottom: 10 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
   heroLogo:    { width: '100%', height: 52, marginBottom: 6 },
   heroSub:     { fontSize: 13, color: Colors.textMid, textAlign: 'center' },
 

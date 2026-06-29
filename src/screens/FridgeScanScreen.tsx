@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
+import { BackButton } from '../components/BackButton';
 import { identifyIngredients } from '../services/claude';
 import { addIngredients } from '../services/fridge';
 import { spend } from '../services/leaves';
@@ -62,9 +63,7 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
 
       <ImageBackground source={require('../../assets/background.png')} style={styles.hero} resizeMode="cover">
         <View style={styles.heroOverlay}>
-          <TouchableOpacity onPress={() => navigate({ name: 'Fridge' })} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>{t('scan.fridgeScan.back')}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigate({ name: 'Fridge' })} label={t('scan.fridgeScan.back')} style={styles.backBtn} />
           <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
           <Text style={styles.heroSub}>{t('scan.fridgeScan.heroSub')}</Text>
         </View>
@@ -154,7 +153,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end',
   },
   backBtn: { marginBottom: 10 },
-  backBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
   heroLogo: { width: '100%', height: 52, marginBottom: 6 },
   heroSub: { fontSize: 13, color: Colors.textMid, textAlign: 'center' },
 

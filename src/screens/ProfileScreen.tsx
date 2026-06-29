@@ -11,6 +11,7 @@ import { getNickname, saveNickname, getScanCount } from '../services/stats';
 import { getCookLogCount } from '../services/cookingLog';
 import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
+import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
 
@@ -70,9 +71,7 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.hero}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>{t('profile.back')}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={goBack} label={t('profile.back')} style={styles.backBtn} />
         <Image source={require('../../assets/main_logo.png')} style={styles.heroLogo} resizeMode="contain" />
         <Text style={styles.heroSub}>{t('profile.heroSub')}</Text>
       </LinearGradient>
@@ -154,7 +153,6 @@ const styles = StyleSheet.create({
 
   hero: { minHeight: 170, paddingTop: 52, paddingHorizontal: 24, paddingBottom: 28, justifyContent: 'flex-end' },
   backBtn: { marginBottom: 10 },
-  backBtnText: { color: Colors.forest, fontSize: 14, fontWeight: '700' },
   heroLogo: { width: '100%', height: 52, marginBottom: 6 },
   heroSub: { fontSize: 13, color: Colors.inkSoft, textAlign: 'center' },
 

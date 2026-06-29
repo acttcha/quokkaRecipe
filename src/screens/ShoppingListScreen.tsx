@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { BackButton } from '../components/BackButton';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
@@ -72,16 +73,11 @@ export default function ShoppingListScreen({ goBack }: NavProps) {
 
       {/* 헤더 */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t('shopping.title')}</Text>
-          {items.length > 0 && (
-            <Text style={styles.headerSub}>{t('shopping.headerSub', { done, total: items.length })}</Text>
-          )}
-        </View>
-        <View style={styles.backBtn} />
+        <BackButton onPress={goBack} label={t('common.back')} style={styles.backBtn} />
+        <Text style={styles.headerTitle}>{t('shopping.title')}</Text>
+        {items.length > 0 && (
+          <Text style={styles.headerSub}>{t('shopping.headerSub', { done, total: items.length })}</Text>
+        )}
       </View>
 
       {/* 입력 */}
@@ -143,11 +139,9 @@ export default function ShoppingListScreen({ goBack }: NavProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 24, fontWeight: '700', color: Colors.ink },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '900', color: Colors.ink },
+  header: { paddingHorizontal: 16, paddingBottom: 12 },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 4 },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: Colors.ink, letterSpacing: -0.4 },
   headerSub: { fontSize: 12, fontWeight: '600', color: Colors.inkSoft, marginTop: 2 },
 
   inputRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingBottom: 14 },

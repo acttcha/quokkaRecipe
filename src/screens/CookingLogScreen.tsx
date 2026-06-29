@@ -3,7 +3,9 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Image,
   StatusBar, Dimensions, Modal, Alert,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackButton } from '../components/BackButton';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
@@ -12,9 +14,10 @@ import { formatRelativeDate } from '../services/youtube';
 import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
-const GAP = 12;
-const COLS = 2;
-const CELL = (width - 20 * 2 - GAP * (COLS - 1)) / COLS;
+const PAD = 16;
+const GAP = 14;
+const CELL = (width - PAD * 2 - GAP) / 2;
+const PHOTO = CELL - 16; // 카드 내부 패딩(8) 양쪽 제외
 
 export default function CookingLogScreen({ goBack }: NavProps) {
   const insets = useSafeAreaInsets();
@@ -44,35 +47,34 @@ export default function CookingLogScreen({ goBack }: NavProps) {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* 헤더 */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t('cookLog.galleryTitle')}</Text>
+      <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 1]} style={[styles.header, { paddingTop: Math.max(insets.top, 12) + 6 }]}>
+        <BackButton onPress={goBack} label={t('common.back')} style={styles.backBtn} />
+        <Text style={styles.headerTitle}>{t('cookLog.galleryTitle')}</Text>
+        {logs.length > 0 && (
           <Text style={styles.headerSub}>{t('cookLog.gallerySub', { count: logs.length })}</Text>
-        </View>
-        <View style={styles.backBtn} />
-      </View>
+        )}
+      </LinearGradient>
 
       {logs.length === 0 ? (
         <View style={styles.empty}>
-          <Image source={require('../../assets/quokka_question.png')} style={styles.emptyQuokka} resizeMode="contain" />
+          <Image source={require('../../assets/quokka.png')} style={styles.emptyQuokka} resizeMode="contain" />
           <Text style={styles.emptyTitle}>{t('cookLog.emptyTitle')}</Text>
           <Text style={styles.emptySub}>{t('cookLog.emptySub')}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
-          {logs.map(log => (
+          {logs.map((log, i) => (
             <TouchableOpacity
               key={log.id}
-              style={styles.cell}
-              activeOpacity={0.85}
+              style={[styles.card, { transform: [{ rotate: i % 2 === 0 ? '-1.4deg' : '1.4deg' }] }]}
+              activeOpacity={0.9}
               onPress={() => { haptic.light(); setViewer(log); }}
             >
-              <Image source={{ uri: log.photoUri }} style={styles.cellImg} resizeMode="cover" />
-              <Text style={styles.cellName} numberOfLines={1}>{log.recipeName}</Text>
-              <Text style={styles.cellDate}>{formatRelativeDate(log.cookedAt)}</Text>
+              <Image source={{ uri: log.photoUri }} style={styles.cardImg} resizeMode="cover" />
+              <View style={styles.cardFooter}>
+                <Text style={styles.cardName} numberOfLines={1}>{log.recipeName}</Text>
+                <Text style={styles.cardDate}>{formatRelativeDate(log.cookedAt)}</Text>
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -83,9 +85,13 @@ export default function CookingLogScreen({ goBack }: NavProps) {
         <View style={styles.viewerOverlay}>
           {viewer && (
             <>
-              <Image source={{ uri: viewer.photoUri }} style={styles.viewerImg} resizeMode="contain" />
-              <Text style={styles.viewerName}>{viewer.recipeName}</Text>
-              <Text style={styles.viewerDate}>{formatRelativeDate(viewer.cookedAt)}</Text>
+              <View style={styles.viewerCard}>
+                <Image source={{ uri: viewer.photoUri }} style={styles.viewerImg} resizeMode="cover" />
+                <View style={styles.viewerCaption}>
+                  <Text style={styles.viewerName} numberOfLines={2}>{viewer.recipeName}</Text>
+                  <Text style={styles.viewerDate}>{formatRelativeDate(viewer.cookedAt)}</Text>
+                </View>
+              </View>
               <View style={styles.viewerBtns}>
                 <TouchableOpacity style={styles.viewerDelete} onPress={() => confirmDelete(viewer)} activeOpacity={0.85}>
                   <Text style={styles.viewerDeleteText}>{t('cookLog.delete')}</Text>
@@ -104,39 +110,49 @@ export default function CookingLogScreen({ goBack }: NavProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
-  header: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, gap: 10,
-  },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 24, fontWeight: '700', color: Colors.ink },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '900', color: Colors.ink },
-  headerSub: { fontSize: 12, fontWeight: '600', color: Colors.inkSoft, marginTop: 2 },
+
+  header: { paddingBottom: 14, paddingHorizontal: 16 },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 4 },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: Colors.ink, letterSpacing: -0.4 },
+  headerSub: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft, marginTop: 4 },
 
   grid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: GAP,
-    paddingHorizontal: 20, paddingBottom: 32,
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: PAD, paddingTop: 18, paddingBottom: 36,
+    gap: GAP,
   },
-  cell: { width: CELL },
-  cellImg: { width: CELL, height: CELL, borderRadius: 16, backgroundColor: Colors.creamDark, ...shadow.sm },
-  cellName: { fontSize: 13, fontWeight: '800', color: Colors.ink, marginTop: 7 },
-  cellDate: { fontSize: 11, fontWeight: '600', color: Colors.inkMute, marginTop: 1 },
+  // 폴라로이드 카드
+  card: {
+    width: CELL,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 8,
+    paddingBottom: 10,
+    borderWidth: 1, borderColor: Colors.lineSoft,
+    ...shadow.md,
+  },
+  cardImg: { width: PHOTO, height: PHOTO, borderRadius: 8, backgroundColor: Colors.creamDark },
+  cardFooter: { paddingTop: 8, paddingHorizontal: 2 },
+  cardName: { fontSize: 14, fontWeight: '800', color: Colors.ink, letterSpacing: -0.2 },
+  cardDate: { fontSize: 11, fontWeight: '600', color: Colors.inkMute, marginTop: 3 },
 
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  emptyQuokka: { width: 130, height: 130, marginBottom: 12, opacity: 0.9 },
-  emptyTitle: { fontSize: 17, fontWeight: '800', color: Colors.ink, marginBottom: 8 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, paddingBottom: 80 },
+  emptyQuokka: { width: 160, height: 160, marginBottom: 18 },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: Colors.ink, marginBottom: 10 },
   emptySub: { fontSize: 14, fontWeight: '500', color: Colors.inkSoft, textAlign: 'center', lineHeight: 21 },
 
-  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  viewerImg: { width: width - 48, height: width - 48, borderRadius: 20 },
-  viewerName: { fontSize: 18, fontWeight: '900', color: '#fff', marginTop: 20 },
-  viewerDate: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)', marginTop: 4 },
-  viewerBtns: { flexDirection: 'row', gap: 12, marginTop: 28 },
+  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  viewerCard: { backgroundColor: Colors.white, borderRadius: 22, padding: 12, width: '100%', ...shadow.md },
+  viewerImg: { width: '100%', height: width - 110, borderRadius: 14, backgroundColor: Colors.creamDark },
+  viewerCaption: { paddingTop: 14, paddingHorizontal: 6, paddingBottom: 4 },
+  viewerName: { fontSize: 19, fontWeight: '900', color: Colors.ink, letterSpacing: -0.3 },
+  viewerDate: { fontSize: 13, fontWeight: '600', color: Colors.inkMute, marginTop: 5 },
+  viewerBtns: { flexDirection: 'row', gap: 12, marginTop: 24 },
   viewerDelete: {
     paddingHorizontal: 28, paddingVertical: 13, borderRadius: 14,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
   },
   viewerDeleteText: { fontSize: 15, fontWeight: '800', color: '#FF8A80' },
-  viewerClose: { paddingHorizontal: 32, paddingVertical: 13, borderRadius: 14, backgroundColor: '#fff' },
+  viewerClose: { flex: 1, paddingVertical: 13, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center' },
   viewerCloseText: { fontSize: 15, fontWeight: '800', color: Colors.ink },
 });

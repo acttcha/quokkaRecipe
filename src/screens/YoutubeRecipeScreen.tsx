@@ -18,6 +18,7 @@ import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { saveRecipe, isRecipeSaved } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
+import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
 
@@ -39,14 +40,6 @@ function IconYoutube() {
       <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.97C5.12 20 12 20 12 20s6.88 0 8.59-.45a2.78 2.78 0 0 0 1.95-1.97A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58Z"
         fill="#FF0000" />
       <Path d="m9.75 15.02 5.75-3.02-5.75-3.02v6.04Z" fill="#fff" />
-    </Svg>
-  );
-}
-
-function IconChevronLeft() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M15 18l-6-6 6-6" stroke={Colors.ink} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -165,15 +158,10 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.8]} style={styles.header}>
-        <View style={styles.headerNav}>
-          <TouchableOpacity style={styles.backBtn} onPress={goBack}>
-            <IconChevronLeft />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <IconYoutube />
-            <Text style={styles.headerTitle}>{t('youtube.headerTitle')}</Text>
-          </View>
-          <View style={styles.headerRight} />
+        <BackButton onPress={goBack} label={t('common.back')} style={styles.backBtn} />
+        <View style={styles.headerCenter}>
+          <IconYoutube />
+          <Text style={styles.headerTitle}>{t('youtube.headerTitle')}</Text>
         </View>
         {stage !== 'input' && queryLabel ? (
           <View style={styles.searchPill}>
@@ -386,15 +374,10 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
 
-  header: { paddingBottom: 16 },
-  headerNav: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 56, marginBottom: 10,
-  },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  header: { paddingBottom: 16, paddingTop: 56, paddingHorizontal: 16 },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   headerTitle: { fontSize: 16, fontWeight: '800', color: Colors.ink },
-  headerRight: { width: 36 },
   searchPill: {
     alignSelf: 'center',
     backgroundColor: 'rgba(61,139,94,0.12)',

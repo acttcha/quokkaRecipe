@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
+import { BackButton } from '../components/BackButton';
 import { LeafIcon } from '../components/LeafIcon';
 import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
 import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES } from '../services/leaves';
@@ -44,9 +45,7 @@ export default function LeafShopScreen({ goBack }: NavProps) {
 
       {/* Header */}
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.header}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>{t('leafShop.back')}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={goBack} label={t('leafShop.back')} style={styles.backBtn} />
         <Text style={styles.headerTitle}>{t('leafShop.title')}</Text>
         <Text style={styles.headerSub}>{t('leafShop.subtitle')}</Text>
       </LinearGradient>
@@ -147,7 +146,6 @@ const styles = StyleSheet.create({
 
   header: { paddingTop: 56, paddingHorizontal: 22, paddingBottom: 22 },
   backBtn: { marginBottom: 12 },
-  backBtnText: { color: Colors.ink, fontSize: 14, fontWeight: '700' },
   headerTitle: { fontSize: 24, fontWeight: '900', color: Colors.ink, letterSpacing: -0.6 },
   headerSub: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500', marginTop: 4 },
 
