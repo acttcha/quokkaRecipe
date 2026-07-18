@@ -4,7 +4,7 @@
 -- 잎사귀 조작은 아래 함수로만(원자적) → 위변조 방지.
 --
 -- 잎사귀 3단 분리 + 소비 순서: leaf_daily(무료일일) → leaf_bonus(무료보너스) → leaf_paid(구매)
---   · 무료(웰컴/광고/PRO월지급)를 먼저 쓰고, 돈 주고 산 것(leaf_paid)은 마지막에 → 소비자 보호.
+--   · 무료(웰컴/광고)를 먼저 쓰고, 돈 낸 것(구매 팩·구독 월지급 = leaf_paid)은 마지막에 → 소비자 보호.
 -- 일일 리셋 기준: 한국(KST) 자정.
 
 -- ─── 재실행 안전: 기존 것 정리 후 재생성 (⚠️ 개발용 — 지갑 데이터 초기화됨) ───
@@ -28,8 +28,8 @@ language sql stable as $$ select (now() at time zone 'Asia/Seoul')::date $$;
 -- ─── 테이블 ────────────────────────────────────────────────
 create table if not exists public.wallets (
   user_id     text primary key,
-  leaf_paid   numeric not null default 0,               -- 구매한 잎사귀 (돈 주고 산 것, 롤오버) ← 마지막 소비
-  leaf_bonus  numeric not null default 0,               -- 무료 보너스 (웰컴/광고/PRO월지급, 롤오버) ← daily 다음 소비
+  leaf_paid   numeric not null default 0,               -- 돈 낸 잎사귀 (구매 팩 + 구독 월지급, 롤오버) ← 마지막 소비
+  leaf_bonus  numeric not null default 0,               -- 무료 보너스 (웰컴/광고, 롤오버) ← daily 다음 소비
   leaf_daily  numeric not null default 3,               -- 오늘 남은 무료 일일
   daily_reset_dt    date    not null default public.kst_today(), -- leaf_daily 기준일 (KST 자정 리셋)
   subs_fg     boolean not null default false,           -- 쿼카 패스(구독) 활성

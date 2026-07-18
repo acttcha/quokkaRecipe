@@ -55,7 +55,7 @@ export default function LeafShopScreen({ goBack }: NavProps) {
       if (ok) {
         haptic.success();
         await load();
-        Alert.alert(t('leafShop.subscribeDoneTitle'), t('leafShop.subscribeDoneMsg'), [{ text: t('leafShop.ok') }]);
+        Alert.alert(t('leafShop.subscribeDoneTitle'), t('leafShop.subscribeDoneMsg', { count: PRO_MONTHLY_LEAVES }), [{ text: t('leafShop.ok') }]);
       }
     } catch (e: any) {
       Alert.alert(t('leafShop.purchaseFailTitle'), e?.message || t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);

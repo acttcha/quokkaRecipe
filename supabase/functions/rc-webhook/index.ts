@@ -79,8 +79,9 @@ export default {
           case "INITIAL_PURCHASE":
           case "RENEWAL":
             // 신규 주기 → 구독 활성 + 이번 달 잎사귀 지급 (event.id 멱등 → 주기당 1회)
+            // p_paid: true → 유료 칸(leaf_paid)에 적립 = 소비 순서상 마지막에 지켜짐
             await admin.rpc("wallet_set_pro", { p_user_id: userId, p_is_pro: true });
-            await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: PRO_MONTHLY, p_paid: false });
+            await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: PRO_MONTHLY, p_paid: true });
             break;
           case "PRODUCT_CHANGE":
           case "UNCANCELLATION":
