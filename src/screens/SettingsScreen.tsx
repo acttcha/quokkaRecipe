@@ -14,12 +14,16 @@ import { resetDailyLeaves } from '../services/leaves';
 import {
   getMockMode, setMockMode,
   getRecipeModelKey, setRecipeModelKey, RecipeModelKey, RECIPE_MODELS,
+  getDevMode, setDevMode,
 } from '../services/devSettings';
 import { getLang, setLang, AppLang } from '../services/locale';
 import { isPro, setIsPro } from '../services/subscription';
 import { t } from '../i18n';
 
 const APP_VERSION = (require('../../app.json') as { expo: { version: string } }).expo.version;
+
+// 개발자 모드 PIN. 번들에 박히므로 암호학적 보안은 아님 — 실수 노출 방지용.
+const DEV_PASSCODE = '2323';
 
 type InfoModal = 'guide' | 'update' | 'terms' | 'privacy' | null;
 
@@ -177,6 +181,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [recipeModelKey, setRecipeModelKeyState] = useState<RecipeModelKey>(getRecipeModelKey());
   const [lang, setLangState] = useState<AppLang>(getLang());
   const [proMode, setProModeState] = useState(isPro());
+  const [devMode, setDevModeState] = useState(getDevMode());
+  const versionTapsRef = useRef(0);
+  const [pwModalVisible, setPwModalVisible] = useState(false);
+  const [pwInput, setPwInput] = useState('');
+  const [pwError, setPwError] = useState(false);
   const deleteConfirmPhrase = getDeleteConfirmPhrase();
   const canDelete = deleteInput.trim() === deleteConfirmPhrase && !deleting;
   const modalContent = getModalContent();
@@ -220,6 +229,36 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const handleResetUsage = async () => {
     await resetDailyLeaves();
     Alert.alert(t('settings.rechargeDoneTitle'), t('settings.rechargeDoneMessage'));
+  };
+
+  // 앱 버전 7번 탭 → 비밀번호 입력 → 개발자 모드 해제 (일반 유저에겐 숨김)
+  const handleVersionTap = () => {
+    if (devMode) return;
+    versionTapsRef.current += 1;
+    if (versionTapsRef.current >= 7) {
+      versionTapsRef.current = 0;
+      setPwInput('');
+      setPwError(false);
+      setPwModalVisible(true);
+    }
+  };
+
+  const confirmPasscode = () => {
+    if (pwInput === DEV_PASSCODE) {
+      setPwModalVisible(false);
+      setDevMode(true);
+      setDevModeState(true);
+      Alert.alert(t('settings.devUnlockedTitle'), t('settings.devUnlockedMsg'));
+    } else {
+      setPwError(true);
+      setPwInput('');
+    }
+  };
+
+  const handleDisableDevMode = async () => {
+    await setDevMode(false);
+    setDevModeState(false);
+    versionTapsRef.current = 0;
   };
 
   const handleResetAllData = () => {
@@ -329,11 +368,11 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         <View style={styles.listCard}>
           <ListRow icon={<IcDoc />}    label={t('settings.rowTerms')}          onPress={() => setOpenModal('terms')}   />
           <ListRow icon={<IcShield />} label={t('settings.rowPrivacy')}   onPress={() => setOpenModal('privacy')} divider />
-          <View style={styles.versionRow}>
+          <TouchableOpacity style={styles.versionRow} onPress={handleVersionTap} activeOpacity={1}>
             <View style={styles.listIconWrap}><Text style={{ fontSize: 14 }}>ℹ️</Text></View>
             <Text style={styles.listLabel}>{t('settings.rowVersion')}</Text>
             <Text style={styles.versionValue}>{APP_VERSION}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* 데이터 관리 */}
@@ -353,7 +392,9 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           <IcChevron />
         </TouchableOpacity>
 
-        {/* 개발자모드 (출시 전 제거) */}
+        {/* 개발자모드 — 앱 버전 7번 탭으로 해제 (일반 유저에겐 숨김) */}
+        {devMode && (
+        <>
         <Text style={styles.sectionLabel}>{t('settings.sectionDev')}</Text>
         <TouchableOpacity
           style={styles.testCard}
@@ -441,7 +482,44 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           </View>
         </View>
 
+        {/* 개발자 모드 끄기 */}
+        <TouchableOpacity style={styles.devOffBtn} onPress={handleDisableDevMode} activeOpacity={0.85}>
+          <Text style={styles.devOffText}>{t('settings.devDisable')}</Text>
+        </TouchableOpacity>
+        </>
+        )}
+
       </ScrollView>
+
+      {/* 개발자 모드 비밀번호 */}
+      <Modal visible={pwModalVisible} transparent animationType="fade" onRequestClose={() => setPwModalVisible(false)}>
+        <KeyboardAvoidingView style={styles.deleteModalWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <TouchableOpacity style={styles.deleteModalBackdrop} activeOpacity={1} onPress={() => setPwModalVisible(false)} />
+          <View style={styles.pwModalCard}>
+            <Text style={styles.pwModalTitle}>{t('settings.devPwTitle')}</Text>
+            <TextInput
+              style={[styles.pwModalInput, pwError && styles.pwModalInputError]}
+              value={pwInput}
+              onChangeText={(v) => { setPwInput(v); setPwError(false); }}
+              placeholder={t('settings.devPwPlaceholder')}
+              placeholderTextColor={Colors.inkMute}
+              secureTextEntry
+              keyboardType="number-pad"
+              autoFocus
+              onSubmitEditing={confirmPasscode}
+            />
+            {pwError && <Text style={styles.pwModalError}>{t('settings.devPwWrong')}</Text>}
+            <View style={styles.pwModalActions}>
+              <TouchableOpacity style={styles.pwCancelBtn} onPress={() => setPwModalVisible(false)} activeOpacity={0.85}>
+                <Text style={styles.pwCancelText}>{t('settings.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.pwConfirmBtn} onPress={confirmPasscode} activeOpacity={0.85}>
+                <Text style={styles.pwConfirmText}>{t('settings.confirm')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* 데이터 삭제 확인 모달 */}
       <Modal visible={deleteModalVisible} transparent animationType="fade" onRequestClose={closeDeleteModal}>
@@ -733,6 +811,29 @@ const styles = StyleSheet.create({
   modelChipActive: { backgroundColor: '#92400E', borderColor: '#92400E' },
   modelChipText: { fontSize: 12, fontWeight: '800', color: '#92400E' },
   modelChipTextActive: { color: '#FEF3C7' },
+
+  // 개발자 모드 끄기 버튼
+  devOffBtn: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 20, marginTop: 4 },
+  devOffText: { fontSize: 13, fontWeight: '700', color: Colors.inkMute, textDecorationLine: 'underline' },
+
+  // 개발자 비밀번호 모달
+  pwModalCard: {
+    width: '100%', maxWidth: 340, backgroundColor: Colors.white, borderRadius: 22,
+    padding: 22, ...shadow.md,
+  },
+  pwModalTitle: { fontSize: 16, fontWeight: '900', color: Colors.ink, textAlign: 'center', marginBottom: 16 },
+  pwModalInput: {
+    backgroundColor: Colors.creamSoft, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.line,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, color: Colors.ink,
+    textAlign: 'center', letterSpacing: 6,
+  },
+  pwModalInputError: { borderColor: Colors.danger, backgroundColor: '#FEF2F2' },
+  pwModalError: { fontSize: 12, color: Colors.danger, fontWeight: '700', textAlign: 'center', marginTop: 8 },
+  pwModalActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  pwCancelBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: Colors.creamSoft, alignItems: 'center' },
+  pwCancelText: { fontSize: 14, fontWeight: '800', color: Colors.inkSoft },
+  pwConfirmBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: Colors.forest, alignItems: 'center' },
+  pwConfirmText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 
   // 데이터 삭제 확인 모달
   deleteModalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

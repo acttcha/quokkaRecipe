@@ -17,6 +17,7 @@ import { loadLeaves } from './src/services/leaves';
 import { loadLocale, useLang } from './src/services/locale';
 import { t } from './src/i18n';
 import { initAds } from './src/services/ads';
+import { initPurchases } from './src/services/purchases';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
 initAds().catch(() => { /* 무시 — 광고 실패가 앱을 막진 않음 */ });
@@ -162,6 +163,7 @@ function AppInner() {
       ]),
     ]).then(([onboarded, fridgeDone]) => {
       console.log('[App] onboarded:', onboarded, 'fridgeDone:', fridgeDone);
+      initPurchases().catch(() => { /* 키 미설정/Expo Go 면 무시 */ });
       setOnboardingDone(onboarded);
       if (!fridgeDone) setAppState('fridge_setup');
       else if (!onboarded) setAppState('onboarding');

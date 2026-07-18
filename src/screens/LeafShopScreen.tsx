@@ -10,6 +10,7 @@ import { BackButton } from '../components/BackButton';
 import { LeafIcon } from '../components/LeafIcon';
 import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
 import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES } from '../services/leaves';
+import { isPurchasesReady, purchaseLeafPackage, purchaseSubscription, restorePurchases } from '../services/purchases';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
 
@@ -21,22 +22,55 @@ export default function LeafShopScreen({ goBack }: NavProps) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const handlePurchase = (pkg: LeafPackage) => {
+  const handlePurchase = async (pkg: LeafPackage) => {
     haptic.light();
-    Alert.alert(
-      t('leafShop.comingSoonTitle'),
-      t('leafShop.purchaseComingSoon', { name: t(`leafPackage.${pkg.id}`) }),
-      [{ text: t('leafShop.ok') }],
-    );
+    if (!isPurchasesReady()) {
+      Alert.alert(
+        t('leafShop.comingSoonTitle'),
+        t('leafShop.purchaseComingSoon', { name: t(`leafPackage.${pkg.id}`) }),
+        [{ text: t('leafShop.ok') }],
+      );
+      return;
+    }
+    try {
+      const ok = await purchaseLeafPackage(pkg.id);
+      if (ok) {
+        haptic.success();
+        await load();
+        Alert.alert(t('leafShop.purchaseDoneTitle'), t('leafShop.purchaseDoneMsg', { count: pkg.leaves }), [{ text: t('leafShop.ok') }]);
+      }
+    } catch {
+      Alert.alert(t('leafShop.purchaseFailTitle'), t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
+    }
   };
 
-  const handleSubscribe = () => {
+  const handleSubscribe = async () => {
     haptic.light();
-    Alert.alert(
-      t('leafShop.comingSoonTitle'),
-      t('leafShop.subscribeComingSoon'),
-      [{ text: t('leafShop.ok') }],
-    );
+    if (!isPurchasesReady()) {
+      Alert.alert(t('leafShop.comingSoonTitle'), t('leafShop.subscribeComingSoon'), [{ text: t('leafShop.ok') }]);
+      return;
+    }
+    try {
+      const ok = await purchaseSubscription();
+      if (ok) {
+        haptic.success();
+        await load();
+        Alert.alert(t('leafShop.subscribeDoneTitle'), t('leafShop.subscribeDoneMsg'), [{ text: t('leafShop.ok') }]);
+      }
+    } catch {
+      Alert.alert(t('leafShop.purchaseFailTitle'), t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
+    }
+  };
+
+  const handleRestore = async () => {
+    haptic.light();
+    if (!isPurchasesReady()) {
+      Alert.alert(t('leafShop.comingSoonTitle'), t('leafShop.subscribeComingSoon'), [{ text: t('leafShop.ok') }]);
+      return;
+    }
+    await restorePurchases();
+    await load();
+    Alert.alert(t('leafShop.restoreDoneTitle'), t('leafShop.restoreDoneMsg'), [{ text: t('leafShop.ok') }]);
   };
 
   return (
@@ -127,6 +161,11 @@ export default function LeafShopScreen({ goBack }: NavProps) {
             <Text style={styles.subBenefit}>{t('leafShop.benefitNoAds')}</Text>
           </View>
           <Text style={styles.subHint}>{t('leafShop.subHint')}</Text>
+        </TouchableOpacity>
+
+        {/* 구매 복원 */}
+        <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} activeOpacity={0.7}>
+          <Text style={styles.restoreText}>{t('leafShop.restore')}</Text>
         </TouchableOpacity>
 
         {/* 정책 안내 */}
@@ -245,4 +284,6 @@ const styles = StyleSheet.create({
     padding: 14, marginTop: 8,
   },
   policyText: { fontSize: 11, color: Colors.inkSoft, fontWeight: '500', lineHeight: 18 },
+  restoreBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16 },
+  restoreText: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft, textDecorationLine: 'underline' },
 });
