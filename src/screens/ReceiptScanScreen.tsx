@@ -9,7 +9,6 @@ import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { identifyReceiptItems } from '../services/claude';
 import { addIngredients } from '../services/fridge';
-import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { t } from '../i18n';
 
@@ -35,7 +34,6 @@ export default function ReceiptScanScreen({ navigate, goBack, imageBase64, mimeT
     setError('');
     try {
       const found = await identifyReceiptItems(imageBase64, mimeType);
-      await spend('scan');
       setItems(found);
       setSelected(new Set(found));
     } catch (e: unknown) {

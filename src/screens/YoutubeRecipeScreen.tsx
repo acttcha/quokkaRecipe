@@ -14,7 +14,6 @@ import {
   extractYouTubeVideoId,
 } from '../services/youtube';
 import { analyzeYoutubeRecipe, YoutubeRecipeAnalysis } from '../services/claude';
-import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { saveRecipe, isRecipeSaved } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
@@ -118,7 +117,6 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
       const analysis = await analyzeYoutubeRecipe(
         video.title, video.channelTitle, description, transcript,
       );
-      await spend('recipe');
       haptic.success();
       setResult(analysis);
       const alreadySaved = await isRecipeSaved(analysis.recipeName);

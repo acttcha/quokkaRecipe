@@ -11,7 +11,6 @@ import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, 
 import { saveRecipe, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
-import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { loadPreferences } from '../services/preferences';
 import { AdBanner } from '../components/AdBanner';
@@ -102,7 +101,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           generateRecipeByName(dishName, [], propsServings ?? 2),
           searchYouTubeRecipes([dishName]),
         ]);
-        await spend('recipe');
         setRecipes(found);
         setSeenNames(found.map(r => r.name));
         setVideos(vids);
@@ -129,7 +127,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     setStep('identifying');
     try {
       const found = await identifyIngredients(imageBase64!, mimeType!);
-      await spend('scan');
       await addIngredients(found);
       setIngredients(found);
       setFridgeItems(await getFridgeIngredients());
@@ -159,7 +156,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         generateRecipes(ingredients, [], servings),
         searchYouTubeRecipes(ingredients),
       ]);
-      await spend('recipe');
       setRecipes(found);
       setSeenNames(found.map(r => r.name));
       setVideos(vids);
@@ -181,7 +177,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       const found = dishName
         ? await generateRecipeByName(dishName, seenNames, servings)
         : await generateRecipes(ingredients, seenNames, servings);
-      await spend('recipe');
       setRecipes(found);
       setSeenNames(prev => [...prev, ...found.map(r => r.name)]);
       setExpanded(null);
@@ -263,7 +258,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     setAnswer('');
     try {
       const res = await askQuokka(askModal, question.trim());
-      await spend('qa');
       setAnswer(res);
       haptic.success();
     } catch {

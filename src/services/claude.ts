@@ -121,6 +121,7 @@ export async function identifyIngredients(
     return MOCK_INGREDIENTS;
   }
   const text = await callGemini({
+    action: 'scan',
     system: 'You identify the food ingredients/items shown in a photo and output their common names.',
     userText: `Identify the food ingredients/items in the photo.
 
@@ -161,6 +162,7 @@ export async function identifyReceiptItems(
     return ['계란', '우유', '버터', '양파', '당근', '닭가슴살', '브로콜리', '두부', '마늘', '파프리카'];
   }
   const text = await callGemini({
+    action: 'scan',
     system: 'You extract food ingredients/groceries from a grocery store receipt photo.',
     userText: `This is a grocery store receipt. Extract the food ingredients or food items clearly readable on it.
 
@@ -221,7 +223,7 @@ async function generateRecipeJson(system: string, userText: string): Promise<str
   const fullText = userText + localeDirective();
   const cfg = RECIPE_MODELS[getRecipeModelKey()];
   if (cfg.provider === 'gemini') {
-    return callGemini({ system, userText: fullText, maxOutputTokens: 2200, jsonOutput: true, model: cfg.model });
+    return callGemini({ action: 'recipe', system, userText: fullText, maxOutputTokens: 2200, jsonOutput: true, model: cfg.model });
   }
   return callClaude({
     model: cfg.model,
@@ -283,6 +285,7 @@ Steps: ${recipe.steps.join(' → ')}
   `.trim();
 
   const text = await callGemini({
+    action: 'qa',
     system: `You are a friendly quokka character who knows cooking well. Answer the user's recipe question warmly and briefly (3-5 sentences), using emojis to keep it cute. Never use markdown symbols such as **bold** or *italics* — reply in plain text only.`,
     userText: `[Recipe info]
 ${recipeContext}
@@ -327,6 +330,7 @@ export async function analyzeYoutubeRecipe(
   ].filter(Boolean).join('\n');
 
   const text = await callGemini({
+    action: 'recipe',
     system: `You are an assistant that analyzes YouTube cooking-video info (title, description, captions) to extract a recipe. If captions are available, base the steps on the actual cooking flow in the captions, combining ingredient info from the description, and write it as accurately and in as much detail as possible. If there are no captions, do your best with only the description and title.
 
 Respond ONLY in the following JSON format:

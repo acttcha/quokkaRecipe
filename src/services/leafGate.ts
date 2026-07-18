@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import {
-  canSpend, addBonusLeaves, getAdWatchesLeft, getAdCooldownRemaining, recordAdWatch,
+  canSpend, creditAdReward, getAdWatchesLeft, getAdCooldownRemaining, recordAdWatch,
   LEAF_COST, LeafAction, AD_REWARD, AD_DAILY_LIMIT,
 } from './leaves';
 import { showRewardedAd, isExpoGo } from './ads';
@@ -38,14 +38,14 @@ export async function watchAdForLeaves(): Promise<boolean> {
     Alert.alert(t('leafGate.adFailTitle'), t('leafGate.adFailMsg'));
     return false;
   }
-  await addBonusLeaves(AD_REWARD);
+  await creditAdReward();   // 서버 적립
   await recordAdWatch();
   return true;
 }
 
 /**
- * AI 호출 직전에 사용. 잎사귀 충분하면 true, 부족하면 Alert 띄우고 false.
- * 호출 측은 false면 즉시 return, true면 API 호출 후 spend(action) 호출.
+ * AI 호출 직전 사전 체크(권고). 잎사귀 충분하면 true, 부족하면 Alert(광고 유도) 띄우고 false.
+ * 실제 차감은 서버가 AI 호출 시 수행하므로 이건 UX 용도 — false면 호출 측은 즉시 return.
  */
 export async function checkLeafOrAlert(action: LeafAction): Promise<boolean> {
   const ok = await canSpend(action);

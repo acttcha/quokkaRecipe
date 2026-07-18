@@ -1,10 +1,16 @@
 import * as SecureStore from 'expo-secure-store';
 import { isPro } from './subscription';
+import { getDeviceId } from './deviceId';
 
 // 잎사귀 (쿼카 테마 토큰) — AI 호출 단위로 소비.
 //   재료 인식 / 영수증 인식 / 레시피 생성 / 유튜브 분석 = 1🍃
 //   쿼카 질문 (가벼운 호출) = 0.2🍃
-// PRO 구독자는 모든 잎사귀 체크/차감 우회 (무제한).
+//
+// ⚠️ 잔액과 차감은 서버(Supabase 지갑)가 권위. 여기서는 조회/적립 트리거만 한다.
+//    실제 차감은 AI 호출 시 gemini-proxy 가 서버에서 직접 수행(위변조 불가).
+//    - getBalance/canSpend  → wallet 함수(op:'balance')에서 서버 잔액을 읽음
+//    - creditAdReward/Purchase/ProMonthly → wallet 함수가 서버에서 적립
+//    광고 시청 제한(횟수/쿨다운)만 기기 로컬로 관리(파밍 방지 UX).
 
 export type LeafAction = 'scan' | 'recipe' | 'qa';
 
@@ -20,134 +26,109 @@ export const ACTION_LABEL: Record<LeafAction, string> = {
   qa: '쿼카 질문',
 };
 
-export const FREE_DAILY_LEAVES = 3;   // 매일 자정 리셋되는 무료 잎사귀
-export const WELCOME_BONUS = 2;        // 첫 실행 1회만 — 초기 경험용
+export const FREE_DAILY_LEAVES = 3;   // 매일 자정(KST) 리셋되는 무료 잎사귀 (서버 기준)
+export const WELCOME_BONUS = 2;        // 첫 실행 1회만 — 초기 경험용 (서버가 1회 지급)
 export const AD_REWARD = 2;            // 광고 1회 보상 (보너스 풀로)
 export const AD_DAILY_LIMIT = 5;            // 하루 보상형 광고 시청 최대 횟수
 export const AD_COOLDOWN_MS = 30 * 60 * 1000; // 광고 간 최소 간격 (30분) — 연달아 몰아보기 방지
-export const PRO_MONTHLY_LEAVES = 130;      // 쿼카 패스(PRO) 월 지급 잎사귀 (실제 지급은 IAP 연동 시)
+export const PRO_MONTHLY_LEAVES = 130;      // 쿼카 패스(PRO) 월 지급 잎사귀 (서버 상수와 동기화)
 
-const DAILY_KEY = 'leaves_daily_v1';
-const BONUS_KEY = 'leaves_bonus_v1';
 const AD_KEY = 'leaves_ad_v1';
 
-interface DailyState {
-  date: string;     // YYYY-MM-DD
-  leaves: number;   // 오늘 남은 무료 잎사귀
-}
-interface BonusState {
-  leaves: number;   // 보너스 풀 (웰컴/광고/구매)
+// ── 서버 지갑 클라이언트 ────────────────────────────────────────
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
+const WALLET_URL = `${SUPABASE_URL}/functions/v1/wallet`;
+
+// 서버 wallet_touch/credit 이 돌려주는 형태
+interface ServerBalance {
+  daily?: number;
+  bonus?: number;  // 무료 보너스(웰컴/광고)
+  paid?: number;   // 유료 구매분
+  total?: number;
+  isPro?: boolean;
 }
 
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+export interface LeafBalance {
+  daily: number;     // 오늘 남은 무료
+  bonus: number;     // 보너스 풀 (무료보너스 + 유료 구매분 합산 표시)
+  total: number;     // 합계
+  isPro: boolean;    // PRO 구독자 (무제한 아님 — 매달 지급 + 광고 제거)
 }
+
+let _cache: LeafBalance | null = null;
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-async function getDaily(): Promise<DailyState> {
-  const today = todayStr();
-  const raw = await SecureStore.getItemAsync(DAILY_KEY);
-  if (!raw) return { date: today, leaves: FREE_DAILY_LEAVES };
-  try {
-    const parsed: DailyState = JSON.parse(raw);
-    if (parsed.date !== today) return { date: today, leaves: FREE_DAILY_LEAVES };
-    return parsed;
-  } catch {
-    return { date: today, leaves: FREE_DAILY_LEAVES };
-  }
-}
-
-async function setDaily(state: DailyState): Promise<void> {
-  await SecureStore.setItemAsync(DAILY_KEY, JSON.stringify(state));
-}
-
-async function getBonus(): Promise<BonusState> {
-  const raw = await SecureStore.getItemAsync(BONUS_KEY);
-  if (!raw) {
-    // 첫 실행 — 웰컴 보너스 지급 후 영속화
-    const init: BonusState = { leaves: WELCOME_BONUS };
-    await SecureStore.setItemAsync(BONUS_KEY, JSON.stringify(init));
-    return init;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { leaves: 0 };
-  }
-}
-
-async function setBonus(state: BonusState): Promise<void> {
-  await SecureStore.setItemAsync(BONUS_KEY, JSON.stringify(state));
-}
-
-export interface LeafBalance {
-  daily: number;     // 오늘 남은 무료
-  bonus: number;     // 보너스 풀
-  total: number;     // 합계
-  isPro: boolean;    // PRO 구독자 (무제한 아님 — 매달 지급 + 광고 제거)
-}
-
-export async function getBalance(): Promise<LeafBalance> {
-  const [d, b] = await Promise.all([getDaily(), getBonus()]);
+function toBalance(s: ServerBalance): LeafBalance {
+  const daily = round1(s.daily ?? 0);
+  const bonus = round1((s.bonus ?? 0) + (s.paid ?? 0));
   return {
-    daily: round1(d.leaves),
-    bonus: round1(b.leaves),
-    total: round1(d.leaves + b.leaves),
-    isPro: isPro(),
+    daily,
+    bonus,
+    total: round1(s.total ?? daily + bonus),
+    isPro: isPro(), // RevenueCat 이 실시간 권위 (서버 subs_fg 는 웹훅 연동 후)
   };
 }
 
+async function walletCall(op: 'balance' | 'ad_reward'): Promise<LeafBalance> {
+  const userId = await getDeviceId();
+  const res = await fetch(WALLET_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ op, userId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || `wallet ${op} 실패 (HTTP ${res.status})`);
+  }
+  _cache = toBalance(await res.json());
+  return _cache;
+}
+
+/** 서버 잔액 조회 (+ 서버측 일일 리셋/웰컴 지급). 네트워크 실패 시 마지막 캐시. */
+export async function getBalance(): Promise<LeafBalance> {
+  try {
+    return await walletCall('balance');
+  } catch {
+    return _cache ?? { daily: 0, bonus: 0, total: 0, isPro: isPro() };
+  }
+}
+
+/** 마지막으로 읽은 잔액(동기). 서버 왕복 없이 즉시 표시용. */
+export function getCachedBalance(): LeafBalance | null {
+  return _cache;
+}
+
+/**
+ * 사전 체크(권고). 실제 차감은 서버가 AI 호출 시 수행하므로 이건 UX 용도.
+ * 잔액이 부족하면 광고 유도 다이얼로그를 띄우기 위해 사용.
+ */
 export async function canSpend(action: LeafAction): Promise<boolean> {
   const cost = LEAF_COST[action];
   const { total } = await getBalance();
   return total >= cost;
 }
 
-/**
- * 잎사귀 차감. 일일 먼저, 부족분은 보너스에서.
- * 잔액 부족이면 false (호출 측에서 사전 체크 권장 — checkLeafOrAlert).
- */
-export async function spend(action: LeafAction): Promise<boolean> {
-  const cost = LEAF_COST[action];
-  const daily = await getDaily();
-  const bonus = await getBonus();
-
-  if (daily.leaves + bonus.leaves < cost) return false;
-
-  if (daily.leaves >= cost) {
-    daily.leaves = round1(daily.leaves - cost);
-    await setDaily(daily);
-  } else {
-    const remainder = round1(cost - daily.leaves);
-    daily.leaves = 0;
-    bonus.leaves = round1(bonus.leaves - remainder);
-    await Promise.all([setDaily(daily), setBonus(bonus)]);
-  }
-  return true;
+/** 보상형 광고 보상 적립 (서버). */
+export async function creditAdReward(): Promise<LeafBalance> {
+  return walletCall('ad_reward');
 }
 
-export async function addBonusLeaves(amount: number): Promise<void> {
-  const bonus = await getBonus();
-  bonus.leaves = round1(bonus.leaves + amount);
-  await setBonus(bonus);
+// 구매(잎사귀 팩)·구독(PRO 월 지급) 적립은 RevenueCat 웹훅(rc-webhook)이 서버간으로 처리한다.
+// → 클라가 트리거하던 임시 적립 제거(위변조 방지). 앱은 결제 후 잔액을 다시 조회(getBalance)만 하면 됨.
+
+// ── 보상형 광고 시청 제한 (일일 상한 + 쿨다운) — 기기 로컬 ──────────
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
-// PRO 구독 주기별 월 지급(중복 방지). periodId = 구독 갱신마다 바뀌는 값(latestPurchaseDate 등).
-// 같은 주기면 재지급 안 함 → 앱을 여러 번 열어도 1회만 지급.
-const PRO_GRANT_KEY = 'pro_last_grant_period';
-export async function grantProMonthlyLeavesIfNew(periodId: string): Promise<void> {
-  try {
-    const last = await SecureStore.getItemAsync(PRO_GRANT_KEY);
-    if (last === periodId) return;
-    await addBonusLeaves(PRO_MONTHLY_LEAVES);
-    await SecureStore.setItemAsync(PRO_GRANT_KEY, periodId);
-  } catch { /* 무시 */ }
-}
-
-// ── 보상형 광고 시청 제한 (일일 상한 + 쿨다운) ──────────────
 interface AdState {
   date: string;        // YYYY-MM-DD (count 의 기준일)
   count: number;       // 오늘 시청한 광고 횟수
@@ -193,18 +174,16 @@ export async function recordAdWatch(): Promise<void> {
 
 /**
  * 잎사귀 시스템 초기 워밍업 (App 시작 시 호출).
- * SecureStore 의 첫 실행 분기를 트리거 (웰컴 보너스 지급).
+ * 서버 잔액을 한 번 읽어 캐시 + 서버측 일일 리셋/웰컴 지급 트리거.
  */
 export async function loadLeaves(): Promise<void> {
-  await Promise.all([getDaily(), getBonus()]);
+  try { await getBalance(); } catch { /* 무시 */ }
 }
 
 /**
- * 테스트용 — 일일 잎사귀 + 광고 시청 제한(횟수/쿨다운)을 리셋 (보너스는 유지)
+ * 테스트용 — 광고 시청 제한(횟수/쿨다운) 로컬 리셋.
+ * (일일 잎사귀 리셋은 서버가 KST 자정에 자동 처리)
  */
 export async function resetDailyLeaves(): Promise<void> {
-  await Promise.all([
-    SecureStore.deleteItemAsync(DAILY_KEY),
-    SecureStore.deleteItemAsync(AD_KEY),
-  ]);
+  await SecureStore.deleteItemAsync(AD_KEY);
 }

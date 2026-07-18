@@ -1,11 +1,27 @@
 // Gemini API 호출 — Supabase 의 gemini-proxy 를 통해 프록시.
 // Gemini API 키는 서버에만 존재하고, 앱에는 publishable key 만 박힘.
+// action 을 함께 보내면 서버(gemini-proxy)가 잎사귀를 직접 차감한다(위변조 불가).
+import { getDeviceId } from './deviceId';
+import type { LeafAction } from './leaves';
+
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
 const GEMINI_PROXY_URL = `${SUPABASE_URL}/functions/v1/gemini-proxy`;
 
-// 텍스트/비전 모두 처리하는 가성비 모델. 필요 시 'gemini-2.5-flash-lite' 로 더 저렴하게.
+// 텍스트/비전 모두 처리하는 가성비 모델.
+// ⚠️ 실제 사용 모델은 서버(gemini-proxy)가 결정한다. 이 값은 하위호환용 필드일 뿐.
 export const GEMINI_MODEL = 'gemini-2.5-flash';
+
+// 잎사귀 부족(402) 시 던지는 에러 — 호출 측에서 code 로 구분 가능.
+export class InsufficientLeavesError extends Error {
+  code = 'insufficient_leaves' as const;
+  balance: unknown;
+  constructor(balance?: unknown) {
+    super('insufficient_leaves');
+    this.name = 'InsufficientLeavesError';
+    this.balance = balance;
+  }
+}
 
 interface GeminiImage {
   mimeType: string;
@@ -18,13 +34,15 @@ interface CallGeminiOpts {
   maxOutputTokens?: number;
   images?: GeminiImage[];
   jsonOutput?: boolean;   // true 면 responseMimeType: application/json 강제 (JSON 안정성↑)
-  model?: string;         // 미지정 시 GEMINI_MODEL
+  model?: string;         // 미지정 시 GEMINI_MODEL (서버가 무시하고 서버 모델 사용)
   temperature?: number;   // 미지정 시 1 (비전/추출은 0 권장)
+  action?: LeafAction;    // 지정 시 서버가 해당 액션 비용만큼 잎사귀 차감
 }
 
 /**
  * Gemini 호출. 응답 텍스트(파트 결합)를 반환.
  * thinkingBudget: 0 → 비용/지연 예측 가능하게 thinking 끔 (품질 부족 시 키울 수 있음).
+ * action 을 주면 서버가 잎사귀를 차감하고, 부족하면 InsufficientLeavesError 를 던진다.
  */
 export async function callGemini(opts: CallGeminiOpts): Promise<string> {
   const parts: Array<Record<string, unknown>> = [];
@@ -33,7 +51,7 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
   }
   parts.push({ text: opts.userText });
 
-  const body = {
+  const body: Record<string, unknown> = {
     model: opts.model ?? GEMINI_MODEL,
     systemInstruction: { parts: [{ text: opts.system }] },
     contents: [{ role: 'user', parts }],
@@ -45,6 +63,14 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
     },
   };
 
+  // 서버 권위 차감: action 이 있으면 기기ID + action 을 실어 서버가 직접 차감.
+  if (opts.action) {
+    try {
+      body.userId = await getDeviceId();
+      body.action = opts.action;
+    } catch { /* 기기ID 실패 시 차감 없이 진행(전환기 호환) */ }
+  }
+
   const res = await fetch(GEMINI_PROXY_URL, {
     method: 'POST',
     headers: {
@@ -54,6 +80,11 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
     },
     body: JSON.stringify(body),
   });
+
+  if (res.status === 402) {
+    const err = await res.json().catch(() => ({}));
+    throw new InsufficientLeavesError(err?.balance);
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

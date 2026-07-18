@@ -15,3 +15,15 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/gemini-proxy/deno.json"
 entrypoint = "./functions/gemini-proxy/index.ts"
+
+[functions.wallet]
+enabled = true
+verify_jwt = false
+import_map = "./functions/wallet/deno.json"
+entrypoint = "./functions/wallet/index.ts"
+
+[functions.rc-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/rc-webhook/deno.json"
+entrypoint = "./functions/rc-webhook/index.ts"

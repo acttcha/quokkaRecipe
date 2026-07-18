@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { setIsPro } from './subscription';
-import { addBonusLeaves, grantProMonthlyLeavesIfNew } from './leaves';
+import { getDeviceId } from './deviceId';
 
 // ─── RevenueCat 결제 연동 ──────────────────────────────────────
 // 광고와 동일하게 Expo Go 에선 네이티브 모듈이 없으므로 조건부 require + no-op.
@@ -12,7 +12,8 @@ import { addBonusLeaves, grantProMonthlyLeavesIfNew } from './leaves';
 //   2) App Store / Play Console 에 아래 PRODUCT_IDS 와 동일한 상품ID로
 //      구독 1개 + 소모성 인앱 5개 생성, RevenueCat 에 연결
 //   3) RevenueCat 에 "pro" entitlement + "default" offering 구성
-//   4) 소모성(잎사귀) 잔액은 Supabase 서버 적립으로 이관 (creditLeaves TODO)
+//   4) RevenueCat 웹훅 → rc-webhook 엣지함수 연결 (URL + Authorization=RC_WEBHOOK_SECRET)
+//      → 잎사귀 적립(구매/구독 월지급)이 서버간으로 처리됨(위변조 불가).
 
 export const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
@@ -32,10 +33,6 @@ export const LEAF_PRODUCT_IDS: Record<string, string> = {
   basket:  'leaf_pack_4',
   box:     'leaf_pack_5',
 };
-const LEAF_GRANT: Record<string, number> = {
-  leaf_pack_1: 15, leaf_pack_2: 60, leaf_pack_3: 125, leaf_pack_4: 300, leaf_pack_5: 1000,
-};
-
 let Purchases: any = null;
 let _configured = false;
 
@@ -53,7 +50,9 @@ export async function initPurchases(): Promise<void> {
   const apiKey = Platform.OS === 'ios' ? RC_KEYS.ios : RC_KEYS.android;
   if (!apiKey) return; // 키 미설정 → 무시 (개발자 토글로 동작)
   try {
-    Purchases.configure({ apiKey });
+    // 기기ID 를 app_user_id 로 고정 → 같은 폰 재설치 시 동일 고객 = 잔액 유지.
+    const appUserID = await getDeviceId();
+    Purchases.configure({ apiKey, appUserID });
     _configured = true;
     Purchases.addCustomerInfoUpdateListener(syncEntitlement);
     syncEntitlement(await Purchases.getCustomerInfo());
@@ -63,14 +62,9 @@ export async function initPurchases(): Promise<void> {
 }
 
 function syncEntitlement(info: any): void {
+  // 구독 활성 여부만 로컬 UI 캐시로 반영(광고 숨김 등). 잎사귀 지급은 rc-webhook 이 서버에서 처리.
   const pro = info?.entitlements?.active?.[ENTITLEMENT_ID];
   setIsPro(!!pro);
-  if (pro) {
-    // 구독 활성 → 이번 주기 월 잎사귀 지급 (무제한 아님, 매달 PRO_MONTHLY_LEAVES).
-    // periodId 가 갱신마다 바뀌어 주기당 1회만 지급됨.
-    const periodId = String(pro.latestPurchaseDate || pro.originalPurchaseDate || 'active');
-    grantProMonthlyLeavesIfNew(periodId).catch(() => { /* 무시 */ });
-  }
 }
 
 /** 현재 offering 의 구매 가능한 패키지 목록 (가격 표시 등에 사용). 미구성 시 빈 배열. */
@@ -102,10 +96,8 @@ async function purchaseByProductId(productId: string): Promise<boolean> {
     }
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     syncEntitlement(customerInfo);
-    // 소모성 잎사귀면 지급.
-    // TODO(server): 클라 적립은 위변조 가능 → RevenueCat 웹훅 → Supabase 로 이관.
-    const grant = LEAF_GRANT[productId];
-    if (grant) await addBonusLeaves(grant);
+    // 잎사귀 적립(소모성/구독 월지급)은 RevenueCat 웹훅(rc-webhook)이 서버에서 처리한다.
+    // 앱은 구매만 확정하고, 화면에서 getBalance 로 갱신된 서버 잔액을 다시 읽으면 됨.
     return true;
   } catch (e: any) {
     if (e?.userCancelled) return false;

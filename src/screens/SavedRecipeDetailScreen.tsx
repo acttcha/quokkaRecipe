@@ -18,7 +18,6 @@ import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../s
 import { getCookLogsForRecipe, removeCookLog, CookLog } from '../services/cookingLog';
 import { BackButton } from '../components/BackButton';
 import { formatRelativeDate } from '../services/youtube';
-import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { AdBanner } from '../components/AdBanner';
 import { t } from '../i18n';
@@ -138,7 +137,6 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
     setAnswer('');
     try {
       const res = await askQuokka(r, question.trim());
-      await spend('qa');
       setAnswer(res);
       haptic.success();
       await addQAEntry(r.id, question.trim(), res);

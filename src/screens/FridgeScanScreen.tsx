@@ -9,7 +9,6 @@ import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { identifyIngredients } from '../services/claude';
 import { addIngredients } from '../services/fridge';
-import { spend } from '../services/leaves';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { t } from '../i18n';
 
@@ -30,7 +29,6 @@ export default function FridgeScanScreen({ navigate, goBack, imageBase64, mimeTy
     }
     try {
       const found = await identifyIngredients(imageBase64, mimeType);
-      await spend('scan');
       setIngredients(found);
       setStep('review');
     } catch (e) {
