@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from '../services/ads';
+import { isPro } from '../services/subscription';
 
 /**
  * 공용 배너 광고. 콘텐츠 스크롤 "끝자리"에 두는 용도.
@@ -11,6 +12,7 @@ import { BannerAd, BannerAdSize, TestIds } from '../services/ads';
  */
 export function AdBanner({ style }: { style?: StyleProp<ViewStyle> }) {
   if (!BannerAd) return null;
+  if (isPro()) return null;   // 쿼카 패스 = 광고 제거
   return (
     <View style={[styles.wrap, style]}>
       <BannerAd unitId={TestIds.BANNER} size={BannerAdSize.BANNER} />

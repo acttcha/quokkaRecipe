@@ -52,6 +52,7 @@
   "home.tileDishSub": "Search by name",
   "home.balanceTitle": "Leaf Balance",
   "home.balanceUnlimited": "PRO subscriber — unlimited use",
+  "home.balancePro": "Quokka Pass — {count} leaves every month · no ads 🍃",
   "home.balanceDaily": "{count} free leaves recharge every midnight",
   "home.available": "available",
   "home.breakdown": "Today's free {daily} · Bonus {bonus}",

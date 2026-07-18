@@ -52,6 +52,7 @@
   "home.tileDishSub": "이름으로 검색",
   "home.balanceTitle": "잎사귀 잔액",
   "home.balanceUnlimited": "PRO 구독 중 — 무제한 사용 가능",
+  "home.balancePro": "쿼카 패스 — 매달 {count}개 지급 · 광고 없음 🍃",
   "home.balanceDaily": "매일 자정에 무료 잎사귀 {count}개가 충전돼요",
   "home.available": "사용 가능",
   "home.breakdown": "오늘 무료 {daily} · 보너스 {bonus}",

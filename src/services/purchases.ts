@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { setIsPro } from './subscription';
-import { addBonusLeaves } from './leaves';
+import { addBonusLeaves, grantProMonthlyLeavesIfNew } from './leaves';
 
 // ─── RevenueCat 결제 연동 ──────────────────────────────────────
 // 광고와 동일하게 Expo Go 에선 네이티브 모듈이 없으므로 조건부 require + no-op.
@@ -63,8 +63,14 @@ export async function initPurchases(): Promise<void> {
 }
 
 function syncEntitlement(info: any): void {
-  const active = !!info?.entitlements?.active?.[ENTITLEMENT_ID];
-  setIsPro(active);
+  const pro = info?.entitlements?.active?.[ENTITLEMENT_ID];
+  setIsPro(!!pro);
+  if (pro) {
+    // 구독 활성 → 이번 주기 월 잎사귀 지급 (무제한 아님, 매달 PRO_MONTHLY_LEAVES).
+    // periodId 가 갱신마다 바뀌어 주기당 1회만 지급됨.
+    const periodId = String(pro.latestPurchaseDate || pro.originalPurchaseDate || 'active');
+    grantProMonthlyLeavesIfNew(periodId).catch(() => { /* 무시 */ });
+  }
 }
 
 /** 현재 offering 의 구매 가능한 패키지 목록 (가격 표시 등에 사용). 미구성 시 빈 배열. */
@@ -89,7 +95,11 @@ async function purchaseByProductId(productId: string): Promise<boolean> {
       const id = p.product?.identifier;
       return id === productId || id?.startsWith(productId + ':');
     });
-    if (!pkg) return false;
+    if (!pkg) {
+      // 패키지 못 찾음 = offering 미설정(Current 아님)/상품 전파 전/ID 불일치.
+      // 조용히 false 대신 이유를 던져 UI 에서 표시(진단 용이).
+      throw new Error(`상품을 찾을 수 없어요 (offerings: ${pkgs.length}개, id=${productId})`);
+    }
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     syncEntitlement(customerInfo);
     // 소모성 잎사귀면 지급.

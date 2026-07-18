@@ -87,24 +87,20 @@ export interface LeafBalance {
   daily: number;     // 오늘 남은 무료
   bonus: number;     // 보너스 풀
   total: number;     // 합계
-  isUnlimited: boolean;  // PRO 여부
+  isPro: boolean;    // PRO 구독자 (무제한 아님 — 매달 지급 + 광고 제거)
 }
 
 export async function getBalance(): Promise<LeafBalance> {
-  if (isPro()) {
-    return { daily: Infinity, bonus: Infinity, total: Infinity, isUnlimited: true };
-  }
   const [d, b] = await Promise.all([getDaily(), getBonus()]);
   return {
     daily: round1(d.leaves),
     bonus: round1(b.leaves),
     total: round1(d.leaves + b.leaves),
-    isUnlimited: false,
+    isPro: isPro(),
   };
 }
 
 export async function canSpend(action: LeafAction): Promise<boolean> {
-  if (isPro()) return true;
   const cost = LEAF_COST[action];
   const { total } = await getBalance();
   return total >= cost;
@@ -115,7 +111,6 @@ export async function canSpend(action: LeafAction): Promise<boolean> {
  * 잔액 부족이면 false (호출 측에서 사전 체크 권장 — checkLeafOrAlert).
  */
 export async function spend(action: LeafAction): Promise<boolean> {
-  if (isPro()) return true;
   const cost = LEAF_COST[action];
   const daily = await getDaily();
   const bonus = await getBonus();
@@ -138,6 +133,18 @@ export async function addBonusLeaves(amount: number): Promise<void> {
   const bonus = await getBonus();
   bonus.leaves = round1(bonus.leaves + amount);
   await setBonus(bonus);
+}
+
+// PRO 구독 주기별 월 지급(중복 방지). periodId = 구독 갱신마다 바뀌는 값(latestPurchaseDate 등).
+// 같은 주기면 재지급 안 함 → 앱을 여러 번 열어도 1회만 지급.
+const PRO_GRANT_KEY = 'pro_last_grant_period';
+export async function grantProMonthlyLeavesIfNew(periodId: string): Promise<void> {
+  try {
+    const last = await SecureStore.getItemAsync(PRO_GRANT_KEY);
+    if (last === periodId) return;
+    await addBonusLeaves(PRO_MONTHLY_LEAVES);
+    await SecureStore.setItemAsync(PRO_GRANT_KEY, periodId);
+  } catch { /* 무시 */ }
 }
 
 // ── 보상형 광고 시청 제한 (일일 상한 + 쿨다운) ──────────────

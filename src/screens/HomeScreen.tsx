@@ -11,7 +11,7 @@ import { NavProps } from '../types';
 import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
 import {
-  getBalance, LeafBalance, FREE_DAILY_LEAVES,
+  getBalance, LeafBalance, FREE_DAILY_LEAVES, PRO_MONTHLY_LEAVES,
   LEAF_COST, LeafAction, AD_REWARD,
   getAdWatchesLeft, getAdCooldownRemaining, AD_DAILY_LIMIT,
 } from '../services/leaves';
@@ -162,7 +162,7 @@ export default function HomeScreen({ navigate }: NavProps) {
           <Text style={styles.usageChipText}>
             {t('home.leavesLeft')}{' '}
             <Text style={styles.usageChipCount}>
-              {balance ? (balance.isUnlimited ? '∞' : balance.total) : '·'}
+              {balance ? balance.total : '·'}
             </Text>
           </Text>
           <Text style={styles.usageChipArrow}>›</Text>
@@ -247,8 +247,8 @@ export default function HomeScreen({ navigate }: NavProps) {
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={styles.umTitle}>{t('home.balanceTitle')}</Text>
                 <Text style={styles.umSub}>
-                  {balance?.isUnlimited
-                    ? t('home.balanceUnlimited')
+                  {balance?.isPro
+                    ? t('home.balancePro', { count: PRO_MONTHLY_LEAVES })
                     : t('home.balanceDaily', { count: FREE_DAILY_LEAVES })}
                 </Text>
               </View>
@@ -260,13 +260,13 @@ export default function HomeScreen({ navigate }: NavProps) {
             {/* 잔액 큰 표시 */}
             <View style={styles.leafBig}>
               <Text style={styles.leafBigVal}>
-                {balance ? (balance.isUnlimited ? '∞' : balance.total) : '·'}
+                {balance ? balance.total : '·'}
               </Text>
               <View style={styles.leafBigUnitRow}>
                 <LeafIcon size={24} />
                 <Text style={styles.leafBigUnit}>{t('home.available')}</Text>
               </View>
-              {balance && !balance.isUnlimited && (
+              {balance && (
                 <Text style={styles.leafBigBreakdown}>
                   {t('home.breakdown', { daily: balance.daily, bonus: balance.bonus })}
                 </Text>

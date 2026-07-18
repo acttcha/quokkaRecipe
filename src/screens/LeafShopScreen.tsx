@@ -39,8 +39,8 @@ export default function LeafShopScreen({ goBack }: NavProps) {
         await load();
         Alert.alert(t('leafShop.purchaseDoneTitle'), t('leafShop.purchaseDoneMsg', { count: pkg.leaves }), [{ text: t('leafShop.ok') }]);
       }
-    } catch {
-      Alert.alert(t('leafShop.purchaseFailTitle'), t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
+    } catch (e: any) {
+      Alert.alert(t('leafShop.purchaseFailTitle'), e?.message || t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
     }
   };
 
@@ -57,8 +57,8 @@ export default function LeafShopScreen({ goBack }: NavProps) {
         await load();
         Alert.alert(t('leafShop.subscribeDoneTitle'), t('leafShop.subscribeDoneMsg'), [{ text: t('leafShop.ok') }]);
       }
-    } catch {
-      Alert.alert(t('leafShop.purchaseFailTitle'), t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
+    } catch (e: any) {
+      Alert.alert(t('leafShop.purchaseFailTitle'), e?.message || t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
     }
   };
 
@@ -93,11 +93,11 @@ export default function LeafShopScreen({ goBack }: NavProps) {
             <View style={styles.balanceTexts}>
               <Text style={styles.balanceLabel}>{t('leafShop.currentBalance')}</Text>
               <Text style={styles.balanceValue}>
-                {balance ? (balance.isUnlimited ? t('leafShop.unlimited') : `${balance.total}🍃`) : '·'}
+                {balance ? `${balance.total}🍃` : '·'}
               </Text>
             </View>
           </View>
-          {balance && !balance.isUnlimited && (
+          {balance && (
             <Text style={styles.balanceBreakdown}>
               {t('leafShop.balanceBreakdown', { daily: balance.daily, bonus: balance.bonus })}
             </Text>
