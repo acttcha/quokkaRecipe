@@ -215,7 +215,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   };
 
   const handleFeedback = () => {
-    Linking.openURL(`mailto:acttcha@gmail.com?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`).catch(() =>
+    Linking.openURL(`mailto:chasoft.official@gmail.com?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`).catch(() =>
       Alert.alert(t('settings.errorTitle'), t('settings.mailOpenError'))
     );
   };
