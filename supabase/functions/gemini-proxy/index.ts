@@ -20,6 +20,14 @@ const admin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
 );
 
+// x-user-jwt 검증 → 로그인 유저 uid (없거나 무효면 null → 게스트 body.userId 사용)
+async function verifyUid(req: Request): Promise<string | null> {
+  const jwt = req.headers.get("x-user-jwt");
+  if (!jwt) return null;
+  const { data } = await admin.auth.getUser(jwt);
+  return data?.user?.id ?? null;
+}
+
 export default {
   fetch: withSupabase({ auth: ["publishable"] }, async (req) => {
     if (req.method !== "POST") {
@@ -38,7 +46,9 @@ export default {
       return Response.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const userId = typeof body.userId === "string" ? body.userId : null;
+    // 신원 확정: 로그인=검증된 uid, 게스트=body.userId
+    const verified = await verifyUid(req);
+    const userId = verified ?? (typeof body.userId === "string" ? body.userId : null);
     const action = typeof body.action === "string" ? body.action : null;
     const cost = action ? (COST[action] ?? 1) : 0;
 

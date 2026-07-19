@@ -182,7 +182,7 @@ If nothing is clear: []${languageDirective()}`,
 }
 
 // 레시피 생성 공통 지침 — Gemini systemInstruction 으로 전달.
-// 레시피 생성/요리명 생성은 Gemini 2.5 Flash 사용(상식·비용 우위). 비전/Q&A 는 아직 Claude.
+// 모든 AI 호출(비전·레시피·Q&A)은 Gemini 사용. Claude(callClaude)는 개발자 모드 레시피 모델 선택 시에만 사용.
 const RECIPE_SYSTEM = `You are a skilled home cook familiar with cuisines from around the world. Recommend 2 practical, commonly-eaten home-style recipes that can be made with the user's ingredients.
 
 Most important: Do NOT invent new dishes by combining ingredients. Recommend real, well-known dishes that people actually eat, choosing the ones that best fit the available ingredients and the user's region. Never force mismatched ingredients together (e.g., dumping random sauces into instant noodles).

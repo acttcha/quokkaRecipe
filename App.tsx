@@ -18,6 +18,7 @@ import { loadLocale, useLang } from './src/services/locale';
 import { t } from './src/i18n';
 import { initAds } from './src/services/ads';
 import { initPurchases } from './src/services/purchases';
+import { loadAuth, syncRcIdentity } from './src/services/auth';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
 initAds().catch(() => { /* 무시 — 광고 실패가 앱을 막진 않음 */ });
@@ -145,29 +146,33 @@ function AppInner() {
   const swipeBlockedRef = useRef(false);
 
   useEffect(() => {
-    Promise.all([
-      isOnboardingDone(),
-      isFridgeSetupDone(),
-      loadDevSettings(),
-      loadSubscription(),
-      loadLeaves(),
-      loadLocale(),
-      Asset.loadAsync([
-        require('./assets/background.png'),
-        require('./assets/main_logo.png'),
-        require('./assets/quokka.png'),
-        require('./assets/refrigerator1.png'),
-        require('./assets/refrigerator2.png'),
-        require('./assets/refrigerator3.png'),
-        require('./assets/refrigerator4.png'),
-      ]),
-    ]).then(([onboarded, fridgeDone]) => {
-      console.log('[App] onboarded:', onboarded, 'fridgeDone:', fridgeDone);
-      initPurchases().catch(() => { /* 키 미설정/Expo Go 면 무시 */ });
-      setOnboardingDone(onboarded);
-      if (!fridgeDone) setAppState('fridge_setup');
-      else if (!onboarded) setAppState('onboarding');
-      else setAppState('app');
+    // 로그인 세션을 먼저 복원해야 loadLeaves 가 올바른 신원(계정/게스트)으로 잔액을 읽는다.
+    loadAuth().finally(() => {
+      Promise.all([
+        isOnboardingDone(),
+        isFridgeSetupDone(),
+        loadDevSettings(),
+        loadSubscription(),
+        loadLeaves(),
+        loadLocale(),
+        Asset.loadAsync([
+          require('./assets/background.png'),
+          require('./assets/main_logo.png'),
+          require('./assets/quokka.png'),
+          require('./assets/refrigerator1.png'),
+          require('./assets/refrigerator2.png'),
+          require('./assets/refrigerator3.png'),
+          require('./assets/refrigerator4.png'),
+        ]),
+      ]).then(([onboarded, fridgeDone]) => {
+        console.log('[App] onboarded:', onboarded, 'fridgeDone:', fridgeDone);
+        // 결제 초기화 후 RC 신원을 현재 신원(계정/기기)으로 맞춤
+        initPurchases().then(syncRcIdentity).catch(() => { /* 키 미설정/Expo Go 면 무시 */ });
+        setOnboardingDone(onboarded);
+        if (!fridgeDone) setAppState('fridge_setup');
+        else if (!onboarded) setAppState('onboarding');
+        else setAppState('app');
+      });
     });
   }, []);
 

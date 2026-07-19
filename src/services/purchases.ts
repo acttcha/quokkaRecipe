@@ -67,6 +67,15 @@ function syncEntitlement(info: any): void {
   setIsPro(!!pro);
 }
 
+/** RevenueCat 신원 전환 (로그인=계정uid / 로그아웃=기기ID). 미구성 시 no-op. */
+export async function rcLogIn(appUserID: string): Promise<void> {
+  if (!_configured || !Purchases) return;
+  try {
+    const { customerInfo } = await Purchases.logIn(appUserID);
+    syncEntitlement(customerInfo);
+  } catch { /* 무시 */ }
+}
+
 /** 현재 offering 의 구매 가능한 패키지 목록 (가격 표시 등에 사용). 미구성 시 빈 배열. */
 export async function getOfferingPackages(): Promise<any[]> {
   if (!_configured || !Purchases) return [];

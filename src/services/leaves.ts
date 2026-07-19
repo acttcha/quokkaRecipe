@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { isPro } from './subscription';
-import { getDeviceId } from './deviceId';
+import { getIdentity } from './auth';
 
 // 잎사귀 (쿼카 테마 토큰) — AI 호출 단위로 소비.
 //   재료 인식 / 영수증 인식 / 레시피 생성 / 유튜브 분석 = 1🍃
@@ -74,14 +74,16 @@ function toBalance(s: ServerBalance): LeafBalance {
 }
 
 async function walletCall(op: 'balance' | 'ad_reward'): Promise<LeafBalance> {
-  const userId = await getDeviceId();
+  const { userId, jwt } = await getIdentity();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_PUBLISHABLE_KEY,
+    'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+  };
+  if (jwt) headers['x-user-jwt'] = jwt; // 로그인 유저 → 서버가 JWT로 uid 검증
   const res = await fetch(WALLET_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-    },
+    headers,
     body: JSON.stringify({ op, userId }),
   });
   if (!res.ok) {

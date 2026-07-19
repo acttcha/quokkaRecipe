@@ -11,6 +11,7 @@ import { LeafIcon } from '../components/LeafIcon';
 import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
 import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES } from '../services/leaves';
 import { isPurchasesReady, purchaseLeafPackage, purchaseSubscription, restorePurchases } from '../services/purchases';
+import { isLoggedIn, isAuthReady, signInWithGoogle } from '../services/auth';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
 
@@ -22,16 +23,31 @@ export default function LeafShopScreen({ goBack }: NavProps) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const handlePurchase = async (pkg: LeafPackage) => {
-    haptic.light();
-    if (!isPurchasesReady()) {
-      Alert.alert(
-        t('leafShop.comingSoonTitle'),
-        t('leafShop.purchaseComingSoon', { name: t(`leafPackage.${pkg.id}`) }),
-        [{ text: t('leafShop.ok') }],
-      );
-      return;
-    }
+  // 게스트면 결제 전 로그인 권유(강제 아님). 이미 로그인했거나 로그인 불가면 바로 진행.
+  const withLoginNudge = (proceed: () => void) => {
+    if (isLoggedIn() || !isAuthReady()) { proceed(); return; }
+    Alert.alert(
+      t('leafShop.loginNudgeTitle'),
+      t('leafShop.loginNudgeMsg'),
+      [
+        {
+          text: t('leafShop.loginAndBuy'),
+          onPress: async () => {
+            try { await signInWithGoogle(); await load(); proceed(); }
+            catch (e: any) {
+              if (!e?.message?.includes('cancel')) {
+                Alert.alert(t('profile.loginFailTitle'), e?.message || t('profile.loginFailMsg'));
+              }
+            }
+          },
+        },
+        { text: t('leafShop.buyAsGuest'), onPress: proceed },
+        { text: t('leafShop.cancel'), style: 'cancel' },
+      ],
+    );
+  };
+
+  const doPurchase = async (pkg: LeafPackage) => {
     try {
       const ok = await purchaseLeafPackage(pkg.id);
       if (ok) {
@@ -44,12 +60,20 @@ export default function LeafShopScreen({ goBack }: NavProps) {
     }
   };
 
-  const handleSubscribe = async () => {
+  const handlePurchase = (pkg: LeafPackage) => {
     haptic.light();
     if (!isPurchasesReady()) {
-      Alert.alert(t('leafShop.comingSoonTitle'), t('leafShop.subscribeComingSoon'), [{ text: t('leafShop.ok') }]);
+      Alert.alert(
+        t('leafShop.comingSoonTitle'),
+        t('leafShop.purchaseComingSoon', { name: t(`leafPackage.${pkg.id}`) }),
+        [{ text: t('leafShop.ok') }],
+      );
       return;
     }
+    withLoginNudge(() => doPurchase(pkg));
+  };
+
+  const doSubscribe = async () => {
     try {
       const ok = await purchaseSubscription();
       if (ok) {
@@ -60,6 +84,15 @@ export default function LeafShopScreen({ goBack }: NavProps) {
     } catch (e: any) {
       Alert.alert(t('leafShop.purchaseFailTitle'), e?.message || t('leafShop.purchaseFailMsg'), [{ text: t('leafShop.ok') }]);
     }
+  };
+
+  const handleSubscribe = () => {
+    haptic.light();
+    if (!isPurchasesReady()) {
+      Alert.alert(t('leafShop.comingSoonTitle'), t('leafShop.subscribeComingSoon'), [{ text: t('leafShop.ok') }]);
+      return;
+    }
+    withLoginNudge(doSubscribe);
   };
 
   const handleRestore = async () => {

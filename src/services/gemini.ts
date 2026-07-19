@@ -1,7 +1,7 @@
 // Gemini API 호출 — Supabase 의 gemini-proxy 를 통해 프록시.
 // Gemini API 키는 서버에만 존재하고, 앱에는 publishable key 만 박힘.
 // action 을 함께 보내면 서버(gemini-proxy)가 잎사귀를 직접 차감한다(위변조 불가).
-import { getDeviceId } from './deviceId';
+import { getIdentity } from './auth';
 import type { LeafAction } from './leaves';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -63,21 +63,27 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
     },
   };
 
-  // 서버 권위 차감: action 이 있으면 기기ID + action 을 실어 서버가 직접 차감.
+  // 서버 권위 차감: action 이 있으면 신원(로그인=uid / 게스트=기기ID)을 실어 서버가 직접 차감.
+  let userJwt: string | null = null;
   if (opts.action) {
     try {
-      body.userId = await getDeviceId();
+      const id = await getIdentity();
+      body.userId = id.userId;
       body.action = opts.action;
-    } catch { /* 기기ID 실패 시 차감 없이 진행(전환기 호환) */ }
+      userJwt = id.jwt;
+    } catch { /* 신원 실패 시 차감 없이 진행(전환기 호환) */ }
   }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_PUBLISHABLE_KEY,
+    'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+  };
+  if (userJwt) headers['x-user-jwt'] = userJwt; // 로그인 유저 → 서버가 JWT로 uid 검증
 
   const res = await fetch(GEMINI_PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
