@@ -15,6 +15,9 @@
   "leaf.action.recipe": "Recipe generation",
   "leaf.action.qa": "Ask Quokka",
 
+  "leafToast.used": "{count} leaves used",
+  "leafToast.left": "{count} left",
+
   "leafGate.onlyRealAppTitle": "Only available in the real app",
   "leafGate.onlyRealAppMsg": "Ads only play in the built app (not supported in Expo Go) 🐾",
   "leafGate.dailyDoneTitle": "That's it for today 🌙",

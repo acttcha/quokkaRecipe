@@ -73,6 +73,14 @@ export default {
         return Response.json({ ok: true });
       }
 
+      // 2') 환불/취소 → 소모성 잎사귀 팩이면 지급분 회수 (악용 방어).
+      //   음수 적립 → 이미 다 썼으면 leaf_paid 가 마이너스가 되어 재충전 전까지 AI 사용 불가.
+      //   소모성은 '구독 해지' 개념이 없어 CANCELLATION ≈ 환불/무효로 간주.
+      if (leafAmount && e.type === "CANCELLATION") {
+        await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: -leafAmount, p_paid: true });
+        return Response.json({ ok: true, clawback: leafAmount });
+      }
+
       // 3) 구독 (쿼카 패스)
       if (isSub) {
         switch (e.type) {

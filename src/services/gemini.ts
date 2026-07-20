@@ -2,6 +2,7 @@
 // Gemini API 키는 서버에만 존재하고, 앱에는 publishable key 만 박힘.
 // action 을 함께 보내면 서버(gemini-proxy)가 잎사귀를 직접 차감한다(위변조 불가).
 import { getIdentity } from './auth';
+import { emitLeafSpend } from './leafToast';
 import type { LeafAction } from './leaves';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -96,6 +97,12 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
     const err = await res.json().catch(() => ({}));
     const msg = err?.error?.message || err?.error || `HTTP ${res.status} 오류`;
     throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  }
+
+  // 서버가 잎사귀를 차감했으면 헤더로 알려줌 → 사용 토스트 표시
+  const spentHeader = res.headers.get('x-leaf-spent');
+  if (spentHeader) {
+    emitLeafSpend({ spent: Number(spentHeader), total: Number(res.headers.get('x-leaf-total') ?? 0) });
   }
 
   const data = await res.json();

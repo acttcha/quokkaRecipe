@@ -56,6 +56,7 @@ export default {
     const { model: _m, userId: _u, action: _a, ...payload } = body;
 
     // ── 잎사귀 차감 (userId+action 있으면 서버 권위) ──
+    let spentTotal: number | null = null;
     if (userId && action) {
       const { data: spend, error } = await admin.rpc("wallet_spend", {
         p_user_id: userId,
@@ -70,6 +71,7 @@ export default {
       if (!spend?.ok) {
         return Response.json({ error: "insufficient_leaves", balance: spend }, { status: 402 });
       }
+      spentTotal = typeof spend.total === "number" ? spend.total : null;
     }
 
     // ── Gemini 호출 (모델은 서버 결정) ──
@@ -85,9 +87,16 @@ export default {
       await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: cost, p_paid: false });
     }
 
+    // 성공 시 잎사귀 사용량/잔액을 헤더로 알려줌 (앱 토스트용). 실패(환불)면 안 붙임.
+    const outHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (upstream.ok && spentTotal !== null && cost > 0) {
+      outHeaders["x-leaf-spent"] = String(cost);
+      outHeaders["x-leaf-total"] = String(spentTotal);
+    }
+
     return new Response(responseText, {
       status: upstream.status,
-      headers: { "Content-Type": "application/json" },
+      headers: outHeaders,
     });
   }),
 };

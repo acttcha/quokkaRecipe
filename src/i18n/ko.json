@@ -15,6 +15,9 @@
   "leaf.action.recipe": "레시피 생성",
   "leaf.action.qa": "쿼카 질문",
 
+  "leafToast.used": "잎사귀 {count}개 사용",
+  "leafToast.left": "{count}개 남음",
+
   "leafGate.onlyRealAppTitle": "실제 앱에서만 가능해요",
   "leafGate.onlyRealAppMsg": "광고는 빌드된 앱에서만 재생돼요 (Expo Go 미지원) 🐾",
   "leafGate.dailyDoneTitle": "오늘은 여기까지예요 🌙",

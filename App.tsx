@@ -19,6 +19,7 @@ import { t } from './src/i18n';
 import { initAds } from './src/services/ads';
 import { initPurchases } from './src/services/purchases';
 import { loadAuth, syncRcIdentity } from './src/services/auth';
+import { LeafToast } from './src/components/LeafToast';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
 initAds().catch(() => { /* 무시 — 광고 실패가 앱을 막진 않음 */ });
@@ -128,6 +129,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppInner />
+      <LeafToast />
     </SafeAreaProvider>
   );
 }
