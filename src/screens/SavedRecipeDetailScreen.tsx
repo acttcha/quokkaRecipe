@@ -17,6 +17,7 @@ import { getFolders, createFolder } from '../services/folders';
 import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
 import { getCookLogsForRecipe, removeCookLog, CookLog } from '../services/cookingLog';
 import { BackButton } from '../components/BackButton';
+import { LeafToast } from '../components/LeafToast';
 import { formatRelativeDate } from '../services/youtube';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { AdBanner } from '../components/AdBanner';
@@ -625,6 +626,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             </View>
           </View>
         </KeyboardAvoidingView>
+        <LeafToast anchor="top" />
       </Modal>
 
       {/* ── 레시피 수정 모달 ── */}

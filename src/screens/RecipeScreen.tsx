@@ -15,6 +15,7 @@ import { checkLeafOrAlert } from '../services/leafGate';
 import { loadPreferences } from '../services/preferences';
 import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
+import { LeafToast } from '../components/LeafToast';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
@@ -718,6 +719,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             </View>
           </View>
         </KeyboardAvoidingView>
+        <LeafToast anchor="top" />
       </Modal>
     </View>
   );
