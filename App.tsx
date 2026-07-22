@@ -4,7 +4,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions,
   Animated, PanResponder, BackHandler, Alert, Platform,
 } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, Line, Circle } from 'react-native-svg';
 import { Asset } from 'expo-asset';
@@ -19,6 +19,7 @@ import { t } from './src/i18n';
 import { initAds } from './src/services/ads';
 import { initPurchases } from './src/services/purchases';
 import { loadAuth, syncRcIdentity } from './src/services/auth';
+import { getNickname } from './src/services/stats';
 import { LeafToast } from './src/components/LeafToast';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
@@ -29,6 +30,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CameraScreen from './src/screens/CameraScreen';
 import RecipeScreen from './src/screens/RecipeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ManualRecipeScreen from './src/screens/ManualRecipeScreen';
 import SavedScreen from './src/screens/SavedScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import FridgeScreen from './src/screens/FridgeScreen';
@@ -127,7 +129,7 @@ type AppState = 'loading' | 'onboarding' | 'fridge_setup' | 'app';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <AppInner />
       <LeafToast />
     </SafeAreaProvider>
@@ -157,6 +159,7 @@ function AppInner() {
         loadSubscription(),
         loadLeaves(),
         loadLocale(),
+        getNickname(),   // 동기 캐시 워밍 — 마이/프로필 닉네임 플래시 방지
         Asset.loadAsync([
           require('./assets/background.png'),
           require('./assets/main_logo.png'),
@@ -277,6 +280,8 @@ function AppInner() {
       return <CookingLogScreen navigate={navigate} goBack={goBack} />;
     if (subScreen.name === 'ShoppingList')
       return <ShoppingListScreen navigate={navigate} goBack={goBack} />;
+    if (subScreen.name === 'ManualRecipe')
+      return <ManualRecipeScreen navigate={navigate} goBack={goBack} />;
   }
 
   return (

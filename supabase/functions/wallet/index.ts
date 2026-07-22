@@ -13,6 +13,8 @@ import { createClient } from "@supabase/supabase-js";
 const DAILY_MAX = 3;
 const WELCOME = 2;
 const AD_REWARD = 2;
+const AD_DAILY = 5;             // 하루 보상형 광고 최대 (앱 AD_DAILY_LIMIT 와 동기화)
+const AD_COOLDOWN_SEC = 30 * 60; // 광고 간 최소 간격 30분 (앱 AD_COOLDOWN_MS 와 동기화)
 
 const admin = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -64,7 +66,10 @@ export default {
       }
 
     } else if (op === "ad_reward") {
-      const { error } = await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: AD_REWARD, p_paid: false });
+      // 서버가 일일 상한/쿨다운 강제 (초과 시 지급 안 함). 클라 로컬 제한만으론 우회 가능해서.
+      const { error } = await admin.rpc("wallet_ad_reward", {
+        p_user_id: userId, p_amount: AD_REWARD, p_daily_max: AD_DAILY, p_cooldown_sec: AD_COOLDOWN_SEC,
+      });
       if (error) return Response.json({ error: error.message }, { status: 500 });
     }
 

@@ -11,7 +11,7 @@ import { t } from '../i18n';
 
 interface Props { onDone: () => void }
 
-const { width } = Dimensions.get('window');
+const { width, height: SCREEN_H } = Dimensions.get('window');
 
 // 다국어 매칭용 exclusive 값 (옵션 value 와 동일한 t() 결과를 사용해야 함)
 const ALLERGY_NONE = t('onboarding.allergyNoneValue');
@@ -79,16 +79,6 @@ const STEPS = [
     ],
   },
   {
-    id: 'servings', type: 'single' as const,
-    question: t('onboarding.servingsQuestion'),
-    options: [
-      { label: t('onboarding.servings1Label'), emoji: '🙂', value: '1' },
-      { label: t('onboarding.servings2Label'), emoji: '🍽️', value: '2' },
-      { label: t('onboarding.servings3Label'), emoji: '👨‍👩‍👦', value: '3' },
-      { label: t('onboarding.servings4Label'), emoji: '👨‍👩‍👧‍👦', value: '4' },
-    ],
-  },
-  {
     id: 'cuisineStyles', type: 'multi' as const,
     question: t('onboarding.cuisineQuestion'),
     hint: t('onboarding.cuisineHint'),
@@ -115,7 +105,6 @@ export default function OnboardingScreen({ onDone }: Props) {
   const [dietType, setDietType]           = useState('');
   const [cookingSkill, setCookingSkill]   = useState('');
   const [cuisineStyles, setCuisineStyles] = useState<string[]>([]);
-  const [servings, setServings]           = useState<number>(2);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const current = STEPS[step];
@@ -150,7 +139,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       dietType,
       cookingSkill,
       cuisineStyles: cuisineStyles.filter(c => c !== CUISINE_ANY),
-      servings,
+      servings: 2,
     };
     await savePreferences(prefs);
     onDone();
@@ -163,7 +152,6 @@ export default function OnboardingScreen({ onDone }: Props) {
       case 'cookingTime':  setCookingTime(value);   break;
       case 'dietType':     setDietType(value);      break;
       case 'cookingSkill': setCookingSkill(value);  break;
-      case 'servings':     setServings(Number(value)); break;
     }
     setTimeout(goNext, 380);
   };
@@ -174,7 +162,6 @@ export default function OnboardingScreen({ onDone }: Props) {
       case 'cookingTime':  return cookingTime;
       case 'dietType':     return dietType;
       case 'cookingSkill': return cookingSkill;
-      case 'servings':     return String(servings);
       default: return '';
     }
   };
@@ -295,7 +282,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       {/* ── 옵션 패널 ── */}
       <Animated.View style={[styles.panel, { opacity: fadeAnim }]}>
         <ScrollView
-          contentContainerStyle={styles.panelContent}
+          contentContainerStyle={[styles.panelContent, { paddingBottom: 36 + insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -339,7 +326,7 @@ const styles = StyleSheet.create({
   dotCurrent: { backgroundColor: Colors.primary, width: 22, borderRadius: 4 },
 
   charArea: {
-    flex: 1,
+    height: Math.min(SCREEN_H * 0.44, 400),
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: 0,
@@ -375,10 +362,10 @@ const styles = StyleSheet.create({
   },
 
   panel: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: 380,
     ...shadow.md,
   },
   panelContent: {

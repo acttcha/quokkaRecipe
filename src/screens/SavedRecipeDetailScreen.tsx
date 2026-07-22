@@ -4,17 +4,18 @@ import {
   StatusBar, Image, Modal, KeyboardAvoidingView, Platform,
   TextInput, ActivityIndicator, Alert, Share, Linking,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { NavProps, SavedRecipe, Folder } from '../types';
 import { askQuokka } from '../services/claude';
-import { openCoupang, openYouTubeByName, cleanIngredientName } from '../services/youtube';
+import { openCoupangPartners, COUPANG_PARTNERS_URL, openYouTubeByName } from '../services/youtube';
 import { getMemo, saveMemo, getQAHistory, addQAEntry, deleteQAEntry, QAEntry } from '../services/recipeNotes';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { moveRecipeToFolder, updateRecipe } from '../services/savedRecipes';
 import { getFolders, createFolder } from '../services/folders';
-import { getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
+import { getFridgeIngredients, matchesFridge } from '../services/fridge';
 import { getCookLogsForRecipe, removeCookLog, CookLog } from '../services/cookingLog';
 import { BackButton } from '../components/BackButton';
 import { LeafToast } from '../components/LeafToast';
@@ -78,6 +79,7 @@ function formatTime(iso: string) {
 type Props = NavProps & { recipe: SavedRecipe };
 
 export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: initialRecipe }: Props) {
+  const insets = useSafeAreaInsets();
   const [r, setR] = useState(initialRecipe);
   const [memo, setMemo]               = useState('');
   const [editingMemo, setEditingMemo] = useState(false);
@@ -276,6 +278,10 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             <View style={styles.sourceBadgeYt}>
               <Text style={styles.sourceBadgeYtText}>{t('savedDetail.sourceYoutube')}</Text>
             </View>
+          ) : r.source === 'manual' ? (
+            <View style={styles.sourceBadgeManual}>
+              <Text style={styles.sourceBadgeManualText}>{t('savedDetail.sourceManual')}</Text>
+            </View>
           ) : (
             <View style={styles.sourceBadgeAi}>
               <Text style={styles.sourceBadgeAiText}>{t('savedDetail.sourceAi')}</Text>
@@ -362,8 +368,19 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           })}
         </View>
 
+        {/* 재료 밑 쿠팡 CTA (소프트 배너) + 대가성 문구 */}
+        {!!COUPANG_PARTNERS_URL && (
+          <View style={styles.coupangInline}>
+            <TouchableOpacity onPress={openCoupangPartners} activeOpacity={0.8} style={styles.coupangBanner}>
+              <Text style={styles.coupangBannerText}>{t('savedDetail.coupangInlineLabel')}</Text>
+              <Text style={styles.coupangBannerArrow}>→</Text>
+            </TouchableOpacity>
+            <Text style={styles.coupangInlineDisclosure}>{t('savedDetail.coupangDisclosure')}</Text>
+          </View>
+        )}
+
         {/* 만드는 법 */}
-        <Text style={[styles.sectionHead, { marginTop: 20 }]}>{t('savedDetail.stepsHead')}</Text>
+        <Text style={[styles.sectionHead, { marginTop: 20, marginBottom: 12 }]}>{t('savedDetail.stepsHead')}</Text>
         {r.steps.map((s, n) => (
           <View key={n} style={styles.stepRow}>
             <View style={styles.stepNum}>
@@ -379,7 +396,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           onPress={() => navigate({ name: 'CookMode', recipeName: r.name, steps: r.steps })}
           activeOpacity={0.85}
         >
-          <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
+          <Text style={styles.cookStartText} numberOfLines={1}>{t('cookMode.start')}</Text>
         </TouchableOpacity>
 
         {/* ── 내가 만든 요리 (완성 사진) ── */}
@@ -479,7 +496,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           )}
         </View>
 
-        {/* ── 외부 링크 카드 (유튜브 + 쿠팡) ── */}
+        {/* ── 외부 링크 카드 (유튜브) ── */}
         <View style={styles.card}>
           <TouchableOpacity style={styles.linkRow} onPress={() => openYouTubeByName(r.name)} activeOpacity={0.82}>
             <Text style={styles.linkEmoji}>📺</Text>
@@ -489,43 +506,6 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
             </View>
             <Text style={styles.rowArrow}>›</Text>
           </TouchableOpacity>
-
-          <View style={styles.cardDivider} />
-
-          {(() => {
-            const missing = fridgeItems.length > 0
-              ? getMissingIngredients(fridgeItems, r.ingredients)
-              : r.ingredients;
-            return (
-              <>
-                <View style={styles.linkRowStatic}>
-                  <Text style={styles.linkEmoji}>🛒</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.linkTitle}>{t('savedDetail.buyIngredientsTitle')}</Text>
-                    <Text style={styles.linkSub}>
-                      {fridgeItems.length > 0
-                        ? missing.length === 0
-                          ? t('savedDetail.buyAllHave')
-                          : t('savedDetail.buyMissing', { count: missing.length })
-                        : t('savedDetail.buyDefault')}
-                    </Text>
-                  </View>
-                </View>
-                {missing.length > 0 && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-                    <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 2 }}>
-                      {missing.map(ing => (
-                        <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
-                          <Text style={styles.coupangChipText}>{cleanIngredientName(ing)}</Text>
-                          <Text style={styles.coupangArrow}>→</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
-                )}
-              </>
-            );
-          })()}
         </View>
 
         <AdBanner />
@@ -573,7 +553,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
       {/* ── 쿼카 질문 모달 ── */}
       <Modal visible={askVisible} animationType="slide" transparent onRequestClose={() => setAskVisible(false)}>
         <KeyboardAvoidingView style={styles.modalWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Image source={require('../../assets/quokka.png')} style={styles.modalQuokka} resizeMode="contain" />
@@ -760,7 +740,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
         <TouchableOpacity style={styles.fpOverlay} activeOpacity={1} onPress={() => setFolderPickerVisible(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
             <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-              <View style={styles.fpSheet}>
+              <View style={[styles.fpSheet, { paddingBottom: insets.bottom }]}>
                 <View style={styles.fpHandle} />
                 <Text style={styles.fpTitle}>{t('savedDetail.moveFolder')}</Text>
                 <Text style={styles.fpSub} numberOfLines={1}>{r.name}</Text>
@@ -826,7 +806,6 @@ const styles = StyleSheet.create({
 
   header: { paddingTop: 56, paddingHorizontal: 22, paddingBottom: 18 },
   headerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  backBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   shareBtn: {
     backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 6,
@@ -852,6 +831,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 2,
   },
   sourceBadgeAiText: { fontSize: 10, fontWeight: '700', color: Colors.forestDeep },
+  sourceBadgeManual: {
+    backgroundColor: 'rgba(224,123,43,0.12)', borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  sourceBadgeManualText: { fontSize: 10, fontWeight: '700', color: Colors.orangeDeep },
 
   ytSourceCard: {
     flexDirection: 'row', backgroundColor: Colors.white,
@@ -967,20 +951,16 @@ const styles = StyleSheet.create({
 
   // 외부 링크 행
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  linkRowStatic: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   linkEmoji: { fontSize: 26, width: 34, textAlign: 'center' },
   linkTitle: { fontSize: 14, fontWeight: '700', color: Colors.ink },
   linkSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 2 },
 
   // 쿠팡 칩
-  coupangChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: Colors.creamSoft, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: Colors.line,
-  },
-  coupangChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  coupangArrow: { fontSize: 12, color: Colors.coupang, fontWeight: '800' },
+  coupangInline: { marginTop: 12, marginBottom: 4 },
+  coupangBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.creamSoft, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  coupangBannerText: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.ink },
+  coupangBannerArrow: { fontSize: 14, fontWeight: '800', color: Colors.orangeDeep },
+  coupangInlineDisclosure: { fontSize: 10, color: Colors.inkMute, marginTop: 6, lineHeight: 14 },
 
   // 모달
   modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },

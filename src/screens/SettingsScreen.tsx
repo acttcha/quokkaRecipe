@@ -4,6 +4,7 @@ import {
   Alert, ScrollView, Image, StatusBar, Modal, Linking,
   Animated, PanResponder, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { NavProps } from '../types';
@@ -18,6 +19,9 @@ import {
 } from '../services/devSettings';
 import { getLang, setLang, AppLang } from '../services/locale';
 import { isPro, setIsPro } from '../services/subscription';
+import { getNickname, getCachedNickname } from '../services/stats';
+import { isLoggedIn, getUserEmail } from '../services/auth';
+import { restorePurchases, isPurchasesReady } from '../services/purchases';
 import { t } from '../i18n';
 
 const APP_VERSION = (require('../../app.json') as { expo: { version: string } }).expo.version;
@@ -182,6 +186,10 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [lang, setLangState] = useState<AppLang>(getLang());
   const [proMode, setProModeState] = useState(isPro());
   const [devMode, setDevModeState] = useState(getDevMode());
+  const [nickname, setNickname] = useState(getCachedNickname() ?? '');
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
+  const [email, setEmail] = useState<string | null>(getUserEmail());
+  const [restoring, setRestoring] = useState(false);
   const versionTapsRef = useRef(0);
   const [pwModalVisible, setPwModalVisible] = useState(false);
   const [pwInput, setPwInput] = useState('');
@@ -189,6 +197,14 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const deleteConfirmPhrase = getDeleteConfirmPhrase();
   const canDelete = deleteInput.trim() === deleteConfirmPhrase && !deleting;
   const modalContent = getModalContent();
+
+  // 마이 탭은 서브화면 진입 시 언마운트 → 복귀할 때마다 재실행되어 닉네임/로그인/구독 상태를 갱신.
+  useEffect(() => {
+    getNickname().then(setNickname).catch(() => {});
+    setLoggedIn(isLoggedIn());
+    setEmail(getUserEmail());
+    setProModeState(isPro());
+  }, []);
 
   const handleToggleMock = async () => {
     const next = !mockMode;
@@ -220,10 +236,23 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     );
   };
 
-  const handleRemoveAds = () => {
-    Alert.alert(t('settings.removeAdsTitle'), t('settings.removeAdsMessage'), [
-      { text: t('settings.confirm') },
-    ]);
+  const handleRestore = async () => {
+    if (restoring) return;
+    if (!isPurchasesReady()) {
+      Alert.alert(t('settings.restoreTitle'), t('settings.restoreUnavailable'));
+      return;
+    }
+    setRestoring(true);
+    try {
+      await restorePurchases();
+      const pro = isPro();
+      setProModeState(pro);
+      Alert.alert(t('settings.restoreTitle'), pro ? t('settings.restoreDonePro') : t('settings.restoreDoneNone'));
+    } catch {
+      Alert.alert(t('settings.restoreTitle'), t('settings.restoreFail'));
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const handleResetUsage = async () => {
@@ -309,8 +338,10 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
             <Image source={require('../../assets/quokka.png')} style={styles.profileImg} resizeMode="contain" />
           </View>
           <View style={styles.profileTexts}>
-            <Text style={styles.profileName}>{t('settings.profileName')}</Text>
-            <Text style={styles.profileSub}>{t('settings.profileSub')}</Text>
+            <Text style={styles.profileName} numberOfLines={1}>{nickname || t('profile.defaultNickname')}</Text>
+            <Text style={styles.profileSub} numberOfLines={1}>
+              {loggedIn && email ? email : t('settings.profileSub')}
+            </Text>
           </View>
           <IcChevron />
         </TouchableOpacity>
@@ -359,7 +390,22 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
         <View style={styles.listCard}>
           <ListRow icon={<IcBook />}   label={t('settings.rowGuide')}     onPress={() => setOpenModal('guide')} />
           <ListRow icon={<IcChat />}   label={t('settings.rowFeedback')}   onPress={handleFeedback}               divider />
-          <ListRow icon={<IcNoads />}  label={t('settings.rowRemoveAds')} onPress={handleRemoveAds}             divider meta="PRO" />
+          <ListRow
+            icon={<IcNoads />}
+            label={t('settings.rowRemoveAds')}
+            onPress={() => navigate({ name: 'LeafShop' })}
+            divider
+            meta={proMode ? t('settings.adsRemovedBadge') : 'PRO'}
+            metaTone={proMode ? 'active' : 'pro'}
+          />
+          <ListRow
+            icon={<IcRefresh />}
+            label={t('settings.restorePurchases')}
+            onPress={handleRestore}
+            divider
+            meta={proMode ? t('settings.subActiveBadge') : undefined}
+            metaTone={proMode ? 'active' : undefined}
+          />
           <ListRow icon={<IcSpark />}  label={t('settings.rowUpdate')} onPress={() => setOpenModal('update')} divider meta="NEW" />
         </View>
 
@@ -603,6 +649,7 @@ function DraggableSheet({ onClose, title, body, footerLink }: {
   body: string;
   footerLink?: { label: string; url: string };
 }) {
+  const insets = useSafeAreaInsets();
   const translateY     = useRef(new Animated.Value(600)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
@@ -649,7 +696,7 @@ function DraggableSheet({ onClose, title, body, footerLink }: {
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: overlayOpacity }]} />
 
       <View style={styles.modalOverlay}>
-        <Animated.View style={[styles.modalSheet, { transform: [{ translateY }] }]}>
+        <Animated.View style={[styles.modalSheet, { transform: [{ translateY }], paddingBottom: insets.bottom }]}>
           {/* 드래그 핸들 영역만 pan 적용 — 스크롤과 충돌 방지 */}
           <View style={styles.modalDragZone} {...pan.panHandlers}>
             <View style={styles.modalHandle} />
@@ -676,10 +723,10 @@ function DraggableSheet({ onClose, title, body, footerLink }: {
 }
 
 function ListRow({
-  icon, label, onPress, divider, meta,
+  icon, label, onPress, divider, meta, metaTone,
 }: {
   icon: React.ReactNode; label: string; onPress: () => void;
-  divider?: boolean; meta?: string;
+  divider?: boolean; meta?: string; metaTone?: 'pro' | 'active';
 }) {
   return (
     <>
@@ -688,8 +735,16 @@ function ListRow({
         <View style={listStyles.iconWrap}>{icon}</View>
         <Text style={listStyles.label}>{label}</Text>
         {meta && (
-          <View style={[listStyles.metaBadge, meta === 'PRO' && listStyles.metaBadgePro]}>
-            <Text style={[listStyles.metaText, meta === 'PRO' && listStyles.metaTextPro]}>{meta}</Text>
+          <View style={[
+            listStyles.metaBadge,
+            metaTone === 'pro' && listStyles.metaBadgePro,
+            metaTone === 'active' && listStyles.metaBadgeActive,
+          ]}>
+            <Text style={[
+              listStyles.metaText,
+              metaTone === 'pro' && listStyles.metaTextPro,
+              metaTone === 'active' && listStyles.metaTextActive,
+            ]}>{meta}</Text>
           </View>
         )}
         <IcChevron />
@@ -715,8 +770,10 @@ const listStyles = StyleSheet.create({
     backgroundColor: Colors.orangeSoft,
   },
   metaBadgePro: { backgroundColor: Colors.ink },
+  metaBadgeActive: { backgroundColor: Colors.forestSoft },
   metaText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: Colors.orangeDeep },
   metaTextPro: { color: Colors.cream },
+  metaTextActive: { color: Colors.forestDeep },
 });
 
 const styles = StyleSheet.create({

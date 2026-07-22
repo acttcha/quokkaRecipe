@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.chasoft.quokkarecipe",
-      "versionCode": 11,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"

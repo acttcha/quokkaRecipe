@@ -36,7 +36,7 @@ export interface SavedRecipe extends Recipe {
   savedAt: string;
   sourceIngredients: string[];
   folderId?: string;
-  source?: 'ai' | 'youtube';
+  source?: 'ai' | 'youtube' | 'manual';
   youtubeVideoId?: string;
   youtubeThumbnail?: string;
   youtubeTitle?: string;
@@ -67,7 +67,8 @@ export type CurrentScreen =
   | { name: 'LeafShop' }
   | { name: 'CookMode'; recipeName: string; steps: string[] }
   | { name: 'CookingLog' }
-  | { name: 'ShoppingList' };
+  | { name: 'ShoppingList' }
+  | { name: 'ManualRecipe' };
 
 export interface NavProps {
   navigate: (screen: CurrentScreen) => void;

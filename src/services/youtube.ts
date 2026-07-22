@@ -200,6 +200,15 @@ export function openCoupang(ingredient: string) {
   Linking.openURL(`https://www.coupang.com/np/search?q=${encodeURIComponent(q)}`);
 }
 
+// 쿠팡 파트너스 추적 링크 (링크 생성에서 만든 링크). 설정되면 재료별 검색 대신
+// 이 링크로 "장보기" 버튼을 띄워 수수료가 붙게 한다. 비어있으면 기존 재료별 검색 유지.
+// ⚠️ 파트너스 링크를 쓰면 대가성 문구 표시가 필수(공정위 규정) → 화면에서 함께 노출.
+export const COUPANG_PARTNERS_URL = process.env.EXPO_PUBLIC_COUPANG_LINK ?? '';
+
+export function openCoupangPartners() {
+  if (COUPANG_PARTNERS_URL) Linking.openURL(COUPANG_PARTNERS_URL);
+}
+
 export { formatViewCount };
 
 export function extractYouTubeVideoId(input: string): string | null {

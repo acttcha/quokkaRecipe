@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { LeafIcon } from '../components/LeafIcon';
+import { ServingsSlider } from '../components/ServingsSlider';
 import { NavProps } from '../types';
 import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
@@ -394,22 +395,15 @@ export default function HomeScreen({ navigate }: NavProps) {
               ))}
             </View>
 
-            {/* 몇 인분 */}
-            <Text style={styles.dishServingsLabel}>{t('home.servingsLabel')}</Text>
-            <View style={styles.dishServingsChips}>
-              {[1, 2, 3, 4].map(n => {
-                const active = dishServings === n;
-                return (
-                  <TouchableOpacity
-                    key={n}
-                    style={[styles.dishServingsChip, active && styles.dishServingsChipActive]}
-                    onPress={() => { haptic.light(); setDishServings(n); }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.dishServingsChipText, active && styles.dishServingsChipTextActive]}>{t('home.servings', { count: n })}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+            {/* 몇 인분 — 드래그 슬라이더 (1~12) */}
+            <View style={styles.dishServingsHead}>
+              <Text style={styles.dishServingsLabel}>{t('home.servingsLabel')}</Text>
+              <Text style={styles.dishServingsValue}>{t('home.servings', { count: dishServings })}</Text>
+            </View>
+            <ServingsSlider value={dishServings} min={1} max={12} onChange={setDishServings} />
+            <View style={styles.dishSliderScale}>
+              <Text style={styles.dishSliderScaleText}>{t('home.servings', { count: 1 })}</Text>
+              <Text style={styles.dishSliderScaleText}>{t('home.servings', { count: 12 })}</Text>
             </View>
 
             <TouchableOpacity
@@ -575,7 +569,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dishQuickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
-  dishServingsLabel: { fontSize: 13, fontWeight: '800', color: Colors.ink, marginBottom: 8 },
+  dishServingsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  dishServingsLabel: { fontSize: 13, fontWeight: '800', color: Colors.ink },
+  dishServingsValue: { fontSize: 15, fontWeight: '900', color: Colors.forestDeep },
+  dishSliderScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 16 },
+  dishSliderScaleText: { fontSize: 11, color: Colors.inkMute, fontWeight: '600' },
   dishServingsChips: { flexDirection: 'row', gap: 6, marginBottom: 16 },
   dishServingsChip: {
     flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10,

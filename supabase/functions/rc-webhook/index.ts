@@ -22,13 +22,23 @@ const admin = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
 );
 
+// 상수시간 문자열 비교 (타이밍 공격 방지). 길이는 노출되나 표준적 허용범위.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export default {
   fetch: async (req: Request): Promise<Response> => {
     if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-    // RC 가 보내는 Authorization 헤더 == 우리가 대시보드에 설정한 시크릿
+    // RC 가 보내는 Authorization 헤더 == 우리가 대시보드에 설정한 시크릿.
+    // 시크릿 미설정 시 fail-closed(500) — 절대 인증 없이 통과시키지 않음.
     const secret = Deno.env.get("RC_WEBHOOK_SECRET");
-    if (secret && req.headers.get("Authorization") !== secret) {
+    if (!secret) return new Response("server misconfigured: RC_WEBHOOK_SECRET unset", { status: 500 });
+    if (!timingSafeEqual(req.headers.get("Authorization") ?? "", secret)) {
       return new Response("Unauthorized", { status: 401 });
     }
 

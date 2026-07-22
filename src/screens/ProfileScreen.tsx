@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps } from '../types';
 import { getSavedRecipes } from '../services/savedRecipes';
 import { loadPreferences } from '../services/preferences';
-import { getNickname, saveNickname, getScanCount } from '../services/stats';
+import { getNickname, getCachedNickname, saveNickname, getScanCount } from '../services/stats';
 import { getCookLogCount } from '../services/cookingLog';
 import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
@@ -23,7 +23,7 @@ interface Props extends NavProps {
 }
 
 export default function ProfileScreen({ navigate, goBack, onResetPreferences }: Props) {
-  const [nickname, setNickname]     = useState(t('profile.defaultNickname'));
+  const [nickname, setNickname]     = useState(getCachedNickname() ?? t('profile.defaultNickname'));
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput]   = useState('');
   const [scanCount, setScanCount]   = useState(0);
@@ -122,7 +122,6 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
     { icon: '👨‍🍳', label: t('profile.cookingSkill'),   value: prefs.cookingSkill || t('profile.notSet') },
     { icon: '⚠️', label: t('profile.allergies'),    value: prefs.allergies.length > 0 ? prefs.allergies.join(', ') : t('profile.none') },
     { icon: '🍽️', label: t('profile.cuisineStyles'), value: prefs.cuisineStyles.length > 0 ? prefs.cuisineStyles.join(', ') : t('profile.notSet') },
-    { icon: '👥', label: t('profile.servingsLabel'),   value: prefs.servings ? t('profile.servings', { n: prefs.servings }) : t('profile.notSet') },
   ];
 
   return (

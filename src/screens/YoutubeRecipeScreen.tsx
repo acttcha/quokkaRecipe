@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   ActivityIndicator, Image, StatusBar, Alert, TextInput,
-  KeyboardAvoidingView, Platform, Linking,
+  KeyboardAvoidingView, Platform, Linking, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import {
 } from '../services/youtube';
 import { analyzeYoutubeRecipe, YoutubeRecipeAnalysis } from '../services/claude';
 import { checkLeafOrAlert } from '../services/leafGate';
-import { saveRecipe, isRecipeSaved } from '../services/savedRecipes';
+import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
@@ -129,8 +129,32 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
     }
   };
 
-  const handleSave = async () => {
-    if (!result || saved) return;
+  // 저장 완료 토스트 ("레시피 탭에서 조리 시작해보세요")
+  const savedToastAnim = useRef(new Animated.Value(0)).current;
+  const [savedToastVisible, setSavedToastVisible] = useState(false);
+  const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showSavedToast = () => {
+    setSavedToastVisible(true);
+    savedToastAnim.stopAnimation();
+    Animated.timing(savedToastAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    if (savedToastTimer.current) clearTimeout(savedToastTimer.current);
+    savedToastTimer.current = setTimeout(() => {
+      Animated.timing(savedToastAnim, { toValue: 0, duration: 260, useNativeDriver: true })
+        .start(({ finished }) => { if (finished) setSavedToastVisible(false); });
+    }, 2600);
+  };
+
+  const handleToggleSave = async () => {
+    if (!result) return;
+    if (saved) {
+      // 이미 저장됨 → 저장 취소 (토글)
+      haptic.light();
+      const list = await getSavedRecipes();
+      const found = list.find(x => x.name === result.recipeName);
+      if (found) await removeRecipe(found.id);
+      setSaved(false);
+      return;
+    }
     haptic.success();
     await saveRecipe({
       name: result.recipeName,
@@ -147,6 +171,7 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
       youtubeTitle: selected?.title,
     });
     setSaved(true);
+    showSavedToast();
   };
 
   const diff = result ? (DIFF[result.difficulty] ?? DIFF.Medium) : null;
@@ -330,7 +355,7 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
               onPress={() => navigate({ name: 'CookMode', recipeName: result.recipeName, steps: result.steps })}
               activeOpacity={0.85}
             >
-              <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
+              <Text style={styles.cookStartText} numberOfLines={1}>{t('cookMode.start')}</Text>
             </TouchableOpacity>
 
             {/* 팁 */}
@@ -356,14 +381,28 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
               <Text style={styles.reanalyzeBtnText}>{t('youtube.otherVideo')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.saveBtn, saved && styles.saveBtnDone]}
-              onPress={handleSave}
-              disabled={saved}
+              style={[styles.saveBtn, saved && styles.saveBtnActive]}
+              onPress={handleToggleSave}
+              activeOpacity={0.85}
             >
-              <Text style={styles.saveBtnText}>{saved ? t('youtube.saved') : t('youtube.save')}</Text>
+              <Text style={[styles.saveBtnIcon, saved && styles.saveBtnIconActive]}>{saved ? '♥' : '♡'}</Text>
+              <Text style={[styles.saveBtnText, saved && styles.saveBtnTextActive]}>{saved ? t('youtube.saved') : t('youtube.save')}</Text>
             </TouchableOpacity>
           </View>
         </>
+      )}
+
+      {savedToastVisible && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.savedToast, {
+            bottom: insets.bottom + 24,
+            opacity: savedToastAnim,
+            transform: [{ translateY: savedToastAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+          }]}
+        >
+          <Text style={styles.savedToastText}>{t('recipe.savedToast')}</Text>
+        </Animated.View>
       )}
     </View>
   );
@@ -371,6 +410,8 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
+  savedToast: { position: 'absolute', left: 24, right: 24, backgroundColor: Colors.forestDeep, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 18, ...shadow.md },
+  savedToastText: { color: '#fff', fontSize: 13, fontWeight: '800', textAlign: 'center' },
 
   header: { paddingBottom: 16, paddingTop: 56, paddingHorizontal: 16 },
   backBtn: { alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 6 },
@@ -408,21 +449,25 @@ const styles = StyleSheet.create({
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBar: {
-    flexDirection: 'row', gap: 10,
+    flexDirection: 'row', gap: 10, alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 12,
     backgroundColor: Colors.cream,
     borderTopWidth: 1, borderTopColor: Colors.line,
     // paddingBottom 은 insets.bottom 으로 동적 (안드로이드 시스템 네비 영역 회피)
   },
   saveBtn: {
-    flex: 1, backgroundColor: Colors.forest, borderRadius: 14,
-    paddingVertical: 14, alignItems: 'center', ...shadow.sm,
-  },
-  saveBtnDone: { backgroundColor: Colors.inkMute },
-  saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  reanalzeBtn: {
+    flex: 1, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: Colors.white, borderRadius: 14,
-    paddingVertical: 14, paddingHorizontal: 18, alignItems: 'center',
+    borderWidth: 1.5, borderColor: Colors.line,
+  },
+  saveBtnActive: { backgroundColor: Colors.orangeSoft, borderColor: Colors.orange },
+  saveBtnIcon: { fontSize: 17, fontWeight: '800', color: Colors.inkMute },
+  saveBtnIconActive: { color: Colors.orangeDeep },
+  saveBtnText: { color: Colors.inkSoft, fontSize: 15, fontWeight: '800' },
+  saveBtnTextActive: { color: Colors.orangeDeep },
+  reanalzeBtn: {
+    height: 52, backgroundColor: Colors.white, borderRadius: 14,
+    paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.line,
   },
   reanalyzeBtnText: { color: Colors.inkSoft, fontSize: 14, fontWeight: '700' },

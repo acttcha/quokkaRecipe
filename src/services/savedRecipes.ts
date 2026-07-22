@@ -33,6 +33,19 @@ export async function saveRecipe(
   await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify([newEntry, ...saved]));
 }
 
+/** 사용자가 직접 작성한 레시피를 저장. (이름 중복 검사 없이 항상 새 항목으로 추가) */
+export async function addManualRecipe(recipe: Recipe): Promise<void> {
+  const saved = await getSavedRecipes();
+  const newEntry: SavedRecipe = {
+    ...recipe,
+    id: `${Date.now()}_manual`,
+    savedAt: new Date().toISOString(),
+    sourceIngredients: recipe.ingredients,
+    source: 'manual',
+  };
+  await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify([newEntry, ...saved]));
+}
+
 export async function removeRecipe(id: string): Promise<void> {
   const saved = await getSavedRecipes();
   await FileSystem.writeAsStringAsync(FILE_PATH, JSON.stringify(saved.filter(r => r.id !== id)));

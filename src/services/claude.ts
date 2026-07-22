@@ -5,11 +5,7 @@ import { callGemini } from './gemini';
 import { localeDirective, languageDirective } from './locale';
 import { t } from '../i18n';
 
-// Anthropic API 호출은 Supabase Edge Function (claude-proxy)를 통해 프록시.
-// Claude API 키는 Supabase 서버에만 존재하고, 앱에는 publishable key만 박힘.
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
-const CLAUDE_API_URL = `${SUPABASE_URL}/functions/v1/claude-proxy`;
+// 모든 AI 호출(비전·레시피·Q&A·유튜브 분석)은 Gemini(gemini-proxy)를 사용한다.
 
 const MOCK_INGREDIENTS = ['계란', '토마토', '양파', '마늘', '올리브오일'];
 
@@ -45,26 +41,6 @@ const MOCK_RECIPES: Recipe[] = [
     nutrition: { calories: 95, protein: 8, carbs: 6, fat: 4 },
   },
 ];
-
-async function callClaude(body: object): Promise<string> {
-  const response = await fetch(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || `HTTP ${response.status} error`);
-  }
-
-  const data = await response.json();
-  return data.content[0].text as string;
-}
 
 function extractJson<T>(text: string): T {
   // 응답 끝부분의 균형 잡힌 JSON 배열을 추출
@@ -182,7 +158,7 @@ If nothing is clear: []${languageDirective()}`,
 }
 
 // 레시피 생성 공통 지침 — Gemini systemInstruction 으로 전달.
-// 모든 AI 호출(비전·레시피·Q&A)은 Gemini 사용. Claude(callClaude)는 개발자 모드 레시피 모델 선택 시에만 사용.
+// 모든 AI 호출(비전·레시피·Q&A)은 Gemini 사용.
 const RECIPE_SYSTEM = `You are a skilled home cook familiar with cuisines from around the world. Recommend 2 practical, commonly-eaten home-style recipes that can be made with the user's ingredients.
 
 Most important: Do NOT invent new dishes by combining ingredients. Recommend real, well-known dishes that people actually eat, choosing the ones that best fit the available ingredients and the user's region. Never force mismatched ingredients together (e.g., dumping random sauces into instant noodles).
@@ -222,15 +198,7 @@ function servingsText(servings: number): string {
 async function generateRecipeJson(system: string, userText: string): Promise<string> {
   const fullText = userText + localeDirective();
   const cfg = RECIPE_MODELS[getRecipeModelKey()];
-  if (cfg.provider === 'gemini') {
-    return callGemini({ action: 'recipe', system, userText: fullText, maxOutputTokens: 2200, jsonOutput: true, model: cfg.model });
-  }
-  return callClaude({
-    model: cfg.model,
-    max_tokens: 2200,
-    system: [{ type: 'text', text: system }],
-    messages: [{ role: 'user', content: fullText }],
-  });
+  return callGemini({ action: 'recipe', system, userText: fullText, maxOutputTokens: 2200, jsonOutput: true, model: cfg.model });
 }
 
 export async function generateRecipes(ingredients: string[], exclude: string[] = [], servings = 2): Promise<Recipe[]> {

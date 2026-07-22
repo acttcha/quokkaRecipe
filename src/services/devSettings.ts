@@ -1,60 +1,33 @@
 import * as SecureStore from 'expo-secure-store';
 
-// 테스트 전용: API 호출을 끄고 목 데이터로 화면 이동만 확인 / 사용할 Claude 모델 변경
+// 테스트 전용: API 호출을 끄고 목 데이터로 화면 이동만 확인 / 레시피 생성 모델 변경.
 // SecureStore 에 영속화 + 모듈 내 캐시로 동기 읽기 가능하도록 유지.
 
-// 코드 내 호출별 기본 모델 (auto 일 때 적용)
-//   vision = 이미지 인식 (재료/영수증) — Sonnet 권장
-//   light  = 텍스트 생성 (레시피/Q&A/유튜브 분석) — Haiku (비용 절감)
-export type ModelTier = 'vision' | 'light';
+// 레시피 생성 전용 모델 선택 (개발자 모드). 전부 Gemini.
+export type RecipeModelKey = 'gemini-flash' | 'gemini-flash-lite';
 
-// 'auto' = 코드 기본값 사용. 그 외는 모든 호출을 그 모델로 강제.
-export type ModelKey = 'auto' | 'haiku' | 'sonnet' | 'opus';
-
-const TIER_DEFAULT: Record<ModelTier, Exclude<ModelKey, 'auto'>> = {
-  vision: 'sonnet',
-  light: 'haiku',
-};
-
-export const MODEL_IDS: Record<Exclude<ModelKey, 'auto'>, string> = {
-  haiku: 'claude-haiku-4-5-20251001',
-  sonnet: 'claude-sonnet-4-6',
-  opus: 'claude-opus-4-7',
-};
-
-// 레시피 생성 전용 모델 선택 (개발자 모드). Gemini/Claude 혼용 가능.
-export type RecipeModelKey = 'gemini-flash' | 'gemini-flash-lite' | 'claude-haiku' | 'claude-sonnet';
-
-export const RECIPE_MODELS: Record<RecipeModelKey, { provider: 'gemini' | 'claude'; model: string; label: string }> = {
-  'gemini-flash':      { provider: 'gemini', model: 'gemini-2.5-flash',          label: 'Gemini Flash' },
-  'gemini-flash-lite': { provider: 'gemini', model: 'gemini-2.5-flash-lite',     label: 'Gemini Lite' },
-  'claude-haiku':      { provider: 'claude', model: 'claude-haiku-4-5-20251001', label: 'Claude Haiku' },
-  'claude-sonnet':     { provider: 'claude', model: 'claude-sonnet-4-6',         label: 'Claude Sonnet' },
+export const RECIPE_MODELS: Record<RecipeModelKey, { provider: 'gemini'; model: string; label: string }> = {
+  'gemini-flash':      { provider: 'gemini', model: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash' },
+  'gemini-flash-lite': { provider: 'gemini', model: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
 };
 
 const MOCK_KEY = 'dev_mock_mode';
-const MODEL_KEY = 'dev_model_key';
 const RECIPE_MODEL_KEY = 'dev_recipe_model_key';
 const DEV_MODE_KEY = 'dev_mode_enabled';
 
 let _mockMode = false;
-let _modelKey: ModelKey = 'auto';
 let _recipeModelKey: RecipeModelKey = 'gemini-flash';
 let _devMode = false;   // 개발자 메뉴 노출 여부 (버전 7번 탭으로 해제)
 
 export async function loadDevSettings(): Promise<void> {
   try {
-    const [mock, model, recipeModel, devMode] = await Promise.all([
+    const [mock, recipeModel, devMode] = await Promise.all([
       SecureStore.getItemAsync(MOCK_KEY),
-      SecureStore.getItemAsync(MODEL_KEY),
       SecureStore.getItemAsync(RECIPE_MODEL_KEY),
       SecureStore.getItemAsync(DEV_MODE_KEY),
     ]);
     _mockMode = mock === '1';
     _devMode = devMode === '1';
-    if (model === 'auto' || model === 'haiku' || model === 'sonnet' || model === 'opus') {
-      _modelKey = model;
-    }
     if (recipeModel && Object.prototype.hasOwnProperty.call(RECIPE_MODELS, recipeModel)) {
       _recipeModelKey = recipeModel as RecipeModelKey;
     }
@@ -79,20 +52,6 @@ export function getMockMode(): boolean {
 export async function setMockMode(v: boolean): Promise<void> {
   _mockMode = v;
   await SecureStore.setItemAsync(MOCK_KEY, v ? '1' : '0');
-}
-
-export function getModelKey(): ModelKey {
-  return _modelKey;
-}
-
-export function getModelIdFor(tier: ModelTier): string {
-  const key = _modelKey === 'auto' ? TIER_DEFAULT[tier] : _modelKey;
-  return MODEL_IDS[key];
-}
-
-export async function setModelKey(k: ModelKey): Promise<void> {
-  _modelKey = k;
-  await SecureStore.setItemAsync(MODEL_KEY, k);
 }
 
 export function getRecipeModelKey(): RecipeModelKey {

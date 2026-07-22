@@ -5,8 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 // Gemini API 프록시 (서버 권위 잎사귀 차감 포함).
 // - GEMINI_API_KEY 는 서버에만 존재. 앱엔 publishable key 만.
 // - 모델은 서버가 결정(GEMINI_MODEL) → 클라 조작으로 비싼 모델 못 쓰게 + 폐기 시 여기만 바꾸면 됨.
-// - userId+action 이 오면 wallet_spend 로 서버가 직접 차감/로깅 (위변조 불가).
-//   userId 없으면(구버전 앱) 차감 없이 통과 — 전환기 호환. ⚠️ 출시 전 userId 필수화 권장.
+// - 신원(userId)+알려진 action 필수 → wallet_spend 로 서버가 직접 차감/로깅 (위변조 불가).
+//   둘 중 하나라도 없으면 400 거부 (차감 없이 Gemini 무료사용 되는 구멍 차단).
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
@@ -50,40 +50,50 @@ export default {
     const verified = await verifyUid(req);
     const userId = verified ?? (typeof body.userId === "string" ? body.userId : null);
     const action = typeof body.action === "string" ? body.action : null;
-    const cost = action ? (COST[action] ?? 1) : 0;
+
+    // 신원 + 알려진 action 필수 — 없으면 차감 없이 무료사용 되는 구멍이라 거부.
+    if (!userId || !action || !(action in COST)) {
+      return Response.json({ error: "identity and valid action required" }, { status: 400 });
+    }
+    const cost = COST[action];
 
     // model/userId/action 은 Gemini 로 안 보냄 (서버 전용 필드)
     const { model: _m, userId: _u, action: _a, ...payload } = body;
 
-    // ── 잎사귀 차감 (userId+action 있으면 서버 권위) ──
-    let spentTotal: number | null = null;
-    if (userId && action) {
-      const { data: spend, error } = await admin.rpc("wallet_spend", {
-        p_user_id: userId,
-        p_action: action,
-        p_cost: cost,
-        p_daily_max: DAILY_MAX,
-        p_model: MODEL,
-      });
-      if (error) {
-        return Response.json({ error: "wallet error", detail: error.message }, { status: 500 });
-      }
-      if (!spend?.ok) {
-        return Response.json({ error: "insufficient_leaves", balance: spend }, { status: 402 });
-      }
-      spentTotal = typeof spend.total === "number" ? spend.total : null;
+    // ── 잎사귀 차감 (서버 권위, 항상 수행) ──
+    const { data: spend, error } = await admin.rpc("wallet_spend", {
+      p_user_id: userId,
+      p_action: action,
+      p_cost: cost,
+      p_daily_max: DAILY_MAX,
+      p_model: MODEL,
+    });
+    if (error) {
+      return Response.json({ error: "wallet error" }, { status: 500 });
     }
+    if (!spend?.ok) {
+      return Response.json({ error: "insufficient_leaves", balance: spend }, { status: 402 });
+    }
+    const spentTotal: number | null = typeof spend.total === "number" ? spend.total : null;
 
     // ── Gemini 호출 (모델은 서버 결정) ──
-    const upstream = await fetch(`${GEMINI_BASE}/${MODEL}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify(payload),
-    });
-    const responseText = await upstream.text();
+    let upstream: Response;
+    let responseText: string;
+    try {
+      upstream = await fetch(`${GEMINI_BASE}/${MODEL}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(payload),
+      });
+      responseText = await upstream.text();
+    } catch {
+      // 업스트림 도달 실패(네트워크/서버) = 서버측 문제 → 차감분 환불
+      if (cost > 0) await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: cost, p_paid: false });
+      return Response.json({ error: "upstream unreachable" }, { status: 502 });
+    }
 
-    // Gemini 실패 시 차감분 환불 (free_bonus 로) — 실패한 호출로 잎사귀 손해 안 나게
-    if (!upstream.ok && userId && action && cost > 0) {
+    // 업스트림 서버오류(5xx)만 환불 — 클라가 유발한 4xx(잘못된 요청)로는 환불 안 함(파밍 방지).
+    if (upstream.status >= 500 && cost > 0) {
       await admin.rpc("wallet_credit", { p_user_id: userId, p_amount: cost, p_paid: false });
     }
 

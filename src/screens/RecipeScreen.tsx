@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, TextInput, Image, ImageBackground,
-  StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions, Share, Linking,
+  StatusBar, Modal, KeyboardAvoidingView, Platform, Dimensions, Share, Linking, Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
-import { identifyIngredients, generateRecipes, generateRecipeByName, askQuokka } from '../services/claude';
-import { searchYouTubeRecipes, openYouTubeSearch, openCoupang, formatViewCount, cleanIngredientName, formatDuration, formatRelativeDate } from '../services/youtube';
+import { identifyIngredients, generateRecipes, generateRecipeByName } from '../services/claude';
+import { searchYouTubeRecipes, openYouTubeSearch, openCoupangPartners, COUPANG_PARTNERS_URL, formatViewCount, formatDuration, formatRelativeDate } from '../services/youtube';
 import { saveRecipe, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
@@ -15,7 +16,8 @@ import { checkLeafOrAlert } from '../services/leafGate';
 import { loadPreferences } from '../services/preferences';
 import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
-import { LeafToast } from '../components/LeafToast';
+import { ServingsSlider } from '../components/ServingsSlider';
+import YoutubeRecipeScreen from './YoutubeRecipeScreen';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
@@ -62,7 +64,11 @@ function getRecipeEmoji(name: string, ingredients: string[]): string {
   return '🍽️';
 }
 
+const SERV_MIN = 1;
+const SERV_MAX = 12;
+
 export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, prefillIngredients, dishName, servings: propsServings }: Props) {
+  const insets = useSafeAreaInsets();
   const [step, setStep]             = useState<Step>('identifying');
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [servings, setServings]     = useState<number>(propsServings ?? 2);  // 재료확인 화면 인분 선택 (기본=선호도값)
@@ -76,12 +82,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   const [savedNames, setSavedNames] = useState<Set<string>>(new Set());
   const [seenNames, setSeenNames]   = useState<string[]>([]);  // 재추천 시 제외할 (이미 본) 요리명 누적
   const [reRolling, setReRolling]   = useState(false);
-
-  // 쿼카 질문 모달
-  const [askModal, setAskModal]   = useState<Recipe | null>(null);
-  const [question, setQuestion]   = useState('');
-  const [answer, setAnswer]       = useState('');
-  const [asking, setAsking]       = useState(false);
+  // 유튜브 분석 모달 (결과 화면을 살려두기 위해 navigate 대신 모달로 띄움)
+  const [ytVideo, setYtVideo] = useState<{ videoId: string; title: string; channelTitle: string } | null>(null);
 
   const loadSaved = useCallback(async () => {
     const saved = await getSavedRecipes();
@@ -226,6 +228,21 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
   const reviewSuggestions = filterPopularIngredients(newIng, ingredients);
 
+  // 저장 완료 토스트 ("레시피 탭에서 조리 시작해보세요")
+  const savedToastAnim = useRef(new Animated.Value(0)).current;
+  const [savedToastVisible, setSavedToastVisible] = useState(false);
+  const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showSavedToast = () => {
+    setSavedToastVisible(true);
+    savedToastAnim.stopAnimation();
+    Animated.timing(savedToastAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    if (savedToastTimer.current) clearTimeout(savedToastTimer.current);
+    savedToastTimer.current = setTimeout(() => {
+      Animated.timing(savedToastAnim, { toValue: 0, duration: 260, useNativeDriver: true })
+        .start(({ finished }) => { if (finished) setSavedToastVisible(false); });
+    }, 2600);
+  };
+
   const toggleSave = async (r: Recipe) => {
     const wasSaved = savedNames.has(r.name);
     wasSaved ? haptic.light() : haptic.success();
@@ -241,6 +258,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         if (found) await removeRecipe(found.id);
       } else {
         await saveRecipe(r, ingredients);
+        showSavedToast();
       }
       await loadSaved();
     } catch (e) {
@@ -250,24 +268,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   };
 
   const availableIngredients = Array.from(new Set([...fridgeItems, ...ingredients]));
-
-  const handleAsk = async () => {
-    if (!askModal || !question.trim()) return;
-    if (!await checkLeafOrAlert('qa')) return;
-    haptic.light();
-    setAsking(true);
-    setAnswer('');
-    try {
-      const res = await askQuokka(askModal, question.trim());
-      setAnswer(res);
-      haptic.success();
-    } catch {
-      setAnswer(t('recipe.askError'));
-      haptic.error();
-    } finally {
-      setAsking(false);
-    }
-  };
 
 
   // ── 로딩 ──
@@ -360,23 +360,16 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             <View style={styles.emptyCard}><Text style={styles.emptyCardText}>{t('recipe.emptyAddYourself')}</Text></View>
           )}
 
-          {/* 몇 인분 */}
+          {/* 몇 인분 — 드래그 슬라이더 (1~12) */}
           <View style={styles.servingsRow}>
-            <Text style={styles.servingsLabel}>{t('recipe.servingsQuestion')}</Text>
-            <View style={styles.servingsChips}>
-              {[1, 2, 3, 4].map(n => {
-                const active = servings === n;
-                return (
-                  <TouchableOpacity
-                    key={n}
-                    style={[styles.servingsChip, active && styles.servingsChipActive]}
-                    onPress={() => { haptic.light(); setServings(n); }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.servingsChipText, active && styles.servingsChipTextActive]}>{t('recipe.servings', { n })}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.servingsHead}>
+              <Text style={styles.servingsLabel}>{t('recipe.servingsQuestion')}</Text>
+              <Text style={styles.servingsValue}>{t('recipe.servings', { n: servings })}</Text>
+            </View>
+            <ServingsSlider value={servings} min={SERV_MIN} max={SERV_MAX} onChange={setServings} />
+            <View style={styles.sliderScale}>
+              <Text style={styles.sliderScaleText}>{t('recipe.servings', { n: SERV_MIN })}</Text>
+              <Text style={styles.sliderScaleText}>{t('recipe.servings', { n: SERV_MAX })}</Text>
             </View>
           </View>
 
@@ -503,6 +496,17 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       })}
                     </View>
 
+                    {/* 재료 밑 쿠팡 CTA (소프트 배너) + 대가성 문구 */}
+                    {!!COUPANG_PARTNERS_URL && (
+                      <View style={styles.coupangInline}>
+                        <TouchableOpacity onPress={openCoupangPartners} activeOpacity={0.8} style={styles.coupangBanner}>
+                          <Text style={styles.coupangBannerText}>{t('recipe.coupangInlineLabel')}</Text>
+                          <Text style={styles.coupangBannerArrow}>→</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.coupangInlineDisclosure}>{t('recipe.coupangDisclosure')}</Text>
+                      </View>
+                    )}
+
                     <Text style={[styles.detailHead, { marginTop: 16 }]}>{t('recipe.stepsHead')}</Text>
                     {r.steps.map((s, n) => (
                       <View key={n} style={styles.stepRow}>
@@ -513,22 +517,16 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       </View>
                     ))}
 
-                    {/* 단계별 조리 모드 */}
+                    {/* 레시피 저장 (AI 결과 카드는 저장만 — 조리/질문은 저장 후 상세에서) */}
                     <TouchableOpacity
-                      style={styles.cookStartBtn}
-                      onPress={() => navigate({ name: 'CookMode', recipeName: r.name, steps: r.steps })}
+                      style={[styles.saveRecipeBtn, isSaved && styles.saveRecipeBtnActive]}
+                      onPress={() => toggleSave(r)}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.cookStartText}>👨‍🍳  {t('cookMode.start')}</Text>
-                    </TouchableOpacity>
-
-                    {/* 쿼카에게 질문 */}
-                    <TouchableOpacity
-                      style={styles.askBtn}
-                      onPress={() => { setAskModal(r); setQuestion(''); setAnswer(''); }}
-                    >
-                      <Image source={require('../../assets/quokka.png')} style={styles.askBtnQuokka} resizeMode="contain" />
-                      <Text style={styles.askBtnText}>{t('recipe.askQuokka')}</Text>
+                      <Text style={[styles.saveRecipeIcon, isSaved && styles.saveRecipeIconActive]}>{isSaved ? '♥' : '♡'}</Text>
+                      <Text style={[styles.saveRecipeText, isSaved && styles.saveRecipeTextActive]}>
+                        {isSaved ? t('recipe.savedBtn') : t('recipe.saveBtn')}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -614,10 +612,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                       style={styles.videoAnalyzeBtn}
                       onPress={() => {
                         haptic.light();
-                        navigate({
-                          name: 'YoutubeRecipe',
-                          directVideo: { videoId: v.id, title: v.title, channelTitle: v.channel },
-                        });
+                        setYtVideo({ videoId: v.id, title: v.title, channelTitle: v.channel });
                       }}
                       activeOpacity={0.85}
                     >
@@ -630,28 +625,6 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
           </View>
         )}
 
-        {/* 쿠팡 — 없는 재료만 */}
-        {tab === 'ai' && (() => {
-          const allMissing = [...new Set(recipes.flatMap(r => getMissingIngredients(availableIngredients, r.ingredients)))];
-          if (allMissing.length === 0) return null;
-          return (
-            <View style={styles.coupangBar}>
-              <Text style={styles.coupangBarLabel}>{t('recipe.coupangLabel')}</Text>
-              <Text style={styles.coupangBarSub}>{t('recipe.coupangSub')}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {allMissing.map(ing => (
-                    <TouchableOpacity key={ing} style={styles.coupangChip} onPress={() => openCoupang(ing)}>
-                      <Text style={styles.coupangChipText}>{cleanIngredientName(ing)}</Text>
-                      <Text style={styles.coupangChipIcon}>→</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-          );
-        })()}
-
         <TouchableOpacity style={styles.homeBtn} onPress={() => navigate({ name: 'Home' })}>
           <Text style={styles.homeBtnText}>{t('recipe.backToStart')}</Text>
         </TouchableOpacity>
@@ -659,79 +632,32 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         <AdBanner />
       </ScrollView>
 
-      {/* 쿼카 질문 모달 */}
-      <Modal visible={!!askModal} animationType="slide" transparent onRequestClose={() => setAskModal(null)}>
-        <KeyboardAvoidingView style={styles.modalWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalSheet}>
-            {/* 핸들 */}
-            <View style={styles.modalHandle} />
-
-            <View style={styles.modalHeader}>
-              <Image source={require('../../assets/quokka.png')} style={styles.modalQuokka} resizeMode="contain" />
-              <View style={styles.modalHeaderText}>
-                <Text style={styles.modalTitle}>{t('recipe.modalTitle')}</Text>
-                <Text style={styles.modalSub} numberOfLines={1}>{askModal?.name}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setAskModal(null)} style={styles.modalClose}>
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* 답변 영역 */}
-            {asking && (
-              <View style={styles.answerBox}>
-                <ActivityIndicator size="small" color={Colors.accent} />
-                <Text style={styles.answerLoading}>{t('recipe.thinking')}</Text>
-              </View>
-            )}
-            {!!answer && !asking && (
-              <View style={styles.answerBox}>
-                <Text style={styles.answerText}>{answer}</Text>
-              </View>
-            )}
-
-            {/* 빠른 질문 */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickRow}>
-              {QUICK_QUESTIONS.map(q => (
-                <TouchableOpacity key={q} style={styles.quickChip} onPress={() => setQuestion(q)}>
-                  <Text style={styles.quickChipText}>{q}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* 입력창 */}
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.modalInput}
-                value={question}
-                onChangeText={setQuestion}
-                placeholder={t('recipe.questionPlaceholder')}
-                placeholderTextColor={Colors.textMuted}
-                multiline
-              />
-              <TouchableOpacity
-                style={[styles.sendBtn, (!question.trim() || asking) && styles.sendBtnDisabled]}
-                onPress={handleAsk}
-                disabled={!question.trim() || asking}
-              >
-                <Text style={styles.sendBtnText}>{t('recipe.send')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-        <LeafToast anchor="top" />
+      {/* 유튜브 레시피 분석 — 결과 화면 위 전체화면 모달 (레시피 결과 유지) */}
+      <Modal visible={!!ytVideo} animationType="slide" onRequestClose={() => setYtVideo(null)}>
+        {ytVideo && (
+          <YoutubeRecipeScreen
+            navigate={navigate}
+            goBack={() => setYtVideo(null)}
+            directVideo={ytVideo}
+          />
+        )}
       </Modal>
+
+      {savedToastVisible && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.savedToast, {
+            bottom: insets.bottom + 24,
+            opacity: savedToastAnim,
+            transform: [{ translateY: savedToastAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+          }]}
+        >
+          <Text style={styles.savedToastText}>{t('recipe.savedToast')}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
-
-const QUICK_QUESTIONS = [
-  t('recipe.quickEasier'),
-  t('recipe.quickLowerCalorie'),
-  t('recipe.quickSubstitute'),
-  t('recipe.quickStorage'),
-  t('recipe.quickTips'),
-];
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.cream },
@@ -749,15 +675,11 @@ const styles = StyleSheet.create({
   greenBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 
   servingsRow: { marginTop: 18 },
-  servingsLabel: { fontSize: 14, fontWeight: '800', color: Colors.ink, marginBottom: 10 },
-  servingsChips: { flexDirection: 'row', gap: 8 },
-  servingsChip: {
-    flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 12,
-    backgroundColor: Colors.white, borderWidth: 1.5, borderColor: Colors.lineSoft,
-  },
-  servingsChipActive: { backgroundColor: Colors.forestSoft, borderColor: Colors.forest },
-  servingsChipText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
-  servingsChipTextActive: { color: Colors.forestDeep, fontWeight: '800' },
+  servingsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  servingsLabel: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  servingsValue: { fontSize: 16, fontWeight: '900', color: Colors.forestDeep },
+  sliderScale: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  sliderScaleText: { fontSize: 11, color: Colors.inkMute, fontWeight: '600' },
   textBtn: { padding: 12, alignItems: 'center' },
   textBtnText: { color: Colors.inkMute, fontSize: 14, fontWeight: '600' },
 
@@ -765,7 +687,7 @@ const styles = StyleSheet.create({
   reviewHero: { paddingTop: 56, paddingHorizontal: 24, paddingBottom: 24 },
   heroLogo: { width: '100%', height: 52, marginBottom: 8 },
   backBtn: { marginBottom: 12 },
-  backBtnText: { color: Colors.ink, fontSize: 14, fontWeight: '700' },
+
   reviewSub: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500' },
 
   reviewBody: { flex: 1, backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -20, ...shadow.sm },
@@ -837,11 +759,17 @@ const styles = StyleSheet.create({
   stepNumText: { fontSize: 13, fontWeight: '900', color: Colors.orangeDeep },
   stepText: { fontSize: 14, color: Colors.ink, lineHeight: 22, flex: 1 },
 
-  cookStartBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 16, ...shadow.sm },
-  cookStartText: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  askBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.forestSoft, borderRadius: 16, padding: 14, marginTop: 16, gap: 10 },
-  askBtnQuokka: { width: 40, height: 40 },
-  askBtnText: { fontSize: 14, fontWeight: '800', color: Colors.forestDeep },
+
+
+
+
+
+  saveRecipeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.white, borderRadius: 16, paddingVertical: 14, marginTop: 12, borderWidth: 1.5, borderColor: Colors.line },
+  saveRecipeBtnActive: { backgroundColor: Colors.orangeSoft, borderColor: Colors.orange },
+  saveRecipeIcon: { fontSize: 17, fontWeight: '800', color: Colors.inkMute },
+  saveRecipeIconActive: { color: Colors.orangeDeep },
+  saveRecipeText: { fontSize: 14, fontWeight: '800', color: Colors.inkSoft },
+  saveRecipeTextActive: { color: Colors.orangeDeep },
 
   // 유튜브
   ytHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 },
@@ -894,12 +822,22 @@ const styles = StyleSheet.create({
   viewText: { fontSize: 11, fontWeight: '700', color: Colors.youtube },
 
   // 쿠팡
-  coupangBar: { backgroundColor: Colors.white, borderRadius: 22, padding: 18, marginBottom: 14, marginTop: 8, borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },
-  coupangBarLabel: { fontSize: 15, fontWeight: '800', color: Colors.ink },
-  coupangBarSub: { fontSize: 12, color: Colors.inkSoft, marginTop: 2 },
-  coupangChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF5F5', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5, borderColor: '#FFD0D0' },
-  coupangChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
-  coupangChipIcon: { fontSize: 12, color: Colors.coupang, fontWeight: '800' },
+
+
+
+
+
+
+
+
+
+  coupangInline: { marginTop: 12 },
+  coupangBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.creamSoft, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  coupangBannerText: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.ink },
+  coupangBannerArrow: { fontSize: 14, fontWeight: '800', color: Colors.orangeDeep },
+  coupangInlineDisclosure: { fontSize: 10, color: Colors.inkMute, marginTop: 6, lineHeight: 14 },
+  savedToast: { position: 'absolute', left: 24, right: 24, backgroundColor: Colors.forestDeep, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 18, ...shadow.md },
+  savedToastText: { color: '#fff', fontSize: 13, fontWeight: '800', textAlign: 'center' },
 
   suggestWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   suggestChip: {
@@ -926,28 +864,28 @@ const styles = StyleSheet.create({
   moreBtnLeafText: { fontSize: 13, fontWeight: '900', color: Colors.forestDeep },
 
   // 모달
-  modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 36, maxHeight: '85%' },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.line, alignSelf: 'center', marginBottom: 16 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  modalQuokka: { width: 52, height: 52 },
-  modalHeaderText: { flex: 1 },
-  modalTitle: { fontSize: 17, fontWeight: '900', color: Colors.ink },
-  modalSub: { fontSize: 12, color: Colors.inkMute, marginTop: 2 },
-  modalClose: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.creamSoft, alignItems: 'center', justifyContent: 'center' },
-  modalCloseText: { fontSize: 14, color: Colors.inkSoft, fontWeight: '700' },
 
-  answerBox: { backgroundColor: Colors.forestSoft, borderRadius: 18, padding: 16, marginBottom: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  answerLoading: { fontSize: 14, color: Colors.forest, fontWeight: '600' },
-  answerText: { fontSize: 14, color: Colors.ink, lineHeight: 22, flex: 1 },
 
-  quickRow: { marginBottom: 12 },
-  quickChip: { backgroundColor: Colors.creamDark, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8 },
-  quickChipText: { fontSize: 13, fontWeight: '700', color: Colors.ink },
 
-  inputRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-end' },
-  modalInput: { flex: 1, backgroundColor: Colors.creamSoft, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: Colors.ink, maxHeight: 100 },
-  sendBtn: { backgroundColor: Colors.forest, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 12 },
-  sendBtnDisabled: { backgroundColor: Colors.line },
-  sendBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 });

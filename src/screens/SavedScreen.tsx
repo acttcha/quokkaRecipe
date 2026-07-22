@@ -4,6 +4,7 @@ import {
   StatusBar, Alert, Dimensions, Image, TextInput, Modal,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { NavProps, SavedRecipe, Folder } from '../types';
@@ -11,7 +12,7 @@ import { getSavedRecipes, removeRecipe, moveRecipeToFolder } from '../services/s
 import { getFolders, createFolder, deleteFolder } from '../services/folders';
 import { getFridgeIngredients, getMissingIngredients } from '../services/fridge';
 import { Colors, shadow } from '../constants/colors';
-import { CircleIconButton, SearchIcon } from '../components/ui';
+import { CircleIconButton, SearchIcon, PlusIcon } from '../components/ui';
 import { AdBanner } from '../components/AdBanner';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
@@ -111,6 +112,7 @@ interface SavedScreenProps extends NavProps {
 }
 
 export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreenProps) {
+  const insets = useSafeAreaInsets();
   const [recipes, setRecipes]                   = useState<SavedRecipe[]>([]);
   const [folders, setFolders]                   = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -256,7 +258,10 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
           </Text>
         </View>
         <View style={styles.headerHairline} />
-        <View style={styles.headerSearchBtn}>
+        <View style={styles.headerActions}>
+          <CircleIconButton onPress={() => navigate({ name: 'ManualRecipe' })}>
+            <PlusIcon size={20} color={Colors.ink} />
+          </CircleIconButton>
           <CircleIconButton onPress={toggleSearch}>
             <SearchIcon size={18} color={searchVisible ? Colors.orangeDeep : Colors.ink} />
           </CircleIconButton>
@@ -455,7 +460,7 @@ export default function SavedScreen({ navigate, onFolderBarScroll }: SavedScreen
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setPickerVisible(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKAV}>
             <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-              <View style={styles.pickerSheet}>
+              <View style={[styles.pickerSheet, { paddingBottom: insets.bottom }]}>
                 <View style={styles.pickerHandle} />
                 <Text style={styles.pickerTitle}>{t('saved.pickerTitle')}</Text>
                 {pickerRecipe && (
@@ -589,7 +594,7 @@ const styles = StyleSheet.create({
   },
   ytAnalyzeBtnText: { fontSize: 12, fontWeight: '700', color: '#CC0000' },
   headerHairline: { height: 1, backgroundColor: Colors.line, opacity: 0.5 },
-  headerSearchBtn: { position: 'absolute', top: 60, right: 18 },
+  headerActions: { position: 'absolute', top: 60, right: 18, flexDirection: 'row', gap: 10 },
 
   folderBar: {
     backgroundColor: Colors.cream,
