@@ -1,5 +1,12 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+
+// 실제 보상형 광고 단위 ID (프로덕션 전용). iOS 는 iOS AdMob 앱 만든 뒤 채우기.
+const REAL_REWARDED = Platform.select({
+  android: 'ca-app-pub-8578688184080776/4716744826',
+  ios: '', // TODO(iOS): iOS 보상형 광고 단위 ID
+}) ?? '';
 
 // Expo Go 에서는 react-native-google-mobile-ads 의 네이티브 뷰가 등록 안 돼서
 // import 자체로 크래시 가능. 그래서 조건부 require 로 감싸서 Expo Go 일 땐
@@ -32,14 +39,22 @@ if (!isExpoGo) {
   BannerAd = ads.BannerAd;
   BannerAdSize = ads.BannerAdSize;
   TestIds = ads.TestIds;
-  initAds = () => ads.default().initialize().then(() => undefined);
+  // UMP 동의(개인화 광고 동의) 수집 후 광고 초기화.
+  //  - EEA/영국 등 동의 필요한 지역 사용자에게만 폼이 뜸(AdMob 콘솔에 동의 메시지 구성 필요).
+  //  - 한국 등 그 외 지역은 폼 없이 통과. 동의 실패해도 초기화는 진행(비개인화로 송출).
+  initAds = async () => {
+    try {
+      await ads.AdsConsent.requestInfoUpdate();
+      await ads.AdsConsent.loadAndShowConsentFormIfRequired();
+    } catch { /* 무시 — 동의 수집 실패가 광고를 막진 않음 */ }
+    await ads.default().initialize();
+  };
 
   const { RewardedAd, RewardedAdEventType, AdEventType } = ads;
 
-  // 개발 중엔 무조건 구글 공용 테스트 단위. 출시 때 AdMob 콘솔에서 만든
-  // 실제 보상형 광고 단위 ID 로 교체 (배너와 동일한 정책).
-  // TODO(release): 'ca-app-pub-8578688184080776/<실제 보상형 unit ID>'
-  const rewardedUnitId = ads.TestIds.REWARDED;
+  // 개발 빌드/시뮬레이터는 항상 테스트 단위(자기 클릭=계정정지 방지).
+  // 프로덕션에서 실 단위가 있을 때만 실제 광고 송출. (iOS 미설정 시 테스트로 폴백)
+  const rewardedUnitId = __DEV__ || !REAL_REWARDED ? ads.TestIds.REWARDED : REAL_REWARDED;
 
   showRewardedAd = () => new Promise<boolean>((resolve) => {
     const rewarded = RewardedAd.createForAdRequest(rewardedUnitId, {
