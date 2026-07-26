@@ -13,7 +13,7 @@ import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
-import { isLoggedIn, getUserEmail, signInWithGoogle, signOut, deleteAccount, isAuthReady } from '../services/auth';
+import { isLoggedIn, getUserEmail, signInWithGoogle, signOut, deleteAccount, isAuthReady, getIdentity } from '../services/auth';
 import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
@@ -36,14 +36,16 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
   const [delAcctModal, setDelAcctModal] = useState(false);
   const [delAcctInput, setDelAcctInput] = useState('');
   const [delAcctBusy, setDelAcctBusy]   = useState(false);
+  const [userId, setUserId]             = useState('');   // 지원 문의·서버 지갑 식별용
 
   const loadAll = useCallback(async () => {
-    const [nick, scan, saved, cooked, prefData] = await Promise.all([
+    const [nick, scan, saved, cooked, prefData, ident] = await Promise.all([
       getNickname(),
       getScanCount(),
       getSavedRecipes(),
       getCookLogCount(),
       loadPreferences(),
+      getIdentity(),
     ]);
     setNickname(nick);
     setScanCount(scan);
@@ -52,7 +54,10 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
     setPrefs(prefData);
     setLoggedIn(isLoggedIn());
     setEmail(getUserEmail());
+    setUserId(ident.userId);
   }, []);
+
+  const showUserId = () => Alert.alert('user ID', userId || '(불러오는 중)');
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -234,6 +239,11 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
             <Text style={styles.editPrefBtnText}>{t('profile.resetPreferences')}</Text>
           </TouchableOpacity>
         )}
+
+        {/* user ID — 지원 문의·서버 지갑 식별용. 작은 푸터. 탭하면 전체 표시, 길게 눌러 복사 */}
+        <TouchableOpacity onPress={showUserId} activeOpacity={0.6} style={styles.idRow}>
+          <Text style={styles.idText} selectable numberOfLines={1}>ID · {userId || '…'}</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* 계정 삭제 확인 모달 (문구 타이핑) */}
@@ -350,6 +360,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.forest, ...shadow.sm,
   },
   editPrefBtnText: { color: Colors.forestDeep, fontWeight: '800', fontSize: 14 },
+
+  // 하단 user ID 푸터 (작게, 눈에 안 띄게)
+  idRow: { alignSelf: 'center', marginTop: 20, paddingVertical: 8, paddingHorizontal: 12 },
+  idText: { fontSize: 10, color: Colors.inkMute, opacity: 0.5, textAlign: 'center' },
 
   delModalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   delModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },

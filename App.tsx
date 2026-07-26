@@ -20,6 +20,8 @@ import { initAds } from './src/services/ads';
 import { initPurchases } from './src/services/purchases';
 import { loadAuth, syncRcIdentity } from './src/services/auth';
 import { getNickname } from './src/services/stats';
+import { loadChefStyle } from './src/services/chefStyle';
+import { loadPersona } from './src/services/personas';
 import { LeafToast } from './src/components/LeafToast';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
@@ -42,6 +44,7 @@ import LeafShopScreen from './src/screens/LeafShopScreen';
 import CookModeScreen from './src/screens/CookModeScreen';
 import CookingLogScreen from './src/screens/CookingLogScreen';
 import ShoppingListScreen from './src/screens/ShoppingListScreen';
+import { AdBanner } from './src/components/AdBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -160,6 +163,8 @@ function AppInner() {
         loadLeaves(),
         loadLocale(),
         getNickname(),   // 동기 캐시 워밍 — 마이/프로필 닉네임 플래시 방지
+        loadChefStyle(), // 나만의 셰프 스타일 캐시 워밍
+        loadPersona(),   // 선택된 쿼카 페르소나 캐시 워밍
         Asset.loadAsync([
           require('./assets/background.png'),
           require('./assets/main_logo.png'),
@@ -310,12 +315,15 @@ function AppInner() {
 
       {/* ── 탭바 영역 ── */}
       <View style={styles.tabbarArea}>
-        {/* 위쪽 그라디언트 페이드 */}
+        {/* 위쪽 그라디언트 페이드 (콘텐츠 → 바 페이드. 배너 위쪽에만 걸침) */}
         <LinearGradient
           colors={['rgba(251,239,216,0)', C.cream]}
           style={styles.tabbarGradient}
           pointerEvents="none"
         />
+
+        {/* 하단 상시 배너 — 홈 제외 나머지 탭(냉장고/저장/마이). 구독자/ExpoGo 자동 숨김, 풀스크린 sub화면엔 안 뜸 */}
+        {tabIndex !== 0 && <AdBanner style={styles.anchorBanner} />}
 
         <View style={[styles.tabbarWrap, { paddingBottom: 14 + Math.max(insets.bottom, 12) }]}>
           {/* 발바닥 노치 */}
@@ -353,6 +361,9 @@ const styles = StyleSheet.create({
   root:         { flex: 1, backgroundColor: C.cream },
   tabContainer: { flex: 1, flexDirection: 'row', width: width * 4 },
   screen:       { width, flex: 1 },
+
+  // 하단 상시 배너 (탭바 바로 위)
+  anchorBanner: { marginTop: 0, marginBottom: 0, backgroundColor: C.cream },
 
   // 탭바 전체 영역
   tabbarArea: { backgroundColor: C.cream },

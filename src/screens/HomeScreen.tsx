@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { LeafIcon } from '../components/LeafIcon';
 import { ServingsSlider } from '../components/ServingsSlider';
+import { ChefStyleInput } from '../components/ChefStyleInput';
 import { NavProps } from '../types';
 import { getMockMode } from '../services/devSettings';
 import { getFridgeIngredients } from '../services/fridge';
@@ -18,6 +19,8 @@ import {
 } from '../services/leaves';
 import { watchAdForLeaves } from '../services/leafGate';
 import { loadPreferences } from '../services/preferences';
+import { getPersona, getEffectivePersona, setSelectedPersona } from '../services/personas';
+import { PersonaPickerSheet } from '../components/PersonaPickerSheet';
 import { Colors, shadow } from '../constants/colors';
 import { CircleIconButton, SettingsIcon } from '../components/ui';
 import { haptic } from '../services/haptics';
@@ -60,6 +63,8 @@ export default function HomeScreen({ navigate }: NavProps) {
   const [adLeft, setAdLeft] = useState(AD_DAILY_LIMIT);
   const [adCooldownLeft, setAdCooldownLeft] = useState(0);  // ms
   const [dishServings, setDishServings] = useState(2);  // 요리검색 인분 (기본=선호도값)
+  const [personaId, setPersonaId] = useState(getEffectivePersona().id);
+  const [personaPickerVisible, setPersonaPickerVisible] = useState(false);
 
   const loadUsage = useCallback(async () => {
     const [b, left, cooldown, prefs] = await Promise.all([
@@ -179,7 +184,13 @@ export default function HomeScreen({ navigate }: NavProps) {
           </View>
           <View style={styles.bubbleTail} />
         </View>
-        <Image source={require('../../assets/quokka.png')} style={styles.quokka} resizeMode="contain" />
+        <TouchableOpacity activeOpacity={0.9} onPress={() => setPersonaPickerVisible(true)} style={styles.quokkaTouch}>
+          <Image source={getPersona(personaId).image} style={styles.quokka} resizeMode="contain" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.personaChip} onPress={() => setPersonaPickerVisible(true)} activeOpacity={0.85}>
+          <Text style={styles.personaChipName}>{t(`persona.${personaId}.name`)}</Text>
+          <Text style={styles.personaChipChange}>{t('persona.change')} ›</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 하단 패널 */}
@@ -406,6 +417,9 @@ export default function HomeScreen({ navigate }: NavProps) {
               <Text style={styles.dishSliderScaleText}>{t('home.servings', { count: 12 })}</Text>
             </View>
 
+            {/* 나만의 셰프 스타일 (구독자 전용) */}
+            <ChefStyleInput navigate={navigate} />
+
             <TouchableOpacity
               style={[styles.dishSubmit, !dishQuery.trim() && styles.dishSubmitDisabled]}
               onPress={handleSearchDish}
@@ -416,6 +430,22 @@ export default function HomeScreen({ navigate }: NavProps) {
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* 쿼카 페르소나 선택 */}
+      <Modal visible={personaPickerVisible} transparent animationType="none" onRequestClose={() => setPersonaPickerVisible(false)}>
+        {personaPickerVisible && (
+          <PersonaPickerSheet
+            currentId={personaId}
+            navigate={navigate}
+            onClose={() => setPersonaPickerVisible(false)}
+            onSelect={(id) => {
+              setSelectedPersona(id);
+              setPersonaId(id);
+              setPersonaPickerVisible(false);
+            }}
+          />
+        )}
       </Modal>
     </ImageBackground>
   );
@@ -521,7 +551,15 @@ const styles = StyleSheet.create({
   },
 
   charWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
+  quokkaTouch: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
   quokka:   { width: width * 0.90, flex: 1, maxHeight: 380, minHeight: 180 },
+  personaChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', marginTop: 10, marginBottom: 2,
+    backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
+  },
+  personaChipName: { fontSize: 13, fontWeight: '800', color: Colors.ink },
+  personaChipChange: { fontSize: 12, fontWeight: '700', color: Colors.orangeDeep },
 
   panel: {
     backgroundColor: Colors.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30,

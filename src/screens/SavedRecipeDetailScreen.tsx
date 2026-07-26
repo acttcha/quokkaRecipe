@@ -290,7 +290,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
         </View>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView style={styles.detailScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* 유튜브 원본 영상 카드 */}
         {r.source === 'youtube' && r.youtubeVideoId && (
@@ -508,8 +508,10 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
           </TouchableOpacity>
         </View>
 
-        <AdBanner />
       </ScrollView>
+
+      {/* 하단 고정 배너 — 스크롤과 무관하게 항상 노출 (구독자/ExpoGo 자동 처리) */}
+      <AdBanner style={[styles.anchorBanner, { paddingBottom: insets.bottom }]} />
 
       {/* ── 완성 사진 뷰어 ── */}
       <Modal visible={!!photoViewer} transparent animationType="fade" onRequestClose={() => setPhotoViewer(null)}>
@@ -849,7 +851,15 @@ const styles = StyleSheet.create({
   ytSourceTitle: { fontSize: 12, fontWeight: '700', color: Colors.ink, lineHeight: 16, flex: 1 },
   ytSourceAction: { fontSize: 11, fontWeight: '700', color: Colors.inkMute, marginTop: 4 },
 
-  content: { padding: 22, paddingBottom: 60 },
+  detailScroll: { flex: 1 },
+  content: { padding: 22, paddingBottom: 16 },
+
+  // 하단 고정 배너
+  anchorBanner: {
+    marginTop: 0, marginBottom: 0, paddingTop: 6,
+    backgroundColor: Colors.cream,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.lineSoft,
+  },
 
   desc: { fontSize: 14, color: Colors.inkSoft, lineHeight: 21, marginBottom: 16 },
 

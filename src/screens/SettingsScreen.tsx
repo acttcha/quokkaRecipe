@@ -20,7 +20,7 @@ import {
 import { getLang, setLang, AppLang } from '../services/locale';
 import { isPro, setIsPro } from '../services/subscription';
 import { getNickname, getCachedNickname } from '../services/stats';
-import { isLoggedIn, getUserEmail } from '../services/auth';
+import { isLoggedIn, getUserEmail, getIdentity } from '../services/auth';
 import { restorePurchases, isPurchasesReady } from '../services/purchases';
 import { t } from '../i18n';
 
@@ -230,8 +230,14 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     await setRecipeModelKey(k);
   };
 
-  const handleFeedback = () => {
-    Linking.openURL(`mailto:chasoft.official@gmail.com?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`).catch(() =>
+  const handleFeedback = async () => {
+    // 문의 처리를 위해 사용자 ID·앱 버전을 본문 하단에 자동 첨부.
+    const { userId } = await getIdentity();
+    const subject = encodeURIComponent(t('settings.feedbackSubject'));
+    const body = encodeURIComponent(
+      `\n\n\n----------\n${t('settings.feedbackDiagLabel')}\nID: ${userId}\nApp: v${APP_VERSION}`
+    );
+    Linking.openURL(`mailto:chasoft.official@gmail.com?subject=${subject}&body=${body}`).catch(() =>
       Alert.alert(t('settings.errorTitle'), t('settings.mailOpenError'))
     );
   };
@@ -259,6 +265,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     await resetDailyLeaves();
     Alert.alert(t('settings.rechargeDoneTitle'), t('settings.rechargeDoneMessage'));
   };
+
 
   // 앱 버전 7번 탭 → 비밀번호 입력 → 개발자 모드 해제 (일반 유저에겐 숨김)
   const handleVersionTap = () => {

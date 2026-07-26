@@ -137,8 +137,29 @@ export default function LeafShopScreen({ goBack }: NavProps) {
           )}
         </View>
 
-        {/* 패키지 리스트 */}
-        <Text style={styles.sectionLabel}>{t('leafShop.packagesSection')}</Text>
+        {/* 쿼카 패스 (구독) — 최상단 강조 */}
+        <Text style={styles.sectionLabel}>{t('leafShop.dailyUseSection')}</Text>
+        <TouchableOpacity style={styles.subCard} onPress={handleSubscribe} activeOpacity={0.85}>
+          <Image
+            source={require('../../assets/quokka_pass.webp')}
+            style={styles.subBgImage}
+            resizeMode="contain"
+          />
+          <View style={styles.subBadge}>
+            <Text style={styles.subBadgeText}>PRO</Text>
+          </View>
+          <Text style={styles.subTitle}>{t('leafShop.passTitle')}</Text>
+          <Text style={styles.subPrice}>₩4,900<Text style={styles.subPricePer}>{t('leafShop.perMonth')}</Text></Text>
+          <View style={styles.subBenefits}>
+            <Text style={styles.subBenefit}>{t('leafShop.benefitMonthlyLeaves', { n: PRO_MONTHLY_LEAVES })}</Text>
+            <Text style={styles.subBenefit}>{t('leafShop.benefitNoAds')}</Text>
+            <Text style={styles.subBenefit}>{t('leafShop.benefitAllPersonas')}</Text>
+            <Text style={styles.subBenefit}>{t('leafShop.benefitChefStyle')}</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* 잎사귀 개별 충전 패키지 */}
+        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{t('leafShop.packagesSection')}</Text>
         {LEAF_PACKAGES.map(pkg => (
           <TouchableOpacity
             key={pkg.id}
@@ -175,26 +196,6 @@ export default function LeafShopScreen({ goBack }: NavProps) {
             </View>
           </TouchableOpacity>
         ))}
-
-        {/* 구독 안내 */}
-        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{t('leafShop.dailyUseSection')}</Text>
-        <TouchableOpacity style={styles.subCard} onPress={handleSubscribe} activeOpacity={0.85}>
-          <Image
-            source={require('../../assets/quokka_pass.webp')}
-            style={styles.subBgImage}
-            resizeMode="contain"
-          />
-          <View style={styles.subBadge}>
-            <Text style={styles.subBadgeText}>PRO</Text>
-          </View>
-          <Text style={styles.subTitle}>{t('leafShop.passTitle')}</Text>
-          <Text style={styles.subPrice}>₩4,900<Text style={styles.subPricePer}>{t('leafShop.perMonth')}</Text></Text>
-          <View style={styles.subBenefits}>
-            <Text style={styles.subBenefit}>{t('leafShop.benefitMonthlyLeaves', { n: PRO_MONTHLY_LEAVES })}</Text>
-            <Text style={styles.subBenefit}>{t('leafShop.benefitNoAds')}</Text>
-          </View>
-          <Text style={styles.subHint}>{t('leafShop.subHint')}</Text>
-        </TouchableOpacity>
 
         {/* 구매 복원 */}
         <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} activeOpacity={0.7}>
@@ -310,7 +311,6 @@ const styles = StyleSheet.create({
   subPricePer: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
   subBenefits: { gap: 4, marginTop: 12 },
   subBenefit: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft },
-  subHint: { fontSize: 11, color: Colors.inkMute, fontWeight: '600', marginTop: 10, fontStyle: 'italic' },
 
   policyBox: {
     backgroundColor: Colors.creamSoft, borderRadius: 12,

@@ -17,6 +17,7 @@ import { loadPreferences } from '../services/preferences';
 import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
 import { ServingsSlider } from '../components/ServingsSlider';
+import { ChefStyleInput } from '../components/ChefStyleInput';
 import YoutubeRecipeScreen from './YoutubeRecipeScreen';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
@@ -373,6 +374,9 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
             </View>
           </View>
 
+          {/* 나만의 셰프 스타일 (구독자 전용) */}
+          <ChefStyleInput navigate={navigate} />
+
           <TouchableOpacity style={styles.greenBtn} onPress={handleGetRecipes}>
             <Text style={styles.greenBtnText}>{t('recipe.getRecipes')}</Text>
           </TouchableOpacity>
@@ -414,7 +418,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.resultsContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.resultsScroll} contentContainerStyle={styles.resultsContent} showsVerticalScrollIndicator={false}>
 
         {/* AI 레시피 */}
         {tab === 'ai' && recipes.map((r, idx) => {
@@ -628,9 +632,10 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         <TouchableOpacity style={styles.homeBtn} onPress={() => navigate({ name: 'Home' })}>
           <Text style={styles.homeBtnText}>{t('recipe.backToStart')}</Text>
         </TouchableOpacity>
-
-        <AdBanner />
       </ScrollView>
+
+      {/* 하단 고정 배너 — 스크롤과 무관하게 항상 노출 (구독자/ExpoGo 자동 처리) */}
+      <AdBanner style={[styles.anchorBanner, { paddingBottom: insets.bottom }]} />
 
       {/* 유튜브 레시피 분석 — 결과 화면 위 전체화면 모달 (레시피 결과 유지) */}
       <Modal visible={!!ytVideo} animationType="slide" onRequestClose={() => setYtVideo(null)}>
@@ -714,7 +719,15 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
   tabTextActive: { color: '#FFF', fontWeight: '800' },
 
-  resultsContent: { paddingHorizontal: 20, paddingBottom: 48 },
+  resultsScroll: { flex: 1 },
+  resultsContent: { paddingHorizontal: 20, paddingBottom: 16 },
+
+  // 하단 고정 배너
+  anchorBanner: {
+    marginTop: 0, marginBottom: 0, paddingTop: 6,
+    backgroundColor: Colors.cream,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.lineSoft,
+  },
 
   // 레시피 카드
   recipeCard: { backgroundColor: Colors.white, borderRadius: 24, marginBottom: 18, overflow: 'hidden', ...shadow.md },

@@ -70,16 +70,19 @@ export async function setLang(l: AppLang): Promise<void> {
   await SecureStore.setItemAsync(LANG_KEY, l);
 }
 
+// 로마자/번역 병기 금지 — 예: "된장찌개 (Doenjang Jjigae)" 같은 괄호 병기를 막는다.
+const NO_ROMANIZATION = ' Use only that language and its native script — do NOT add romanization, transliteration, pronunciation, or another-language translation in parentheses or brackets.';
+
 /** AI 프롬프트용: 응답 언어만 지정 (비전·Q&A·유튜브 분석 등). */
 export function languageDirective(): string {
-  return `\n\nWrite all output in ${AI_LANG_NAME[_lang]}.`;
+  return `\n\nWrite all output in ${AI_LANG_NAME[_lang]}.${NO_ROMANIZATION}`;
 }
 
 /** AI 프롬프트용: 응답 언어 + 지역(요리 현지화) 지시문 (레시피 추천). */
 export function localeDirective(): string {
   const language = AI_LANG_NAME[_lang];
   const country = REGION_NAME[_regionCode] ?? _regionCode;
-  return `\n\n[Language & Region] Write ALL output text (dish names, descriptions, ingredients, steps, etc.) in ${language}.${
+  return `\n\n[Language & Region] Write ALL output text (dish names, descriptions, ingredients, steps, etc.) in ${language}.${NO_ROMANIZATION}${
     country
       ? ` The user is in ${country}; prefer dishes that are commonly eaten and familiar there, and that can realistically be made with ingredients typically available in that country. Do not force unfamiliar cuisine.`
       : ''
