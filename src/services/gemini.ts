@@ -13,6 +13,14 @@ const GEMINI_PROXY_URL = `${SUPABASE_URL}/functions/v1/gemini-proxy`;
 // ⚠️ 실제 사용 모델은 서버(gemini-proxy)가 결정한다. 이 값은 하위호환용 필드일 뿐.
 export const GEMINI_MODEL = 'gemini-2.5-flash';
 
+// 개발용 원가 로깅 단가 (USD per 1M) — 서버 모델 라우팅과 동일하게 action별. dev 전용이라 서버 부담 0.
+const DEV_PRICING: Record<string, { model: string; in: number; out: number }> = {
+  scan:   { model: 'gemini-3.5-flash',      in: 1.50, out: 9.00 },
+  recipe: { model: 'gemini-3.1-flash-lite', in: 0.25, out: 1.50 },
+  qa:     { model: 'gemini-3.1-flash-lite', in: 0.25, out: 1.50 },
+};
+const USD_TO_KRW = 1400;
+
 // 잎사귀 부족(402) 시 던지는 에러 — 호출 측에서 code 로 구분 가능.
 export class InsufficientLeavesError extends Error {
   code = 'insufficient_leaves' as const;
@@ -106,6 +114,19 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
   }
 
   const data = await res.json();
+
+  // 개발 중에만 이번 호출 실제 원가를 콘솔에 출력 (usageMetadata = 구글 실제 과금 토큰). 프로덕션/서버 영향 0.
+  if (__DEV__ && opts.action) {
+    const um = data?.usageMetadata;
+    const price = DEV_PRICING[opts.action];
+    if (um && price) {
+      const inTok = um.promptTokenCount ?? 0;
+      const outTok = (um.candidatesTokenCount ?? 0) + (um.thoughtsTokenCount ?? 0);
+      const krw = ((inTok * price.in + outTok * price.out) / 1_000_000) * USD_TO_KRW;
+      console.log(`💰 [AI 원가] ${opts.action} · ${price.model} · in=${inTok} out=${outTok} → ${krw.toFixed(2)}원`);
+    }
+  }
+
   const text: string = (data?.candidates?.[0]?.content?.parts ?? [])
     .map((p: { text?: string }) => p?.text ?? '')
     .join('');

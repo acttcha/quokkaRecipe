@@ -10,8 +10,8 @@ import { createClient } from "@supabase/supabase-js";
 //  신원: x-user-jwt 헤더(로그인 유저의 Supabase JWT)가 있으면 서버가 검증해 uid 확정.
 //        없으면 body.userId(게스트 기기ID) 사용. (계정 지갑은 JWT 검증 필수 → 사칭 방지)
 
-const DAILY_MAX = 3;
-const WELCOME = 2;
+const DAILY_MAX = 5;
+const WELCOME = 15;
 const AD_REWARD = 2;
 const AD_DAILY = 5;             // 하루 보상형 광고 최대 (앱 AD_DAILY_LIMIT 와 동기화)
 const AD_COOLDOWN_SEC = 30 * 60; // 광고 간 최소 간격 30분 (앱 AD_COOLDOWN_MS 와 동기화)

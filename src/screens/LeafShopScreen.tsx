@@ -9,7 +9,7 @@ import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { LeafIcon } from '../components/LeafIcon';
 import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
-import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES } from '../services/leaves';
+import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES, FREE_DAILY_LEAVES } from '../services/leaves';
 import { isPurchasesReady, purchaseLeafPackage, purchaseSubscription, restorePurchases } from '../services/purchases';
 import { isLoggedIn, isAuthReady, signInWithGoogle } from '../services/auth';
 import { haptic } from '../services/haptics';
@@ -155,6 +155,11 @@ export default function LeafShopScreen({ goBack }: NavProps) {
             <Text style={styles.subBenefit}>{t('leafShop.benefitNoAds')}</Text>
             <Text style={styles.subBenefit}>{t('leafShop.benefitAllPersonas')}</Text>
             <Text style={styles.subBenefit}>{t('leafShop.benefitChefStyle')}</Text>
+          </View>
+          <View style={styles.subHighlight}>
+            <Text style={styles.subHighlightText}>
+              {t('leafShop.subLeafHighlight', { total: PRO_MONTHLY_LEAVES + FREE_DAILY_LEAVES * 30 })}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -311,6 +316,11 @@ const styles = StyleSheet.create({
   subPricePer: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
   subBenefits: { gap: 4, marginTop: 12 },
   subBenefit: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft },
+  subHighlight: {
+    marginTop: 14, backgroundColor: Colors.forestSoft, borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10, alignSelf: 'flex-start',
+  },
+  subHighlightText: { fontSize: 12.5, fontWeight: '800', color: Colors.forestDeep, lineHeight: 18 },
 
   policyBox: {
     backgroundColor: Colors.creamSoft, borderRadius: 12,

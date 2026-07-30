@@ -16,6 +16,7 @@ import {
   getBalance, LeafBalance, FREE_DAILY_LEAVES, PRO_MONTHLY_LEAVES,
   LEAF_COST, LeafAction, AD_REWARD,
   getAdWatchesLeft, getAdCooldownRemaining, AD_DAILY_LIMIT,
+  consumeWelcomeBonus,
 } from '../services/leaves';
 import { watchAdForLeaves } from '../services/leafGate';
 import { loadPreferences } from '../services/preferences';
@@ -65,6 +66,7 @@ export default function HomeScreen({ navigate }: NavProps) {
   const [dishServings, setDishServings] = useState(2);  // 요리검색 인분 (기본=선호도값)
   const [personaId, setPersonaId] = useState(getEffectivePersona().id);
   const [personaPickerVisible, setPersonaPickerVisible] = useState(false);
+  const [welcomeBonus, setWelcomeBonus] = useState<number | null>(null);  // 첫 방문 웰컴 팝업
 
   const loadUsage = useCallback(async () => {
     const [b, left, cooldown, prefs] = await Promise.all([
@@ -75,6 +77,9 @@ export default function HomeScreen({ navigate }: NavProps) {
     setAdCooldownLeft(cooldown);
     setDishServings(prefs.servings);
     setMockMode(getMockMode());
+    // 첫 방문 웰컴 보너스 지급됐으면 축하 팝업 1회
+    const wb = consumeWelcomeBonus();
+    if (wb) setWelcomeBonus(wb);
   }, []);
 
   useEffect(() => {
@@ -447,6 +452,24 @@ export default function HomeScreen({ navigate }: NavProps) {
           />
         )}
       </Modal>
+
+      {/* 첫 방문 웰컴 보너스 팝업 */}
+      <Modal visible={welcomeBonus !== null} transparent animationType="fade" onRequestClose={() => setWelcomeBonus(null)}>
+        <View style={styles.welcomeOverlay}>
+          <View style={styles.welcomeCard}>
+            <Image source={require('../../assets/quokka.png')} style={styles.welcomeQuokka} resizeMode="contain" />
+            <Text style={styles.welcomeTitle}>{t('home.welcomeTitle')}</Text>
+            <View style={styles.welcomeLeafRow}>
+              <LeafIcon size={30} />
+              <Text style={styles.welcomeLeafText}>+{welcomeBonus ?? 0}</Text>
+            </View>
+            <Text style={styles.welcomeMsg}>{t('home.welcomeMsg', { count: welcomeBonus ?? 0 })}</Text>
+            <TouchableOpacity style={styles.welcomeBtn} onPress={() => { haptic.light(); setWelcomeBonus(null); }} activeOpacity={0.85}>
+              <Text style={styles.welcomeBtnText}>{t('home.welcomeBtn')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -454,6 +477,23 @@ export default function HomeScreen({ navigate }: NavProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+
+  // 첫 방문 웰컴 팝업
+  welcomeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  welcomeCard: {
+    width: '100%', maxWidth: 340, backgroundColor: Colors.cream, borderRadius: 28,
+    padding: 28, alignItems: 'center', ...shadow.md,
+  },
+  welcomeQuokka: { width: 120, height: 120, marginBottom: 8 },
+  welcomeTitle: { fontSize: 20, fontWeight: '900', color: Colors.ink, textAlign: 'center' },
+  welcomeLeafRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 },
+  welcomeLeafText: { fontSize: 32, fontWeight: '900', color: Colors.forest },
+  welcomeMsg: { fontSize: 14, color: Colors.inkSoft, textAlign: 'center', marginTop: 12, lineHeight: 21 },
+  welcomeBtn: {
+    marginTop: 22, backgroundColor: Colors.forest, borderRadius: 16,
+    paddingVertical: 15, paddingHorizontal: 40, alignSelf: 'stretch', alignItems: 'center',
+  },
+  welcomeBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 
   logoWrap: {
     paddingHorizontal: 32,

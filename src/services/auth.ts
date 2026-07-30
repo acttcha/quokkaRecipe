@@ -1,7 +1,9 @@
 import 'react-native-url-polyfill/auto';
+import { Platform } from 'react-native';
 import { createClient, type Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { getDeviceId } from './deviceId';
 import { rcLogIn } from './purchases';
 
@@ -14,6 +16,7 @@ import { rcLogIn } from './purchases';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? ''; // iOS 구글 로그인용 (Google Cloud iOS OAuth 클라이언트)
 
 export const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
@@ -43,7 +46,8 @@ export async function loadAuth(): Promise<void> {
     _session = data.session;
   } catch { /* 무시 */ }
   if (GoogleSignin && GOOGLE_WEB_CLIENT_ID) {
-    try { GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID }); } catch { /* 무시 */ }
+    // iOS 는 iosClientId 도 있어야 네이티브 구글 로그인 동작(웹 clientId 는 Supabase idToken 검증용).
+    try { GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID || undefined }); } catch { /* 무시 */ }
   }
 }
 
@@ -55,9 +59,11 @@ export function getUserEmail(): string | null {
   return _session?.user?.email ?? null;
 }
 
-/** 로그인 기능 사용 가능 여부 (빌드된 앱 + 클라이언트ID 설정). */
+/** 구글 로그인 사용 가능 여부 (빌드된 앱 + 클라이언트ID 설정). iOS 는 iosClientId 없으면 버튼 숨김(깨진 버튼 방지). */
 export function isAuthReady(): boolean {
-  return !!GoogleSignin && !!GOOGLE_WEB_CLIENT_ID;
+  if (!GoogleSignin || !GOOGLE_WEB_CLIENT_ID) return false;
+  if (Platform.OS === 'ios' && !GOOGLE_IOS_CLIENT_ID) return false;
+  return true;
 }
 
 /**
@@ -82,6 +88,36 @@ export async function signInWithGoogle(): Promise<void> {
   if (!idToken) throw new Error('구글 토큰을 받지 못했어요');
 
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+  if (error) throw error;
+  _session = data.session;
+
+  const uid = data.user?.id;
+  if (uid) {
+    await mergeGuestWallet(deviceId);              // 기기 지갑 → 계정 지갑
+    try { await rcLogIn(uid); } catch { /* 결제 미구성 시 무시 */ }
+  }
+}
+
+/** Apple 로그인 사용 가능 여부 (iOS 13+ 기기). 소셜 로그인 제공 시 Apple 로그인 필수(가이드라인 4.8). */
+export async function isAppleAuthReady(): Promise<boolean> {
+  if (Platform.OS !== 'ios') return false;
+  try { return await AppleAuthentication.isAvailableAsync(); } catch { return false; }
+}
+
+/** Apple 로그인 → Supabase 세션 → 기기 지갑 병합 → RevenueCat 신원 전환. */
+export async function signInWithApple(): Promise<void> {
+  const deviceId = await getDeviceId(); // 병합 원본(게스트 지갑)
+
+  const credential = await AppleAuthentication.signInAsync({
+    requestedScopes: [
+      AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+    ],
+  });
+  const idToken = credential.identityToken;
+  if (!idToken) throw new Error('Apple 토큰을 받지 못했어요');
+
+  const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: idToken });
   if (error) throw error;
   _session = data.session;
 

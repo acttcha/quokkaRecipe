@@ -13,7 +13,8 @@ import { UserPreferences, DEFAULT_PREFERENCES } from '../types/preferences';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
-import { isLoggedIn, getUserEmail, signInWithGoogle, signOut, deleteAccount, isAuthReady, getIdentity } from '../services/auth';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { isLoggedIn, getUserEmail, signInWithGoogle, signInWithApple, isAppleAuthReady, signOut, deleteAccount, isAuthReady, getIdentity } from '../services/auth';
 import { t } from '../i18n';
 
 const { width } = Dimensions.get('window');
@@ -33,6 +34,7 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
   const [loggedIn, setLoggedIn]     = useState(isLoggedIn());
   const [email, setEmail]           = useState<string | null>(getUserEmail());
   const [authBusy, setAuthBusy]     = useState(false);
+  const [appleReady, setAppleReady] = useState(false);
   const [delAcctModal, setDelAcctModal] = useState(false);
   const [delAcctInput, setDelAcctInput] = useState('');
   const [delAcctBusy, setDelAcctBusy]   = useState(false);
@@ -60,6 +62,7 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
   const showUserId = () => Alert.alert('user ID', userId || '(불러오는 중)');
 
   useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { isAppleAuthReady().then(setAppleReady).catch(() => {}); }, []);
 
   const handleLogin = async () => {
     if (authBusy) return;
@@ -71,6 +74,24 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
       haptic.success();
     } catch (e: any) {
       if (!e?.message?.includes('cancel')) {
+        Alert.alert(t('profile.loginFailTitle'), e?.message || t('profile.loginFailMsg'));
+      }
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    if (authBusy) return;
+    setAuthBusy(true);
+    try {
+      await signInWithApple();
+      setLoggedIn(isLoggedIn());
+      setEmail(getUserEmail());
+      haptic.success();
+    } catch (e: any) {
+      // 사용자가 취소한 경우(ERR_REQUEST_CANCELED)는 조용히 무시
+      if (e?.code !== 'ERR_REQUEST_CANCELED' && !e?.message?.includes('cancel')) {
         Alert.alert(t('profile.loginFailTitle'), e?.message || t('profile.loginFailMsg'));
       }
     } finally {
@@ -169,7 +190,7 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
         </View>
 
         {/* 계정 (선택적 로그인 — 폰 변경 대비 지갑 유지) */}
-        {isAuthReady() && (
+        {(isAuthReady() || appleReady) && (
           <View style={styles.accountCard}>
             {loggedIn ? (
               <>
@@ -186,6 +207,17 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
             ) : (
               <>
                 <Text style={styles.accountHint}>{t('profile.loginHint')}</Text>
+                {/* Apple 로그인 — 표준 버튼(가이드라인 4.8 준수). iOS 만 노출 */}
+                {appleReady && (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={14}
+                    style={styles.appleBtn}
+                    onPress={handleAppleLogin}
+                  />
+                )}
+                {isAuthReady() && (
                 <TouchableOpacity
                   style={styles.loginBtn}
                   onPress={handleLogin}
@@ -196,6 +228,7 @@ export default function ProfileScreen({ navigate, goBack, onResetPreferences }: 
                     {authBusy ? t('profile.loginBusy') : t('profile.loginGoogle')}
                   </Text>
                 </TouchableOpacity>
+                )}
               </>
             )}
           </View>
@@ -331,6 +364,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', ...shadow.sm,
   },
   loginBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+  appleBtn: { width: '100%', height: 48, marginBottom: 10 },
   logoutBtn: {
     backgroundColor: Colors.cream, borderRadius: 14, paddingVertical: 12,
     alignItems: 'center', borderWidth: 1, borderColor: Colors.line,

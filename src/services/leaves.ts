@@ -26,12 +26,12 @@ export const ACTION_LABEL: Record<LeafAction, string> = {
   qa: '쿼카 질문',
 };
 
-export const FREE_DAILY_LEAVES = 3;   // 매일 자정(KST) 리셋되는 무료 잎사귀 (서버 기준)
-export const WELCOME_BONUS = 2;        // 첫 실행 1회만 — 초기 경험용 (서버가 1회 지급)
+export const FREE_DAILY_LEAVES = 5;   // 매일 자정(KST) 리셋되는 무료 잎사귀 (서버 wallet DAILY_MAX 와 동기화)
+export const WELCOME_BONUS = 15;       // 첫 실행 1회만 — 초기 경험용 (서버 wallet WELCOME 와 동기화)
 export const AD_REWARD = 2;            // 광고 1회 보상 (보너스 풀로)
 export const AD_DAILY_LIMIT = 5;            // 하루 보상형 광고 시청 최대 횟수
 export const AD_COOLDOWN_MS = 30 * 60 * 1000; // 광고 간 최소 간격 (30분) — 연달아 몰아보기 방지
-export const PRO_MONTHLY_LEAVES = 130;      // 쿼카 패스(PRO) 월 지급 잎사귀 (서버 상수와 동기화)
+export const PRO_MONTHLY_LEAVES = 300;      // 쿼카 패스(PRO) 월 지급 잎사귀 (서버 rc-webhook PRO_MONTHLY 와 동기화)
 
 const AD_KEY = 'leaves_ad_v1';
 
@@ -47,6 +47,8 @@ interface ServerBalance {
   paid?: number;   // 유료 구매분
   total?: number;
   isPro?: boolean;
+  welcomed?: boolean;       // 이번 호출로 지갑이 처음 생성됨(=첫 방문, 웰컴 지급)
+  welcomeAmount?: number;   // 지급된 웰컴 잎사귀 수
 }
 
 export interface LeafBalance {
@@ -57,6 +59,14 @@ export interface LeafBalance {
 }
 
 let _cache: LeafBalance | null = null;
+let _welcomePending: number | null = null;   // 첫 방문 웰컴 팝업용 — 지급 잎사귀 수(한 번 소비되면 null)
+
+/** 첫 방문 웰컴 보너스 지급분을 1회 반환하고 비운다(팝업 표시용). 없으면 null. */
+export function consumeWelcomeBonus(): number | null {
+  const v = _welcomePending;
+  _welcomePending = null;
+  return v;
+}
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -90,7 +100,10 @@ async function walletCall(op: 'balance' | 'ad_reward'): Promise<LeafBalance> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error || `wallet ${op} 실패 (HTTP ${res.status})`);
   }
-  _cache = toBalance(await res.json());
+  const raw: ServerBalance = await res.json();
+  // 첫 방문(웰컴 지급)이면 팝업용으로 보관 — 앱에서 consumeWelcomeBonus() 로 1회 소비.
+  if (raw.welcomed && (raw.welcomeAmount ?? 0) > 0) _welcomePending = raw.welcomeAmount ?? null;
+  _cache = toBalance(raw);
   return _cache;
 }
 

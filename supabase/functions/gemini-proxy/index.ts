@@ -4,16 +4,28 @@ import { createClient } from "@supabase/supabase-js";
 
 // Gemini API 프록시 (서버 권위 잎사귀 차감 포함).
 // - GEMINI_API_KEY 는 서버에만 존재. 앱엔 publishable key 만.
-// - 모델은 서버가 결정(GEMINI_MODEL) → 클라 조작으로 비싼 모델 못 쓰게 + 폐기 시 여기만 바꾸면 됨.
+// - 모델은 서버가 액션별로 결정 → 클라 조작으로 비싼 모델 못 쓰게 + 폐기 시 여기만 바꾸면 됨.
+//   · scan(재료 인식) = Flash (비전 정확도 우선)
+//   · recipe(레시피/유튜브 분석)·qa = Flash-Lite (원가 절감)
 // - 신원(userId)+알려진 action 필수 → wallet_spend 로 서버가 직접 차감/로깅 (위변조 불가).
 //   둘 중 하나라도 없으면 400 거부 (차감 없이 Gemini 무료사용 되는 구멍 차단).
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+// 2.5 는 신규 프로젝트에 제공 중단 → 버전 고정(폐기되면 이 상수만 교체).
+//  · scan(재료 인식) = 3.5-flash → 인식 정확도 우선 (출력 짧아 원가 ~2.7원)
+//  · recipe/qa = 3.1-flash-lite → 현행 최저가 (입력$0.25/출력$1.50 → 레시피 ~3.5원)
+const MODEL_SCAN   = Deno.env.get("GEMINI_MODEL_SCAN")   || "gemini-3.5-flash";       // 재료 인식 (정확도 우선)
+const MODEL_RECIPE = Deno.env.get("GEMINI_MODEL_RECIPE") || "gemini-3.1-flash-lite";  // 레시피 생성 (최저가)
+const MODEL_QA     = Deno.env.get("GEMINI_MODEL_QA")     || "gemini-3.1-flash-lite";
+function modelFor(action: string): string {
+  if (action === "scan") return MODEL_SCAN;
+  if (action === "qa") return MODEL_QA;
+  return MODEL_RECIPE; // recipe (+ youtube 분석)
+}
 
 // 서버 권위 잎사귀 비용 (앱 LEAF_COST 와 동기화)
 const COST: Record<string, number> = { scan: 1, recipe: 1, qa: 0.2 };
-const DAILY_MAX = 3;
+const DAILY_MAX = 5;   // wallet 함수와 동기화 (일일 무료 잎사귀 리셋 기준)
 
 const admin = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -56,6 +68,7 @@ export default {
       return Response.json({ error: "identity and valid action required" }, { status: 400 });
     }
     const cost = COST[action];
+    const model = modelFor(action);   // 액션별 서버 결정 모델 (클라 model 필드는 무시)
 
     // model/userId/action 은 Gemini 로 안 보냄 (서버 전용 필드)
     const { model: _m, userId: _u, action: _a, ...payload } = body;
@@ -66,7 +79,7 @@ export default {
       p_action: action,
       p_cost: cost,
       p_daily_max: DAILY_MAX,
-      p_model: MODEL,
+      p_model: model,
     });
     if (error) {
       return Response.json({ error: "wallet error" }, { status: 500 });
@@ -80,7 +93,7 @@ export default {
     let upstream: Response;
     let responseText: string;
     try {
-      upstream = await fetch(`${GEMINI_BASE}/${MODEL}:generateContent`, {
+      upstream = await fetch(`${GEMINI_BASE}/${model}:generateContent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify(payload),

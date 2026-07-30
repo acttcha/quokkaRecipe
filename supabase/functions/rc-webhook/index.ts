@@ -11,10 +11,10 @@ import { createClient } from "@supabase/supabase-js";
 //    · TRANSFER          → 지갑 병합 (재설치/기기이전으로 신원이 바뀔 때 잔액 이어붙임)
 //  멱등: event.id 로 1회만 처리 (RC 재시도 중복 방지).
 
-const PRO_MONTHLY = 130;          // 쿼카 패스 월 지급 (앱 PRO_MONTHLY_LEAVES 와 동기화)
+const PRO_MONTHLY = 300;          // 쿼카 패스 월 지급 (앱 PRO_MONTHLY_LEAVES 와 동기화)
 const ENTITLEMENT = "pro";
 const LEAF_GRANT: Record<string, number> = {
-  leaf_pack_1: 15, leaf_pack_2: 60, leaf_pack_3: 125, leaf_pack_4: 300, leaf_pack_5: 1000,
+  leaf_pack_1: 30, leaf_pack_2: 100, leaf_pack_3: 200, leaf_pack_4: 450, leaf_pack_5: 1500,
 };
 
 const admin = createClient(

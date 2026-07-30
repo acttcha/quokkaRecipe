@@ -6,9 +6,10 @@ import * as SecureStore from 'expo-secure-store';
 // 레시피 생성 전용 모델 선택 (개발자 모드). 전부 Gemini.
 export type RecipeModelKey = 'gemini-flash' | 'gemini-flash-lite';
 
+// ⚠️ 실제 모델은 서버(gemini-proxy)가 액션별로 결정. 이 값은 표시용.
 export const RECIPE_MODELS: Record<RecipeModelKey, { provider: 'gemini'; model: string; label: string }> = {
-  'gemini-flash':      { provider: 'gemini', model: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash' },
-  'gemini-flash-lite': { provider: 'gemini', model: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
+  'gemini-flash':      { provider: 'gemini', model: 'gemini-flash-latest',      label: 'Gemini Flash (latest)' },
+  'gemini-flash-lite': { provider: 'gemini', model: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite (latest)' },
 };
 
 const MOCK_KEY = 'dev_mock_mode';
@@ -16,7 +17,8 @@ const RECIPE_MODEL_KEY = 'dev_recipe_model_key';
 const DEV_MODE_KEY = 'dev_mode_enabled';
 
 let _mockMode = false;
-let _recipeModelKey: RecipeModelKey = 'gemini-flash';
+// ⚠️ 실제 모델은 서버(gemini-proxy)가 액션별로 결정 → 이 값은 표시용(레시피 = Flash-Lite 반영).
+let _recipeModelKey: RecipeModelKey = 'gemini-flash-lite';
 let _devMode = false;   // 개발자 메뉴 노출 여부 (버전 7번 탭으로 해제)
 
 export async function loadDevSettings(): Promise<void> {
