@@ -7,7 +7,7 @@ import { Colors } from '../constants/colors';
 // 실제 배너 광고 단위 ID (프로덕션 전용). iOS 는 iOS AdMob 앱 만든 뒤 채우기.
 const REAL_BANNER = Platform.select({
   android: 'ca-app-pub-8578688184080776/3214980957',
-  ios: '', // TODO(iOS): iOS 배너 광고 단위 ID
+  ios: 'ca-app-pub-8578688184080776/4783959327',
 }) ?? '';
 
 // 개발 빌드/시뮬레이터는 항상 테스트 광고(자기 클릭=계정정지 방지).

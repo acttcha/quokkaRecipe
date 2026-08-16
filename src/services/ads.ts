@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 // 실제 보상형 광고 단위 ID (프로덕션 전용). iOS 는 iOS AdMob 앱 만든 뒤 채우기.
 const REAL_REWARDED = Platform.select({
   android: 'ca-app-pub-8578688184080776/4716744826',
-  ios: '', // TODO(iOS): iOS 보상형 광고 단위 ID
+  ios: 'ca-app-pub-8578688184080776/1970877546',
 }) ?? '';
 
 // Expo Go 에서는 react-native-google-mobile-ads 의 네이티브 뷰가 등록 안 돼서

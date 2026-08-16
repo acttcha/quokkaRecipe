@@ -19,7 +19,7 @@ export const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
 // RevenueCat 대시보드 > Project settings > API keys 의 "public app-specific key"
 // (public 키라 앱에 박혀도 안전. iOS 는 App Store 앱 등록 후 채우기)
-const RC_KEYS = { ios: '', android: 'goog_ACpGGDXNZGcPxcpUASNHFqGaSpT' };
+const RC_KEYS = { ios: 'appl_JubwnfTdRzKwzlzHFsVWJXgeJkO', android: 'goog_ACpGGDXNZGcPxcpUASNHFqGaSpT' };
 
 const ENTITLEMENT_ID = 'pro';            // 구독 활성 여부 판정용 entitlement
 export const SUBSCRIPTION_PRODUCT_ID = 'quokka_pass_monthly';

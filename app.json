@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.chasoft.quokkarecipe",
-      "versionCode": 15,
+      "versionCode": 16,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"
@@ -58,7 +58,7 @@
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-8578688184080776~1793611745",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+          "iosAppId": "ca-app-pub-8578688184080776~3757129755"
         }
       ],
       "expo-localization",

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions,
   Animated, PanResponder, BackHandler, Alert, Platform,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -47,6 +47,13 @@ import ShoppingListScreen from './src/screens/ShoppingListScreen';
 import { AdBanner } from './src/components/AdBanner';
 
 const { width } = Dimensions.get('window');
+
+// 시스템 글꼴 확대(접근성) 시 고정 레이아웃(칩·버튼·카드)이 깨지는 것 방지.
+// 최대 1.2배까지만 확대 허용 → 어느 정도 접근성은 유지하되 레이아웃은 보호.
+const _T = Text as unknown as { defaultProps?: Record<string, unknown> };
+_T.defaultProps = { ..._T.defaultProps, maxFontSizeMultiplier: 1.2 };
+const _TI = TextInput as unknown as { defaultProps?: Record<string, unknown> };
+_TI.defaultProps = { ..._TI.defaultProps, maxFontSizeMultiplier: 1.2 };
 
 const TAB_SCREENS = ['Home', 'Fridge', 'Saved', 'Settings'] as const;
 type TabScreenName = typeof TAB_SCREENS[number];
