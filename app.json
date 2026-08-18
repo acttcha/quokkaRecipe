@@ -21,7 +21,7 @@
         "NSPhotoLibraryUsageDescription": "갤러리에서 재료 사진을 선택하기 위해 접근이 필요합니다.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "5"
     },
     "android": {
       "package": "com.chasoft.quokkarecipe",
@@ -32,8 +32,7 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.READ_EXTERNAL_STORAGE"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -45,13 +44,16 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "재료를 촬영해 레시피를 추천받기 위해 카메라가 필요합니다."
+          "cameraPermission": "재료를 촬영해 레시피를 추천받기 위해 카메라가 필요합니다.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "갤러리에서 재료 사진을 선택하기 위해 접근이 필요합니다."
+          "photosPermission": "갤러리에서 재료 사진을 선택하기 위해 접근이 필요합니다.",
+          "microphonePermission": false
         }
       ],
       "expo-secure-store",

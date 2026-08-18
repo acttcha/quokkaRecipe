@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, Alert, Image,
+  StatusBar, Alert, Image, Modal, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps } from '../types';
@@ -15,8 +15,13 @@ import { isLoggedIn, isAuthReady, signInWithGoogle } from '../services/auth';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
 
+// 스토어 명 (자동갱신 고지·환불 안내에 사용). iOS=App Store / Android=Google Play.
+const STORE_NAME = Platform.select({ ios: 'App Store', android: 'Google Play' }) ?? 'App Store';
+
 export default function LeafShopScreen({ goBack }: NavProps) {
   const [balance, setBalance] = useState<LeafBalance | null>(null);
+  // 약관/개인정보 인앱 모달 (구독 화면에 링크 필수 — App Store 가이드라인 3.1.2)
+  const [infoModal, setInfoModal] = useState<'terms' | 'privacy' | null>(null);
 
   const load = useCallback(async () => {
     setBalance(await getBalance());
@@ -163,6 +168,11 @@ export default function LeafShopScreen({ goBack }: NavProps) {
           </View>
         </TouchableOpacity>
 
+        {/* 자동 갱신 고지 (App Store 가이드라인 3.1.2 필수) */}
+        <Text style={styles.autoRenewNotice}>
+          {t('leafShop.autoRenewNotice', { store: STORE_NAME })}
+        </Text>
+
         {/* 잎사귀 개별 충전 패키지 */}
         <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{t('leafShop.packagesSection')}</Text>
         {LEAF_PACKAGES.map(pkg => (
@@ -210,11 +220,45 @@ export default function LeafShopScreen({ goBack }: NavProps) {
         {/* 정책 안내 */}
         <View style={styles.policyBox}>
           <Text style={styles.policyText}>
-            {t('leafShop.policy')}
+            {t('leafShop.policy', { store: STORE_NAME })}
           </Text>
         </View>
 
+        {/* 약관·개인정보 링크 (구독 화면 필수 — 가이드라인 3.1.2) */}
+        <View style={styles.legalLinks}>
+          <TouchableOpacity onPress={() => setInfoModal('terms')} activeOpacity={0.7}>
+            <Text style={styles.legalLink}>{t('leafShop.terms')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalDot}>·</Text>
+          <TouchableOpacity onPress={() => setInfoModal('privacy')} activeOpacity={0.7}>
+            <Text style={styles.legalLink}>{t('leafShop.privacy')}</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
+
+      {/* 약관/개인정보 전문 모달 (설정과 동일한 내용 재사용) */}
+      <Modal
+        visible={!!infoModal}
+        animationType="slide"
+        onRequestClose={() => setInfoModal(null)}
+      >
+        <View style={styles.modalRoot}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {infoModal === 'privacy' ? t('settings.privacyTitle') : t('settings.termsTitle')}
+            </Text>
+            <TouchableOpacity onPress={() => setInfoModal(null)} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.modalClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
+            <Text style={styles.modalText}>
+              {infoModal === 'privacy' ? t('settings.privacyBody') : t('settings.termsBody')}
+            </Text>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -322,6 +366,11 @@ const styles = StyleSheet.create({
   },
   subHighlightText: { fontSize: 12.5, fontWeight: '800', color: Colors.forestDeep, lineHeight: 18 },
 
+  autoRenewNotice: {
+    fontSize: 11, color: Colors.inkMute, fontWeight: '500',
+    lineHeight: 17, paddingHorizontal: 6, marginTop: 2, marginBottom: 4,
+  },
+
   policyBox: {
     backgroundColor: Colors.creamSoft, borderRadius: 12,
     padding: 14, marginTop: 8,
@@ -329,4 +378,23 @@ const styles = StyleSheet.create({
   policyText: { fontSize: 11, color: Colors.inkSoft, fontWeight: '500', lineHeight: 18 },
   restoreBtn: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16 },
   restoreText: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft, textDecorationLine: 'underline' },
+
+  legalLinks: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, marginTop: 4, marginBottom: 8,
+  },
+  legalLink: { fontSize: 12, fontWeight: '700', color: Colors.inkSoft, textDecorationLine: 'underline' },
+  legalDot: { fontSize: 12, color: Colors.inkMute },
+
+  modalRoot: { flex: 1, backgroundColor: Colors.cream, paddingTop: 56 },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.lineSoft,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.ink, letterSpacing: -0.4 },
+  modalClose: { fontSize: 18, fontWeight: '700', color: Colors.inkSoft },
+  modalBody: { flex: 1 },
+  modalBodyContent: { padding: 20, paddingBottom: 48 },
+  modalText: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500', lineHeight: 21 },
 });
