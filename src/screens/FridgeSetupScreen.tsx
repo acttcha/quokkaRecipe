@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, shadow } from '../constants/colors';
 import { addIngredients, markFridgeSetupDone } from '../services/fridge';
+import { track } from '../services/analytics';
 import { t } from '../i18n';
 
 interface Props { onDone: () => void }
@@ -38,6 +39,7 @@ export default function FridgeSetupScreen({ onDone }: Props) {
   const finish = async () => {
     if (selected.length > 0) await addIngredients(selected.map(i => t(`fridgeSetup.ing.${i}`)));
     await markFridgeSetupDone();
+    track('fridge_setup_done');   // 건너뛴 경우(skip)는 기록하지 않아 이탈과 구분된다
     onDone();
   };
 

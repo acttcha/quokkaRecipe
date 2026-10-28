@@ -11,6 +11,7 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { haptic } from '../services/haptics';
 import { addCookLog } from '../services/cookingLog';
+import { noteCookFinished } from '../services/review';
 import { t, useLang } from '../i18n';
 
 type Props = NavProps & { recipeName: string; steps: string[] };
@@ -179,7 +180,10 @@ export default function CookModeScreen({ goBack, recipeName, steps }: Props) {
   const goNext = () => {
     haptic.light();
     if (idx < steps.length - 1) setIdx(idx + 1);
-    else { Speech.stop(); haptic.success(); setFinished(true); }
+    else {
+      Speech.stop(); haptic.success(); setFinished(true);
+      noteCookFinished();   // 조건(2회 완주·미요청)이 차면 시스템 리뷰 팝업
+    }
   };
 
   const confirmExit = () => {

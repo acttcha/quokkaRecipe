@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 //  op 'balance'   → wallet_touch: 잔액 조회 + 일일 리셋 + 웰컴 보너스 (앱 실행 시)
 //  op 'ad_reward' → wallet_credit: 보상형 광고 시청 보상 (free_bonus)
 //  op 'merge'     → wallet_merge: 로그인 시 기기(게스트) 지갑 → 계정 지갑 병합
+//  op 'track'     → usage_track: 퍼널 측정용 이벤트 기록 (잎사귀 무관, 잔액 반환 없음)
 //    ⚠️ ad_reward 는 클라 보고 기반 → 추후 AdMob SSV 권장.
 //  신원: x-user-jwt 헤더(로그인 유저의 Supabase JWT)가 있으면 서버가 검증해 uid 확정.
 //        없으면 body.userId(게스트 기기ID) 사용. (계정 지갑은 JWT 검증 필수 → 사칭 방지)
@@ -15,6 +16,13 @@ const WELCOME = 15;
 const AD_REWARD = 2;
 const AD_DAILY = 5;             // 하루 보상형 광고 최대 (앱 AD_DAILY_LIMIT 와 동기화)
 const AD_COOLDOWN_SEC = 30 * 60; // 광고 간 최소 간격 30분 (앱 AD_COOLDOWN_MS 와 동기화)
+
+// 앱이 보낼 수 있는 측정 이벤트와 중복 정책. 목록에 없는 action 은 거부한다.
+const TRACK_ACTIONS: Record<string, "day" | "ever"> = {
+  app_open: "day",          // 하루 1회 → DAU·재방문
+  fridge_setup_done: "ever",// 평생 1회 → 첫 화면(냉장고 설정) 통과율
+  onboarding_done: "ever",  // 평생 1회 → 온보딩 통과율
+};
 
 const admin = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -45,6 +53,17 @@ export default {
     const userId = verified?.id ?? (typeof body.userId === "string" ? body.userId : null);
     const authType = verified?.provider ?? "guest";
     if (!userId) return Response.json({ error: "userId required" }, { status: 400 });
+
+    if (op === "track") {
+      const action = typeof body.action === "string" ? body.action : "";
+      const once = TRACK_ACTIONS[action];
+      if (!once) return Response.json({ error: "unknown action" }, { status: 400 });
+      const { data, error } = await admin.rpc("usage_track", {
+        p_user_id: userId, p_action: action, p_once: once,
+      });
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true, recorded: data === true });
+    }
 
     if (op === "delete_account") {
       // 계정 + 서버 데이터 완전 삭제 (로그인 필수). Auth 계정 삭제는 service_role 만 가능.

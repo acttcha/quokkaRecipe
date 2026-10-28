@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { UserPreferences, DEFAULT_PREFERENCES, PREFERENCES_KEY, ONBOARDING_DONE_KEY } from '../types/preferences';
-import { t } from '../i18n';
+import { STRINGS } from '../i18n/strings';
 
 export async function savePreferences(prefs: UserPreferences): Promise<void> {
   await SecureStore.setItemAsync(PREFERENCES_KEY, JSON.stringify(prefs));
@@ -27,13 +27,18 @@ export async function resetOnboarding(): Promise<void> {
   await SecureStore.deleteItemAsync(ONBOARDING_DONE_KEY);
 }
 
+// 저장값은 온보딩 당시 언어라 현재 언어(t)만으로 비교하면 어긋난다 → 양쪽 언어 값으로 판정.
+function isPlaceholder(value: string, key: string): boolean {
+  return value === STRINGS.ko[key] || value === STRINGS.en[key];
+}
+
 export function preferencesToPrompt(prefs: UserPreferences): string {
   const lines: string[] = [];
 
   if (prefs.allergies.length > 0) {
     lines.push(`🚨 Allergies / cannot eat: ${prefs.allergies.join(', ')} → NEVER use these ingredients. Do not include them anywhere in ingredients or steps.`);
   }
-  if (prefs.dietType && prefs.dietType !== t('onboarding.dietNoneValue')) {
+  if (prefs.dietType && !isPlaceholder(prefs.dietType, 'onboarding.dietNoneValue')) {
     lines.push(`🚨 Diet type: ${prefs.dietType} → never use ingredients that don't fit this diet.`);
   }
   if (prefs.spiceLevel) {
@@ -45,7 +50,7 @@ export function preferencesToPrompt(prefs: UserPreferences): string {
   if (prefs.cookingSkill) {
     lines.push(`- Cooking skill: ${prefs.cookingSkill} → match difficulty and step complexity to this.`);
   }
-  const cuisines = prefs.cuisineStyles.filter(c => c && c !== t('onboarding.cuisineAnyValue'));
+  const cuisines = prefs.cuisineStyles.filter(c => c && !isPlaceholder(c, 'onboarding.cuisineAnyValue'));
   if (cuisines.length > 0) {
     lines.push(`- Preferred cuisine styles: ${cuisines.join(', ')} → recommend mainly in these styles when possible.`);
   }

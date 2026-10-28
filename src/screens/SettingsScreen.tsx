@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   Alert, ScrollView, Image, StatusBar, Modal, Linking,
-  Animated, PanResponder, TextInput, KeyboardAvoidingView, Platform,
+  Animated, PanResponder, TextInput, KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,7 @@ import {
   getDevMode, setDevMode,
 } from '../services/devSettings';
 import { getLang, setLang, AppLang } from '../services/locale';
+import { isReminderOn, enableReminder, disableReminder, loadReminderSetting, refreshReminder } from '../services/notifications';
 import { isPro, setIsPro } from '../services/subscription';
 import { getNickname, getCachedNickname } from '../services/stats';
 import { isLoggedIn, getUserEmail, getIdentity } from '../services/auth';
@@ -185,6 +186,27 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
   const [recipeModelKey, setRecipeModelKeyState] = useState<RecipeModelKey>(getRecipeModelKey());
   const [lang, setLangState] = useState<AppLang>(getLang());
   const [proMode, setProModeState] = useState(isPro());
+  const [reminderOn, setReminderOn] = useState(isReminderOn());
+
+  // 부팅 직후 설정으로 바로 들어오면 캐시가 아직 안 채워졌을 수 있어 한 번 더 맞춘다.
+  useEffect(() => {
+    loadReminderSetting().then(() => setReminderOn(isReminderOn())).catch(() => {});
+  }, []);
+
+  // 저녁 알림 토글 — 켤 때만 권한을 요청한다(첫 실행에 권한 팝업을 띄우면 거부율이 높다).
+  const handleToggleReminder = async (next: boolean) => {
+    if (next) {
+      const ok = await enableReminder();
+      if (!ok) {
+        Alert.alert(t('settings.reminderDeniedTitle'), t('settings.reminderDeniedMsg'));
+        return;
+      }
+      setReminderOn(true);
+    } else {
+      await disableReminder();
+      setReminderOn(false);
+    }
+  };
   const [devMode, setDevModeState] = useState(getDevMode());
   const [nickname, setNickname] = useState(getCachedNickname() ?? '');
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
@@ -222,6 +244,8 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
     if (l === lang) return;
     setLangState(l);
     await setLang(l);
+    // 예약된 알림 문구는 예약 시점 언어로 굳어 있다 → 새 언어로 다시 건다.
+    refreshReminder().catch(() => {});
   };
 
   const handlePickRecipeModel = async (k: RecipeModelKey) => {
@@ -389,6 +413,21 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
                 );
               })}
             </View>
+          </View>
+          <View style={listStyles.divider} />
+          {/* 저녁 메뉴 알림 — 재방문을 만드는 유일한 장치 */}
+          <View style={listStyles.row}>
+            <View style={listStyles.iconWrap}><Text style={{ fontSize: 16 }}>🔔</Text></View>
+            <View style={styles.reminderTexts}>
+              <Text style={styles.reminderLabel}>{t('settings.rowReminder')}</Text>
+              <Text style={styles.reminderSub}>{t('settings.reminderSub')}</Text>
+            </View>
+            <Switch
+              value={reminderOn}
+              onValueChange={handleToggleReminder}
+              trackColor={{ false: Colors.creamDark, true: Colors.forest }}
+              thumbColor={Colors.white}
+            />
           </View>
         </View>
 
@@ -784,6 +823,9 @@ const listStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  reminderTexts: { flex: 1 },
+  reminderLabel: { fontSize: 14, fontWeight: '600', color: Colors.ink },
+  reminderSub: { fontSize: 11, color: Colors.inkSoft, marginTop: 2 },
   root: { flex: 1, backgroundColor: Colors.cream },
 
   header: { height: 170 },

@@ -6,6 +6,7 @@ import { localeDirective, languageDirective } from './locale';
 import { isPro } from './subscription';
 import { getCachedChefStyle } from './chefStyle';
 import { getEffectivePersona } from './personas';
+import { getRecentDishes, rememberDishes } from './recentDishes';
 import { t } from '../i18n';
 
 // 선택된 쿼카 페르소나 + 구독자의 커스텀 스타일을 시스템 프롬프트에 주입.
@@ -193,16 +194,21 @@ If nothing is clear: []${languageDirective()}`,
 
 // 레시피 생성 공통 지침 — Gemini systemInstruction 으로 전달.
 // 모든 AI 호출(비전·레시피·Q&A)은 Gemini 사용.
-const RECIPE_SYSTEM = `You are a skilled home cook familiar with cuisines from around the world. Recommend 2 practical, commonly-eaten home-style recipes that can be made with the user's ingredients.
+const RECIPE_SYSTEM = `You are a skilled home cook familiar with cuisines from around the world. Recommend 2 practical home-style recipes that can be made with the user's ingredients.
 
-Most important: Do NOT invent new dishes by combining ingredients. Recommend real, well-known dishes that people actually eat, choosing the ones that best fit the available ingredients and the user's region. Never force mismatched ingredients together (e.g., dumping random sauces into instant noodles).
+Ground rule: every dish must be a REAL dish that already exists — never invent one by combining ingredients, and never force mismatched ingredients together (e.g., dumping random sauces into instant noodles). But "real" is NOT limited to the handful of most famous dishes: regional specialties, everyday family dishes, and lesser-known yet genuine dishes all count, as long as a real cook would recognize the dish by its name.
+
+Variety — treat this as seriously as correctness:
+1. The 2 recipes must clearly differ from each other: a different cooking method (stir-fry / soup / grill / braise / steam / cold dish / fry / rice or noodle dish), and preferably a different cuisine.
+2. Do not default to the single most predictable dish for these ingredients. When an obvious dish and an equally valid but less predictable dish both fit well, choose the less predictable one.
+3. Avoid falling back on the same few dish families (fried rice, stew, plain pasta) every time.
 
 Rules:
 1. You don't need to use every ingredient — use only the ones that go well together and ignore the rest. Seasonings/sauces are for flavor, not main ingredients.
 2. Use each dish's familiar, real name (not a list of ingredients). Do not put ingredients you don't have into the dish name.
 3. Give an exact quantity for every ingredient. No vague amounts.
 4. steps: 4-6 steps, one sentence each, with specific quantity/time (e.g., "saute over medium heat for 3 minutes"). Don't make a separate dish first.
-5. Reflect the user's preferences (see [user preferences]).
+5. Reflect the user's preferences (see [user preferences]) — preferences always override the variety hints.
 
 Respond with ONLY a JSON array, no extra text:
 [{"name":"dish name","description":"one-line description","cookTime":"15 min","servings":2,"difficulty":"Easy","ingredients":["ingredient + amount",...],"steps":["step",...],"nutrition":{"calories":520,"protein":22,"carbs":65,"fat":18}}]
@@ -213,7 +219,7 @@ const DISH_SYSTEM = `You are a skilled home cook familiar with cuisines from aro
 
 Rules:
 1. Write the common/standard form of the requested dish. If a cuisine/style is specified, follow it; otherwise use the version most common in the user's region.
-2. The 2 variations must differ from each other (e.g., kimchi stew -> basic / with tuna). If variation is unclear, vary by portion or difficulty (simple / full).
+2. The 2 variations must differ in a way a cook would actually notice — a different key ingredient, a regional version, a different cooking method, or simple vs. full. Never return two variations that are the same recipe with reworded steps.
 3. Give an exact quantity for every ingredient. No vague amounts.
 4. steps: 4-6 steps, one sentence each, with specific quantity/time. Don't make a separate dish first.
 5. Use correct grammar, no typos.
@@ -225,6 +231,39 @@ difficulty is one of Easy/Medium/Hard. nutrition is per serving (kcal/g).`;
 // 인분 지시문 — ingredients 분량·nutrition·servings 를 N인분 기준으로.
 function servingsText(servings: number): string {
   return `\nServings: make it for ${servings} serving(s) — scale ingredient amounts and nutrition for ${servings} serving(s), and set JSON "servings" to ${servings}.`;
+}
+
+// ── 다양성 시드 ──────────────────────────────────────────────
+// 같은 재료로 다시 돌려도 매번 다른 방향을 먼저 보게 하는 소프트 힌트.
+// "실제 존재하는 요리만" 가드는 그대로 두고, 뻔한 1순위로 수렴하는 것만 막는다.
+const COOKING_ANGLES = [
+  'stir-fry or pan-fry', 'soup or stew', 'grilled or roasted', 'braised or simmered',
+  'steamed', 'salad or cold dish', 'crispy fried', 'rice bowl or fried rice',
+  'noodle dish', 'savory pancake', 'sandwich, wrap or toast', 'oven-baked dish',
+  'porridge or soft dish', 'marinated side dish',
+];
+// 재료 구득이 현실적인 범위로만. (예전엔 스페인·멕시코·중동까지 넣어 억지 조합을 유도했다)
+const CUISINE_ANGLES = [
+  'Korean home cooking', 'Japanese', 'Chinese',
+  'Southeast Asian (Thai or Vietnamese)', 'Italian-style Western',
+];
+
+// 서로 다른 두 개를 뽑는다 (인덱스 충돌 회피).
+function pickTwo(pool: string[]): [string, string] {
+  const i = Math.floor(Math.random() * pool.length);
+  let j = Math.floor(Math.random() * (pool.length - 1));
+  if (j >= i) j += 1;
+  return [pool[i], pool[j]];
+}
+
+// withCuisine: 사용자가 선호 요리 스타일을 정해뒀으면 요리권 힌트는 빼고 조리법만 흔든다.
+function varietyDirective(withCuisine: boolean): string {
+  const [m1, m2] = pickTwo(COOKING_ANGLES);
+  const useCuisine = withCuisine && Math.random() < 0.5;
+  const cuisine = useCuisine ? ` Cuisines worth considering: ${pickTwo(CUISINE_ANGLES).join(' or ')}.` : '';
+  return `\n\n[Variety seed — soft hint for THIS request only]
+Before settling on the obvious choice, look at these directions first: "${m1}" and "${m2}".${cuisine}
+This is only a starting direction so repeated requests don't return the same dishes. If the ingredients or the user's preferences don't fit it, ignore it completely and pick dishes that genuinely fit — never force a mismatch.`;
 }
 
 // 레시피 JSON 생성 — 개발자 모드에서 고른 모델(Gemini/Claude)로 라우팅.
@@ -242,14 +281,25 @@ export async function generateRecipes(ingredients: string[], exclude: string[] =
   }
   const prefs = await loadPreferences();
   const prefText = preferencesToPrompt(prefs);
+  // 선호 요리 스타일이 프롬프트에 실제로 들어갔는지로 판단한다.
+  // (저장값은 온보딩 당시 언어라 t() 와 직접 비교하면 언어 전환 시 어긋난다)
+  const hasCuisinePref = prefText.includes('Preferred cuisine styles');
+  // 이번 화면에서 이미 본 요리 → 하드 제외
   const excludeText = exclude.length
     ? `\nExclude (already recommended, do not repeat): ${exclude.join(', ')}`
     : '';
+  // 지난 추천 기록 → 소프트 제외. 재료가 빈약할 땐 어기는 편이 나으므로 강제하지 않는다.
+  const recent = (await getRecentDishes()).filter(n => !exclude.includes(n));
+  const recentText = recent.length
+    ? `\nRecently recommended to this user — avoid repeating these unless one is clearly the best fit: ${recent.slice(0, 10).join(', ')}`
+    : '';
   const text = await generateRecipeJson(
     RECIPE_SYSTEM,
-    `Ingredients: ${ingredients.join(', ')}${prefText}${excludeText}${servingsText(servings)}`,
+    `Ingredients: ${ingredients.join(', ')}${prefText}${excludeText}${recentText}${servingsText(servings)}${varietyDirective(!hasCuisinePref)}`,
   );
-  return extractJson<Recipe[]>(text);
+  const recipes = extractJson<Recipe[]>(text);
+  void rememberDishes(recipes.map(r => r.name));
+  return recipes;
 }
 
 /**
@@ -266,11 +316,14 @@ export async function generateRecipeByName(dishName: string, exclude: string[] =
   const excludeText = exclude.length
     ? `\nExclude (variations already recommended, do not repeat): ${exclude.join(', ')}`
     : '';
+  // 사용자가 요리를 직접 지정한 경우라 다양성 시드는 넣지 않는다(엉뚱한 요리권으로 끌고 가면 안 됨).
   const text = await generateRecipeJson(
     DISH_SYSTEM,
     `Dish to make: ${dishName}${prefText}${excludeText}${servingsText(servings)}`,
   );
-  return extractJson<Recipe[]>(text);
+  const recipes = extractJson<Recipe[]>(text);
+  void rememberDishes(recipes.map(r => r.name));
+  return recipes;
 }
 
 export async function askQuokka(recipe: Recipe, question: string): Promise<string> {

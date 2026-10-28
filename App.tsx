@@ -18,6 +18,8 @@ import { loadLocale, useLang } from './src/services/locale';
 import { t } from './src/i18n';
 import { initAds } from './src/services/ads';
 import { initPurchases } from './src/services/purchases';
+import { refreshReminder } from './src/services/notifications';
+import { track } from './src/services/analytics';
 import { loadAuth, syncRcIdentity } from './src/services/auth';
 import { getNickname } from './src/services/stats';
 import { loadChefStyle } from './src/services/chefStyle';
@@ -185,6 +187,9 @@ function AppInner() {
         console.log('[App] onboarded:', onboarded, 'fridgeDone:', fridgeDone);
         // 결제 초기화 후 RC 신원을 현재 신원(계정/기기)으로 맞춤
         initPurchases().then(syncRcIdentity).catch(() => { /* 키 미설정/Expo Go 면 무시 */ });
+        // 저녁 리마인더: 켜져 있으면 문구를 바꿔 재예약 (앱 시작을 막지 않도록 await 하지 않음)
+        refreshReminder().catch(() => { /* 알림 실패는 앱 동작과 무관 */ });
+        track('app_open');   // 퍼널 측정 (실패해도 무시)
         setOnboardingDone(onboarded);
         if (!fridgeDone) setAppState('fridge_setup');
         else if (!onboarded) setAppState('onboarding');

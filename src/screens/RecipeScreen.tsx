@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
 import { identifyIngredients, generateRecipes, generateRecipeByName } from '../services/claude';
+import { shouldSuggestReminder, markReminderAsked, enableReminder } from '../services/notifications';
 import { searchYouTubeRecipes, openYouTubeSearch, openCoupangPartners, COUPANG_PARTNERS_URL, formatViewCount, formatDuration, formatRelativeDate } from '../services/youtube';
 import { saveRecipe, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
@@ -91,6 +92,24 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     setSavedNames(new Set(saved.map(r => r.name)));
   }, []);
 
+  // 레시피를 두 번 이상 받아본 사람에게만 저녁 알림을 제안한다(한 번만).
+  const maybeAskReminder = useCallback(async () => {
+    if (!(await shouldSuggestReminder())) return;
+    await markReminderAsked();   // 거절해도 다시 묻지 않도록 먼저 기록
+    Alert.alert(t('recipe.reminderAskTitle'), t('recipe.reminderAskMsg'), [
+      { text: t('recipe.reminderAskNo'), style: 'cancel' },
+      {
+        text: t('recipe.reminderAskYes'),
+        onPress: () => {
+          // 권한을 거부하면 알림이 오지 않으므로 그 사실을 알려준다.
+          enableReminder().then(ok => {
+            if (!ok) Alert.alert(t('settings.reminderDeniedTitle'), t('settings.reminderDeniedMsg'));
+          });
+        },
+      },
+    ]);
+  }, []);
+
   const identify = useCallback(async () => {
     // 1) 특정 요리 검색 모드 — 재료 확인 단계 스킵, 바로 레시피 생성
     if (dishName) {
@@ -110,6 +129,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         setVideos(vids);
         await loadSaved();
         setStep('results');
+        maybeAskReminder();
       } catch (e: unknown) {
         setErrorMsg(e instanceof Error ? e.message : String(e));
         setStep('error');
@@ -165,6 +185,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setVideos(vids);
       await loadSaved();
       setStep('results');
+      maybeAskReminder();
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : String(e));
       setStep('error');

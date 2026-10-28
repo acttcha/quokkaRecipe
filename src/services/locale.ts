@@ -7,6 +7,10 @@ export type AppLang = 'ko' | 'en';
 
 const LANG_KEY = 'app_language';
 
+// ⚠️ 여러 화면이 모듈 최상위에서 t() 를 평가하는데 그 시점은 loadLocale() 보다 앞이다.
+//    그래서 기기 언어를 여기서 미리 반영해봤지만, 저장된 언어 설정(SecureStore)은 동기로 읽을 수 없어
+//    "영어 기기 + 한국어 설정" 조합이 오히려 나빠진다 → 기본값을 유지한다.
+//    제대로 고치려면 각 화면의 모듈 레벨 t() 를 컴포넌트 안으로 옮겨야 한다.
 let _lang: AppLang = 'ko';
 let _regionCode = 'KR';   // ISO 지역코드 (예: KR, US, JP) — AI 추천 현지화용
 
@@ -82,9 +86,11 @@ export function languageDirective(): string {
 export function localeDirective(): string {
   const language = AI_LANG_NAME[_lang];
   const country = REGION_NAME[_regionCode] ?? _regionCode;
+  // 지역 힌트는 "재료 구하기 현실성 + 현지 입맛"까지만. 예전엔 "흔하고 친숙한 요리"를 요구해서
+  // 레시피가 매번 최빈값(김치찌개·볶음밥류)으로 쏠렸다 → 지역 요리·가정식도 열어둔다.
   return `\n\n[Language & Region] Write ALL output text (dish names, descriptions, ingredients, steps, etc.) in ${language}.${NO_ROMANIZATION}${
     country
-      ? ` The user is in ${country}; prefer dishes that are commonly eaten and familiar there, and that can realistically be made with ingredients typically available in that country. Do not force unfamiliar cuisine.`
+      ? ` The user is in ${country}; dishes must be realistically makeable with ingredients typically available there and suit local tastes. Everyday local dishes and regional specialties are equally welcome — just don't pick a cuisine the available ingredients clearly can't support.`
       : ''
   }`;
 }

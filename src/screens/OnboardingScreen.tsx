@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, shadow } from '../constants/colors';
 import { UserPreferences } from '../types/preferences';
 import { savePreferences } from '../services/preferences';
+import { track } from '../services/analytics';
 import { t } from '../i18n';
 
 interface Props { onDone: () => void }
@@ -142,6 +143,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       servings: 2,
     };
     await savePreferences(prefs);
+    track('onboarding_done');   // ✕/건너뛰기도 onDone 을 부르므로, 끝까지 마친 경로에서만 기록
     onDone();
   };
 
