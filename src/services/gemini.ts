@@ -90,11 +90,23 @@ export async function callGemini(opts: CallGeminiOpts): Promise<string> {
   };
   if (userJwt) headers['x-user-jwt'] = userJwt; // 로그인 유저 → 서버가 JWT로 uid 검증
 
-  const res = await fetch(GEMINI_PROXY_URL, {
+  const send = () => fetch(GEMINI_PROXY_URL, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
   });
+
+  let res = await send();
+  // 한동안 요청이 없어 식은 서버에 요청이 몰리면 함수가 켜지기 전에 BOOT_ERROR 로 실패한다.
+  // 이 경우는 Gemini 호출도 잎사귀 차감도 일어나지 않았으므로 한 번 더 보내도 이중 과금이 없다.
+  // (다른 실패는 차감·호출이 이미 일어났을 수 있어 재시도하지 않는다)
+  if (!res.ok) {
+    const peek = await res.clone().json().catch(() => null);
+    if (peek?.code === 'BOOT_ERROR') {
+      await new Promise(r => setTimeout(r, 800));
+      res = await send();
+    }
+  }
 
   if (res.status === 402) {
     const err = await res.json().catch(() => ({}));

@@ -110,8 +110,8 @@
   "recipe.backToHome": "← 돌아가기",
   "recipe.editIngredients": "← 재료 수정",
   "recipe.moreCount": " +{n}개",
-  "recipe.tabAi": "🤖 AI 레시피",
-  "recipe.tabYoutube": "📺 유튜브",
+  "recipe.tabAi": "AI 레시피",
+  "recipe.tabYoutube": "유튜브",
   "recipe.share": "공유 ↗",
   "recipe.allIngredients": "재료 완비 ✓",
   "recipe.missingCount": "{n}개 부족",
@@ -126,7 +126,7 @@
   "recipe.askQuokka": "쿼카에게 질문하기 🐾",
   "recipe.saveBtn": "레시피 저장",
   "recipe.savedBtn": "저장됨",
-  "recipe.moreRecipes": "🔄  다른 레시피 추천받기",
+  "recipe.moreRecipes": "다른 레시피 추천받기",
   "recipe.popularVideos": "인기 영상 🔥",
   "recipe.seeOnYoutube": "유튜브에서 보기 →",
   "recipe.rank": "{n}위",
@@ -753,5 +753,7 @@
   "recipe.reminderAskTitle": "저녁마다 알려드릴까요?",
   "recipe.reminderAskMsg": "매일 오후 6시 30분에 '오늘 뭐 먹지' 추천을 보내드려요. 언제든 설정에서 끌 수 있어요.",
   "recipe.reminderAskYes": "좋아요",
-  "recipe.reminderAskNo": "괜찮아요"
+  "recipe.reminderAskNo": "괜찮아요",
+  "recipe.ytNudgeTitle": "유튜버 레시피로도 볼 수 있어요",
+  "recipe.ytNudgeSub": "영상 대신 재료·순서만 깔끔하게 정리해드려요"
 }

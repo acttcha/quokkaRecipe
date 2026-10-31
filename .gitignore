@@ -42,3 +42,6 @@ yarn-error.*
 /ios
 /android
 supabase/.temp/
+
+# 레시피 평가 결과
+scripts/recipe-eval/out/

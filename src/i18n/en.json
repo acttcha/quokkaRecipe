@@ -110,8 +110,8 @@
   "recipe.backToHome": "← Go back",
   "recipe.editIngredients": "← Edit ingredients",
   "recipe.moreCount": " +{n}",
-  "recipe.tabAi": "🤖 AI Recipes",
-  "recipe.tabYoutube": "📺 YouTube",
+  "recipe.tabAi": "AI Recipes",
+  "recipe.tabYoutube": "YouTube",
   "recipe.share": "Share ↗",
   "recipe.allIngredients": "All set ✓",
   "recipe.missingCount": "{n} missing",
@@ -126,7 +126,7 @@
   "recipe.askQuokka": "Ask Quokka 🐾",
   "recipe.saveBtn": "Save recipe",
   "recipe.savedBtn": "Saved",
-  "recipe.moreRecipes": "🔄  Get other recipes",
+  "recipe.moreRecipes": "Get other recipes",
   "recipe.popularVideos": "Popular videos 🔥",
   "recipe.seeOnYoutube": "See on YouTube →",
   "recipe.rank": "#{n}",
@@ -753,5 +753,7 @@
   "recipe.reminderAskTitle": "Want a daily dinner nudge?",
   "recipe.reminderAskMsg": "We'll send a \"what's for dinner\" suggestion every day at 6:30 PM. You can turn it off anytime in Settings.",
   "recipe.reminderAskYes": "Sure",
-  "recipe.reminderAskNo": "No thanks"
+  "recipe.reminderAskNo": "No thanks",
+  "recipe.ytNudgeTitle": "Try a YouTuber's recipe too",
+  "recipe.ytNudgeSub": "Skip the video — just clean ingredients & steps"
 }

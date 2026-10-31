@@ -126,6 +126,22 @@ function IcRefresh() {
     </Svg>
   );
 }
+function IcBell() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 10.5a6 6 0 0 1 12 0c0 3.8 1.2 5.4 2 6.2H4c.8-.8 2-2.4 2-6.2Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M9.8 19.6a2.4 2.4 0 0 0 4.4 0" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcGlobe() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={8.5} stroke={Colors.inkSoft} strokeWidth={1.6} />
+      <Path d="M3.5 12h17M12 3.5c2.3 2.3 3.4 5.2 3.4 8.5s-1.1 6.2-3.4 8.5c-2.3-2.3-3.4-5.2-3.4-8.5s1.1-6.2 3.4-8.5Z" stroke={Colors.inkSoft} strokeWidth={1.6} strokeLinejoin="round" />
+    </Svg>
+  );
+}
 function IcChevron() {
   return (
     <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
@@ -394,7 +410,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           />
           <View style={listStyles.divider} />
           <View style={listStyles.row}>
-            <View style={listStyles.iconWrap}><Text style={{ fontSize: 16 }}>🌐</Text></View>
+            <View style={listStyles.iconWrap}><IcGlobe /></View>
             <Text style={listStyles.label}>{t('settings.langTitle')}</Text>
             <View style={styles.langChips}>
               {(['ko', 'en'] as AppLang[]).map(l => {
@@ -417,7 +433,7 @@ export default function SettingsScreen({ navigate, onResetPreferences, onResetAl
           <View style={listStyles.divider} />
           {/* 저녁 메뉴 알림 — 재방문을 만드는 유일한 장치 */}
           <View style={listStyles.row}>
-            <View style={listStyles.iconWrap}><Text style={{ fontSize: 16 }}>🔔</Text></View>
+            <View style={listStyles.iconWrap}><IcBell /></View>
             <View style={styles.reminderTexts}>
               <Text style={styles.reminderLabel}>{t('settings.rowReminder')}</Text>
               <Text style={styles.reminderSub}>{t('settings.reminderSub')}</Text>

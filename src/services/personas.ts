@@ -1,7 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { isPro } from './subscription';
 
-// 쿼카 페르소나 — 메인에서 선택. 기본/자취는 무료, 나머지는 구독자 전용.
+// 쿼카 페르소나 — 메인에서 선택. 기본/자취/다이어트/벌크업/디저트는 무료, 나머지는 구독자 전용.
+//  선택 화면은 이 배열 순서대로 그리므로 무료를 앞에 모아 둔다(잠금과 섞이지 않게).
 //  선택된 페르소나의 prompt 가 레시피 생성 시 스타일로 주입된다(claude.ts).
 export interface Persona {
   id: string;
@@ -17,18 +18,18 @@ export const PERSONAS: Persona[] = [
   { id: 'solo', emoji: '🏠', free: true, image: require('../../assets/personas/solo.webp'),
     prompt: 'Cook like a budget-conscious student living alone: cheap, very few ingredients, quick and easy, minimal cleanup.' },
 
-  { id: 'diet', emoji: '🥗', free: false, image: require('../../assets/personas/diet.webp'),
+  { id: 'diet', emoji: '🥗', free: true, image: require('../../assets/personas/diet.webp'),
     prompt: 'Diet-friendly meals: low in calories but high in satiety, light and healthy.' },
+  { id: 'bulk', emoji: '💪', free: true, image: require('../../assets/personas/bulk.webp'),
+    prompt: 'High-protein muscle-building meals for bulking up, with strong protein content.' },
+  { id: 'dessert', emoji: '🧁', free: true, image: require('../../assets/personas/dessert.webp'),
+    prompt: 'Focus on desserts, baking, and sweet treats.' },
   { id: 'budget', emoji: '💸', free: false, image: require('../../assets/personas/budget.webp'),
     prompt: 'Maximize value for money: cheapest common ingredients, generous portions, economical.' },
   { id: 'lunchbox', emoji: '🍱', free: false, image: require('../../assets/personas/lunchbox.webp'),
     prompt: 'Meal-prep and lunchbox friendly: dishes that keep well, pack easily, and can be batch-cooked ahead.' },
-  { id: 'dessert', emoji: '🧁', free: false, image: require('../../assets/personas/dessert.webp'),
-    prompt: 'Focus on desserts, baking, and sweet treats.' },
   { id: 'michelin', emoji: '⭐', free: false, image: require('../../assets/personas/michelin.webp'),
     prompt: 'Cook like a fine-dining chef: refined, restaurant-quality dishes with elegant plating and technique, but still doable at home.' },
-  { id: 'bulk', emoji: '💪', free: false, image: require('../../assets/personas/bulk.webp'),
-    prompt: 'High-protein muscle-building meals for bulking up, with strong protein content.' },
   { id: 'spicy', emoji: '🌶️', free: false, image: require('../../assets/personas/spicy.webp'),
     prompt: 'Bold, spicy, punchy flavors (Korean/Asian heat).' },
   { id: 'vegan', emoji: '🌱', free: false, image: require('../../assets/personas/vegan.webp'),

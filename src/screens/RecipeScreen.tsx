@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import { NavProps, Recipe, YouTubeVideo } from '../types';
 import { identifyIngredients, generateRecipes, generateRecipeByName } from '../services/claude';
 import { shouldSuggestReminder, markReminderAsked, enableReminder } from '../services/notifications';
@@ -25,6 +26,33 @@ import { BackButton } from '../components/BackButton';
 import { haptic } from '../services/haptics';
 import { filterPopularIngredients } from '../constants/ingredients';
 import { t } from '../i18n';
+
+// 탭·버튼용 선 아이콘 — 마이 탭 아이콘과 같은 규칙(24 격자, 1.6 굵기, 둥근 끝).
+// 이모지(🤖📺🔄)는 기기마다 모양이 달라 화면 톤과 안 맞았다.
+function IcSparkle({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M11 4l1.5 4.2a2 2 0 0 0 1.3 1.3L18 11l-4.2 1.5a2 2 0 0 0-1.3 1.3L11 18l-1.5-4.2a2 2 0 0 0-1.3-1.3L4 11l4.2-1.5a2 2 0 0 0 1.3-1.3L11 4Z" stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+      <Path d="M18.5 16.5v4M16.5 18.5h4" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+function IcPlayBox({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M3.5 8a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-11a3 3 0 0 1-3-3V8Z" stroke={color} strokeWidth={1.6} />
+      <Path d="M10.3 9.4v5.2l4.4-2.6-4.4-2.6Z" stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+function IcRefresh({ color, size = 17 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M20 7.5A8 8 0 0 0 5.5 9M4 16.5A8 8 0 0 0 18.5 15" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M20 3v4.5h-4.5M4 21v-4.5h4.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 const { width } = Dimensions.get('window');
 
@@ -251,6 +279,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   const reviewSuggestions = filterPopularIngredients(newIng, ingredients);
 
   // 저장 완료 토스트 ("레시피 탭에서 조리 시작해보세요")
+  const resultsScrollRef = useRef<ScrollView>(null);
   const savedToastAnim = useRef(new Animated.Value(0)).current;
   const [savedToastVisible, setSavedToastVisible] = useState(false);
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -426,20 +455,23 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       {/* 탭 */}
       <View style={styles.tabWrap}>
         {[
-          { id: 'ai' as Tab, label: t('recipe.tabAi') },
-          { id: 'youtube' as Tab, label: t('recipe.tabYoutube') },
+          { id: 'ai' as Tab, label: t('recipe.tabAi'), Icon: IcSparkle },
+          { id: 'youtube' as Tab, label: t('recipe.tabYoutube'), Icon: IcPlayBox },
         ].map(t => (
           <TouchableOpacity
             key={t.id}
             style={[styles.tab, tab === t.id && styles.tabActive]}
             onPress={() => { haptic.light(); setTab(t.id); }}
           >
-            <Text style={[styles.tabText, tab === t.id && styles.tabTextActive]}>{t.label}</Text>
+            <View style={styles.tabInner}>
+              <t.Icon color={tab === t.id ? '#FFF' : Colors.inkSoft} />
+              <Text style={[styles.tabText, tab === t.id && styles.tabTextActive]}>{t.label}</Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
 
-      <ScrollView style={styles.resultsScroll} contentContainerStyle={styles.resultsContent} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={resultsScrollRef} style={styles.resultsScroll} contentContainerStyle={styles.resultsContent} showsVerticalScrollIndicator={false}>
 
         {/* AI 레시피 */}
         {tab === 'ai' && recipes.map((r, idx) => {
@@ -572,13 +604,42 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
               <ActivityIndicator size="small" color={Colors.forest} />
             ) : (
               <>
-                <Text style={styles.moreBtnText}>{t('recipe.moreRecipes')}</Text>
+                <View style={styles.tabInner}>
+                  <IcRefresh color={Colors.forestDeep} />
+                  <Text style={styles.moreBtnText}>{t('recipe.moreRecipes')}</Text>
+                </View>
                 <View style={styles.moreBtnLeaf}>
                   <LeafIcon size={15} />
                   <Text style={styles.moreBtnLeafText}>1</Text>
                 </View>
               </>
             )}
+          </TouchableOpacity>
+        )}
+
+        {/* 유튜브 탭 안내 — "다른 거 없나" 하는 순간(다시 뽑기 버튼 바로 아래)에 다른 길을 보여준다.
+            탭만으로는 잘 눌리지 않아서 유튜브 분석 기능 자체를 모르는 사용자가 많았다. */}
+        {tab === 'ai' && recipes.length > 0 && videos.length > 0 && (
+          <TouchableOpacity
+            style={styles.ytNudge}
+            onPress={() => {
+              haptic.light();
+              setTab('youtube');
+              resultsScrollRef.current?.scrollTo({ y: 0, animated: false });
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.ytNudgeIcon}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.97C5.12 20 12 20 12 20s6.88 0 8.59-.45a2.78 2.78 0 0 0 1.95-1.97A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58Z" fill="#FF0000" />
+                <Path d="m9.75 15.02 5.75-3.02-5.75-3.02v6.04Z" fill="#fff" />
+              </Svg>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.ytNudgeTitle}>{t('recipe.ytNudgeTitle')}</Text>
+              <Text style={styles.ytNudgeSub}>{t('recipe.ytNudgeSub')}</Text>
+            </View>
+            <Text style={styles.ytNudgeArrow}>›</Text>
           </TouchableOpacity>
         )}
 
@@ -737,6 +798,7 @@ const styles = StyleSheet.create({
   tabWrap: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8, backgroundColor: Colors.cream },
   tab: { flex: 1, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.white, alignItems: 'center', borderWidth: 1.5, borderColor: Colors.line },
   tabActive: { backgroundColor: Colors.forest, borderColor: Colors.forest },
+  tabInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: { fontSize: 14, fontWeight: '700', color: Colors.inkSoft },
   tabTextActive: { color: '#FFF', fontWeight: '800' },
 
@@ -896,6 +958,22 @@ const styles = StyleSheet.create({
   moreBtnText: { fontSize: 14, fontWeight: '800', color: Colors.forestDeep },
   moreBtnLeaf: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   moreBtnLeafText: { fontSize: 13, fontWeight: '900', color: Colors.forestDeep },
+
+  // 유튜브 탭 안내 카드 — 옆 탭의 영상 카드(videoCard)와 같은 결, 아이콘 박스는 홈 타일과 같은 크기
+  ytNudge: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.white, borderRadius: 16, marginTop: 10,
+    paddingVertical: 13, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm,
+  },
+  ytNudgeIcon: {
+    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFF1F0', borderWidth: 1, borderColor: '#FFD9D6',
+  },
+  ytNudgeTitle: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  ytNudgeSub: { fontSize: 12, fontWeight: '500', color: Colors.inkSoft, marginTop: 2, lineHeight: 16 },
+  ytNudgeArrow: { fontSize: 20, fontWeight: '700', color: Colors.inkMute, marginLeft: 2 },
 
   // 모달
 

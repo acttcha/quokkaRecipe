@@ -2,7 +2,7 @@
   "expo": {
     "name": "쿼카레시피",
     "slug": "quokka-chef",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/applogo.png",
     "userInterfaceStyle": "light",
@@ -22,12 +22,12 @@
         "NSPhotoLibraryUsageDescription": "갤러리에서 재료 사진을 선택하기 위해 접근이 필요합니다.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "6"
+      "buildNumber": "7"
     },
     "android": {
       "package": "com.chasoft.quokkarecipe",
       "playStoreUrl": "https://play.google.com/store/apps/details?id=com.chasoft.quokkarecipe",
-      "versionCode": 17,
+      "versionCode": 18,
       "adaptiveIcon": {
         "foregroundImage": "./assets/applogo.png",
         "backgroundColor": "#FAFAF8"
