@@ -22,10 +22,14 @@ export const LEAF_PACKAGES: LeafPackage[] = [
   { id: 'box',     name: '잎사귀 한 박스', image: require('../../assets/product5.webp'), price: 33000, leaves: 1500, bonusPercent: 67 },
 ];
 
+// 쿼카 패스 원화 가격 — 스토어 가격을 못 받아왔을 때만 표시용으로 쓴다.
+export const PASS_PRICE_KRW = 4900;
+
 export function formatKrw(n: number): string {
   return `₩${n.toLocaleString('ko-KR')}`;
 }
 
-export function pricePerLeaf(pkg: LeafPackage): number {
-  return Math.round(pkg.price / pkg.leaves);
+// 개당 원화 가격. 스토어 가격(원화)을 받아왔으면 그걸로, 아니면 기본값으로 계산.
+export function pricePerLeaf(pkg: LeafPackage, krw = pkg.price): number {
+  return Math.round(krw / pkg.leaves);
 }

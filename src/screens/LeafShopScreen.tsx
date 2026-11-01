@@ -8,9 +8,12 @@ import { NavProps } from '../types';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
 import { LeafIcon } from '../components/LeafIcon';
-import { LEAF_PACKAGES, LeafPackage, formatKrw, pricePerLeaf } from '../services/leafPackages';
+import { LEAF_PACKAGES, LeafPackage, PASS_PRICE_KRW, formatKrw, pricePerLeaf } from '../services/leafPackages';
 import { getBalance, LeafBalance, PRO_MONTHLY_LEAVES, FREE_DAILY_LEAVES } from '../services/leaves';
-import { isPurchasesReady, purchaseLeafPackage, purchaseSubscription, restorePurchases } from '../services/purchases';
+import {
+  isPurchasesReady, purchaseLeafPackage, purchaseSubscription, restorePurchases,
+  getStorePrices, StorePrice, LEAF_PRODUCT_IDS, SUBSCRIPTION_PRODUCT_ID,
+} from '../services/purchases';
 import { isLoggedIn, isAuthReady, signInWithGoogle } from '../services/auth';
 import { haptic } from '../services/haptics';
 import { t } from '../i18n';
@@ -23,10 +26,17 @@ export default function LeafShopScreen({ goBack }: NavProps) {
   // 약관/개인정보 인앱 모달 (구독 화면에 링크 필수 — App Store 가이드라인 3.1.2)
   const [infoModal, setInfoModal] = useState<'terms' | 'privacy' | null>(null);
 
+  // 스토어 실제 가격 (사용자 통화). 못 받아오면 비어 있고 원화 기본값으로 표시한다.
+  const [prices, setPrices] = useState<Record<string, StorePrice>>({});
+
   const load = useCallback(async () => {
     setBalance(await getBalance());
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { getStorePrices().then(setPrices).catch(() => {}); }, []);
+
+  const passPrice = prices[SUBSCRIPTION_PRODUCT_ID]?.priceString ?? formatKrw(PASS_PRICE_KRW);
+  const pkgPrice = (pkg: LeafPackage) => prices[LEAF_PRODUCT_IDS[pkg.id]];
 
   // 게스트면 결제 전 로그인 권유(강제 아님). 이미 로그인했거나 로그인 불가면 바로 진행.
   const withLoginNudge = (proceed: () => void) => {
@@ -154,7 +164,7 @@ export default function LeafShopScreen({ goBack }: NavProps) {
             <Text style={styles.subBadgeText}>PRO</Text>
           </View>
           <Text style={styles.subTitle}>{t('leafShop.passTitle')}</Text>
-          <Text style={styles.subPrice}>₩4,900<Text style={styles.subPricePer}>{t('leafShop.perMonth')}</Text></Text>
+          <Text style={styles.subPrice}>{passPrice}<Text style={styles.subPricePer}>{t('leafShop.perMonth')}</Text></Text>
           <View style={styles.subBenefits}>
             <Text style={styles.subBenefit}>{t('leafShop.benefitMonthlyLeaves', { n: PRO_MONTHLY_LEAVES })}</Text>
             <Text style={styles.subBenefit}>{t('leafShop.benefitNoAds')}</Text>
@@ -170,12 +180,16 @@ export default function LeafShopScreen({ goBack }: NavProps) {
 
         {/* 자동 갱신 고지 (App Store 가이드라인 3.1.2 필수) */}
         <Text style={styles.autoRenewNotice}>
-          {t('leafShop.autoRenewNotice', { store: STORE_NAME })}
+          {t('leafShop.autoRenewNotice', { store: STORE_NAME, price: passPrice })}
         </Text>
 
         {/* 잎사귀 개별 충전 패키지 */}
         <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{t('leafShop.packagesSection')}</Text>
-        {LEAF_PACKAGES.map(pkg => (
+        {LEAF_PACKAGES.map(pkg => {
+          const sp = pkgPrice(pkg);
+          // 개당 가격은 원화일 때만 의미 있다(달러면 $0.03 같은 숫자가 됨) → 다른 통화면 숨김
+          const krw = !sp ? pkg.price : sp.currencyCode === 'KRW' ? sp.price : null;
+          return (
           <TouchableOpacity
             key={pkg.id}
             style={[styles.pkgCard, pkg.featured && styles.pkgCardFeatured]}
@@ -200,17 +214,20 @@ export default function LeafShopScreen({ goBack }: NavProps) {
                     </View>
                   )}
                 </View>
-                <Text style={styles.pkgPerUnit}>{t('leafShop.perUnit', { price: pricePerLeaf(pkg) })}</Text>
+                {krw != null && (
+                  <Text style={styles.pkgPerUnit}>{t('leafShop.perUnit', { price: pricePerLeaf(pkg, krw) })}</Text>
+                )}
               </View>
             </View>
             <View style={styles.pkgRight}>
-              <Text style={styles.pkgPrice}>{formatKrw(pkg.price)}</Text>
+              <Text style={styles.pkgPrice}>{sp?.priceString ?? formatKrw(pkg.price)}</Text>
               <View style={styles.pkgBuyBtn}>
                 <Text style={styles.pkgBuyBtnText}>{t('leafShop.buy')}</Text>
               </View>
             </View>
           </TouchableOpacity>
-        ))}
+          );
+        })}
 
         {/* 구매 복원 */}
         <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} activeOpacity={0.7}>

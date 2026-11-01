@@ -11,9 +11,12 @@ import { NavProps } from '../types';
 import {
   searchYoutubeForRecipe, getVideoDescription,
   fetchVideoTranscript, formatViewCount, YTSearchResult,
-  extractYouTubeVideoId,
+  extractYouTubeVideoId, openYouTubeByName,
 } from '../services/youtube';
 import { analyzeYoutubeRecipe, YoutubeRecipeAnalysis } from '../services/claude';
+import { loadPreferences } from '../services/preferences';
+// 알레르기 판정은 서버 최종 검사와 같은 코드를 쓴다(기준이 둘로 갈라지지 않게)
+import { allergenHits } from '../../supabase/functions/gemini-proxy/prompt';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { saveRecipe, isRecipeSaved, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { Colors, shadow } from '../constants/colors';
@@ -53,6 +56,16 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
   const [result, setResult]       = useState<YoutubeRecipeAnalysis | null>(null);
   const [errorMsg, setErrorMsg]   = useState('');
   const [saved, setSaved]         = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);  // 검색 자체 실패(한도 초과 등) → 유튜브 직접 찾기 안내
+  // 영상 레시피는 고칠 수 없으니 내 알레르기·식단에 걸리는 재료를 알려만 준다
+  const [allergens, setAllergens] = useState<string[]>([]);
+
+  // 목록 없이 들어온 경우(레시피 탭에서 바로 분석·링크 붙여넣기) "결과" 단계는 빈 화면이라 다른 곳으로 돌려보낸다
+  const backToList = () => {
+    if (videos.length) setStage('results');
+    else if (directVideo) goBack();
+    else setStage('input');
+  };
 
   useEffect(() => {
     if (directVideo) {
@@ -71,6 +84,7 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
 
   const search = async (query: string) => {
     setQueryLabel(query);
+    setSearchFailed(false);
     setStage('searching');
     try {
       const items = await searchYoutubeForRecipe(query);
@@ -79,7 +93,9 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
       setStage('results');
     } catch (e: any) {
       console.error('[YT Search]', e);
-      setErrorMsg(e.message || t('youtube.searchError'));
+      // 원문 오류(quotaExceeded 등)는 사용자에게 의미가 없다 → 유튜브에서 직접 찾아 링크를 붙여넣는 길을 안내
+      setErrorMsg(/quota|rateLimit/i.test(e?.message ?? '') ? t('youtube.searchBusy') : t('youtube.searchError'));
+      setSearchFailed(true);
       setStage('error');
     }
   };
@@ -111,12 +127,18 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
     setStage('analyzing');
     try {
       const [description, transcript] = await Promise.all([
-        getVideoDescription(video.videoId),
+        // 설명란은 API 한도를 쓰므로 실패할 수 있다 → 자막만으로라도 분석
+        getVideoDescription(video.videoId).catch(() => ''),
         fetchVideoTranscript(video.videoId),
       ]);
       const analysis = await analyzeYoutubeRecipe(
         video.title, video.channelTitle, description, transcript,
       );
+      const prefs = await loadPreferences().catch(() => null);
+      setAllergens(prefs ? allergenHits(
+        { name: analysis.recipeName, ingredients: analysis.ingredients, steps: analysis.steps },
+        { mode: 'dish', prefs: { allergies: prefs.allergies, dietType: prefs.dietType } },
+      ) : []);
       haptic.success();
       setResult(analysis);
       const alreadySaved = await isRecipeSaved(analysis.recipeName);
@@ -125,7 +147,7 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
     } catch (e: any) {
       haptic.error();
       Alert.alert(t('youtube.analyzeFailTitle'), e.message || t('youtube.tryAgain'));
-      setStage('results');
+      backToList();
     }
   };
 
@@ -252,9 +274,21 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
         <View style={styles.centerBox}>
           <Text style={styles.errorEmoji}>😢</Text>
           <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => search(queryLabel)}>
-            <Text style={styles.retryBtnText}>{t('youtube.retry')}</Text>
-          </TouchableOpacity>
+          {searchFailed ? (
+            <>
+              <Text style={styles.errorHint}>{t('youtube.searchFallbackHint')}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={() => { haptic.light(); openYouTubeByName(queryLabel); }}>
+                <Text style={styles.retryBtnText}>{t('youtube.findOnYoutube')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.pasteLinkBtn} onPress={() => { setInputText(''); setStage('input'); }}>
+                <Text style={styles.pasteLinkText}>{t('youtube.pasteLink')}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.retryBtn} onPress={() => search(queryLabel)}>
+              <Text style={styles.retryBtnText}>{t('youtube.retry')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -305,6 +339,14 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
                 <Text style={styles.sourceWatch}>{t('youtube.watchOnYoutube')}</Text>
               </View>
             </TouchableOpacity>
+
+            {/* 알레르기·식단 경고 — 영상 그대로 정리한 것이라 AI 레시피와 달리 걸러지지 않았다 */}
+            {allergens.length > 0 && (
+              <View style={styles.allergyWarn}>
+                <Text style={styles.allergyWarnTitle}>{t('youtube.allergyWarnTitle')}</Text>
+                <Text style={styles.allergyWarnText}>{t('youtube.allergyWarnMsg', { items: allergens.join(', ') })}</Text>
+              </View>
+            )}
 
             {/* 레시피 헤더 */}
             <View style={styles.recipeHeader}>
@@ -376,7 +418,7 @@ export default function YoutubeRecipeScreen({ navigate, goBack, recipeName, dire
           <View style={[styles.actionBar, { paddingBottom: 12 + Math.max(insets.bottom, 12) }]}>
             <TouchableOpacity
               style={styles.reanalzeBtn}
-              onPress={() => { setStage('results'); setSelected(null); setResult(null); setSaved(false); }}
+              onPress={() => { backToList(); setSelected(null); setResult(null); setSaved(false); setAllergens([]); }}
             >
               <Text style={styles.reanalyzeBtnText}>{t('youtube.otherVideo')}</Text>
             </TouchableOpacity>
@@ -446,6 +488,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 13, alignSelf: 'center', marginTop: 8,
   },
   retryBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  errorHint: { fontSize: 13, color: Colors.inkSoft, fontWeight: '500', textAlign: 'center', lineHeight: 19, marginTop: -8, marginBottom: 12, paddingHorizontal: 12 },
+  pasteLinkBtn: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16, marginTop: 4 },
+  pasteLinkText: { fontSize: 13, fontWeight: '700', color: Colors.inkSoft, textDecorationLine: 'underline' },
+
+  allergyWarn: {
+    backgroundColor: Colors.coralLight, borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.coral,
+    padding: 14, marginBottom: 14,
+  },
+  allergyWarnTitle: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  allergyWarnText: { fontSize: 13, fontWeight: '600', color: Colors.inkSoft, lineHeight: 19, marginTop: 4 },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   actionBar: {

@@ -1,0 +1,6 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "The camera is used to photograph your ingredients and suggest recipes.",
+    "NSPhotoLibraryUsageDescription": "Photo access lets you pick a photo of your ingredients from your library."
+  }
+}

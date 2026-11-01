@@ -503,6 +503,21 @@ export function findViolations(recipes: unknown[], input: RecipeInput, checkName
 }
 
 /**
+ * 레시피 하나에서 걸리는 금지 단어 전부(findViolations 와 같은 기준).
+ * 앱이 유튜브 분석 결과에 경고를 띄울 때 이 파일을 그대로 가져다 쓴다 — 영상 레시피는 고칠 수 없으니 알려만 준다.
+ */
+export function allergenHits(recipe: { name?: string; ingredients?: string[]; steps?: string[] }, input: RecipeInput): string[] {
+  const terms = hardTerms(input);
+  if (!terms.length) return [];
+  const head = [recipe.name ?? "", ...(recipe.ingredients ?? [])].map(negated).join("\n");
+  const steps = (recipe.steps ?? []).map(negated).join("\n");
+  const found = terms.filter((w) => hitTerm(head, [w]) || (!STEP_SKIP.has(w.toLowerCase()) && hitTerm(steps, [w])));
+  // 보여줄 목록이라 긴 단어에 포함된 짧은 단어는 뺀다: "새우, 새우젓, 굴, 굴소스" → "새우젓, 굴소스"
+  const low = found.map((w) => w.toLowerCase());
+  return found.filter((w, i) => !low.some((o, j) => j !== i && (o === low[i] ? j < i : o.includes(low[i]))));
+}
+
+/**
  * 첫 생성부터 붙이는 문장 — "해산물" 만 주면 모델은 새우는 빼도 굴소스·액젓은 넣는다(측정: 새우볶음밥 검색 4회 중 3회 굴소스).
  * 언어에 맞는 실제 재료명을 같이 준다.
  */

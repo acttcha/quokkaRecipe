@@ -114,18 +114,35 @@ export function formatRelativeDate(iso: string): string {
 
 const YT_API_KEY = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY ?? '';
 
-export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTubeVideo[]> {
+// AI 가 만든 레시피 이름별 영상. 재료로 검색하면 재료가 같을 때 늘 같은 영상만 나오고
+//  화면의 레시피와도 맞지 않아서, 레시피가 나온 뒤 그 이름으로 찾는다.
+//  검색 1회 = API 100유닛(하루 10,000)이라 같은 이름은 앱이 켜져 있는 동안 다시 찾지 않는다.
+export interface RecipeVideos { name: string; videos: YouTubeVideo[] }
+const _byName = new Map<string, YouTubeVideo[]>();
+
+export async function searchVideosForRecipes(names: string[], perRecipe = 3): Promise<RecipeVideos[]> {
+  return Promise.all(names.map(async name => {
+    const cached = _byName.get(name);
+    if (cached) return { name, videos: cached };
+    // 한 레시피 검색이 실패해도 다른 레시피 영상은 보여준다
+    const videos = await searchVideos(`${name} ${recipeWord()}`, perRecipe).catch(() => []);
+    if (videos.length) _byName.set(name, videos);
+    return { name, videos };
+  }));
+}
+
+async function searchVideos(q: string, max: number): Promise<YouTubeVideo[]> {
   if (getMockMode() || !YT_API_KEY) {
     await new Promise(r => setTimeout(r, 1000));
-    return MOCK_VIDEOS;
+    return MOCK_VIDEOS.slice(0, max);
   }
 
-  const query = encodeURIComponent(ingredients.slice(0, 3).join(' ') + ' ' + recipeWord());
+  const query = encodeURIComponent(q);
   const searchRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&order=viewCount&type=video&maxResults=6${ytLangParams()}&key=${YT_API_KEY}`
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&order=relevance&type=video&maxResults=${max}${ytLangParams()}&key=${YT_API_KEY}`
   );
   const searchData = await searchRes.json();
-  if (!searchData.items) return MOCK_VIDEOS;
+  if (!searchData.items?.length) return [];
 
   const ids = searchData.items.map((i: any) => i.id.videoId).join(',');
   const detailsRes = await fetch(
@@ -164,11 +181,6 @@ export async function searchYouTubeRecipes(ingredients: string[]): Promise<YouTu
       url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
     };
   });
-}
-
-export function openYouTubeSearch(ingredients: string[]) {
-  const query = encodeURIComponent(ingredients.slice(0, 3).join(' ') + ' ' + recipeWord());
-  Linking.openURL(`https://www.youtube.com/results?search_query=${query}&sp=CAM%3D`);
 }
 
 export function openYouTubeByName(recipeName: string) {

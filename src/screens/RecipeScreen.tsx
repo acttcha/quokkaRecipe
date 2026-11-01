@@ -7,10 +7,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { NavProps, Recipe, YouTubeVideo } from '../types';
+import { NavProps, Recipe } from '../types';
 import { identifyIngredients, generateRecipes, generateRecipeByName } from '../services/claude';
 import { shouldSuggestReminder, markReminderAsked, enableReminder } from '../services/notifications';
-import { searchYouTubeRecipes, openYouTubeSearch, openCoupangPartners, COUPANG_PARTNERS_URL, formatViewCount, formatDuration, formatRelativeDate } from '../services/youtube';
+import { searchVideosForRecipes, RecipeVideos, openYouTubeByName, openCoupangPartners, COUPANG_PARTNERS_URL, formatViewCount, formatDuration, formatRelativeDate } from '../services/youtube';
 import { saveRecipe, removeRecipe, getSavedRecipes } from '../services/savedRecipes';
 import { incrementScanCount } from '../services/stats';
 import { addIngredients, getFridgeIngredients, matchesFridge, getMissingIngredients } from '../services/fridge';
@@ -104,7 +104,9 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   const [servings, setServings]     = useState<number>(propsServings ?? 2);  // 재료확인 화면 인분 선택 (기본=선호도값)
   const [fridgeItems, setFridgeItems] = useState<string[]>([]);
   const [recipes, setRecipes]       = useState<Recipe[]>([]);
-  const [videos, setVideos]         = useState<YouTubeVideo[]>([]);
+  // 레시피별 유튜브 영상 + 그 영상이 어떤 레시피 묶음(key) 것인지
+  const [videoState, setVideoState] = useState<{ key: string; groups: RecipeVideos[] }>({ key: '', groups: [] });
+  const videoReq = useRef(0);  // 다시 뽑기로 레시피가 바뀌면 이전 검색 결과는 버린다
   const [newIng, setNewIng]         = useState('');
   const [expanded, setExpanded]     = useState<number | null>(null);
   const [tab, setTab]               = useState<Tab>('ai');
@@ -138,6 +140,24 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     ]);
   }, []);
 
+  // 유튜브 탭을 열었을 때만 지금 레시피 이름으로 영상을 찾는다.
+  //  YouTube API 는 하루 10,000유닛(검색 1회 100)이라 탭을 안 여는 대부분의 사용자 몫까지 쓰지 않는다.
+  //  지금 레시피 묶음의 결과가 아직 없으면 "로딩 중"으로 본다(검색 시작 전 첫 화면에 "못 찾음"이 깜빡이지 않게).
+  const videosKey = recipes.map(r => r.name).join('|');
+  const videosLoading = videoState.key !== videosKey;
+  const videoGroups = videosLoading ? [] : videoState.groups;
+  const videosFor = useRef('');
+  useEffect(() => {
+    if (tab !== 'youtube' || recipes.length === 0) return;
+    const key = recipes.map(r => r.name).join('|');
+    if (videosFor.current === key) return;
+    videosFor.current = key;
+    const req = ++videoReq.current;
+    searchVideosForRecipes(recipes.map(r => r.name))
+      .catch(() => [] as RecipeVideos[])
+      .then(groups => { if (req === videoReq.current) setVideoState({ key, groups: groups.filter(g => g.videos.length) }); });
+  }, [tab, recipes]);
+
   const identify = useCallback(async () => {
     // 1) 특정 요리 검색 모드 — 재료 확인 단계 스킵, 바로 레시피 생성
     if (dishName) {
@@ -148,13 +168,9 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
       setFridgeItems(await getFridgeIngredients());
       setStep('generating');
       try {
-        const [found, vids] = await Promise.all([
-          generateRecipeByName(dishName, [], propsServings ?? 2),
-          searchYouTubeRecipes([dishName]),
-        ]);
+        const found = await generateRecipeByName(dishName, [], propsServings ?? 2);
         setRecipes(found);
         setSeenNames(found.map(r => r.name));
-        setVideos(vids);
         await loadSaved();
         setStep('results');
         maybeAskReminder();
@@ -204,13 +220,9 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     if (!await checkLeafOrAlert('recipe')) return;
     setStep('generating');
     try {
-      const [found, vids] = await Promise.all([
-        generateRecipes(ingredients, [], servings),
-        searchYouTubeRecipes(ingredients),
-      ]);
+      const found = await generateRecipes(ingredients, [], servings);
       setRecipes(found);
       setSeenNames(found.map(r => r.name));
-      setVideos(vids);
       await loadSaved();
       setStep('results');
       maybeAskReminder();
@@ -619,7 +631,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
 
         {/* 유튜브 탭 안내 — "다른 거 없나" 하는 순간(다시 뽑기 버튼 바로 아래)에 다른 길을 보여준다.
             탭만으로는 잘 눌리지 않아서 유튜브 분석 기능 자체를 모르는 사용자가 많았다. */}
-        {tab === 'ai' && recipes.length > 0 && videos.length > 0 && (
+        {tab === 'ai' && recipes.length > 0 && (
           <TouchableOpacity
             style={styles.ytNudge}
             onPress={() => {
@@ -646,13 +658,30 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
         {/* 유튜브 */}
         {tab === 'youtube' && (
           <View>
+            {videosLoading && <ActivityIndicator style={{ marginVertical: 24 }} color={Colors.youtube} />}
+            {/* 못 찾았거나 API 한도 초과 — 유튜브 앱 검색으로 바로 연결(한도 안 씀) */}
+            {!videosLoading && videoGroups.length === 0 && (
+              <View>
+                <Text style={styles.ytEmpty}>{t('recipe.noVideos')}</Text>
+                {recipes.map((r, ri) => (
+                  <View key={`${ri}-${r.name}`} style={styles.ytHeader}>
+                    <Text style={styles.ytHeaderText} numberOfLines={1}>{r.name}</Text>
+                    <TouchableOpacity style={styles.ytMoreBtn} onPress={() => openYouTubeByName(r.name)}>
+                      <Text style={styles.ytMoreText}>{t('recipe.seeOnYoutube')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+            {videoGroups.map((g, gi) => (
+            <View key={`${gi}-${g.name}`} style={{ marginBottom: 8 }}>
             <View style={styles.ytHeader}>
-              <Text style={styles.ytHeaderText}>{t('recipe.popularVideos')}</Text>
-              <TouchableOpacity style={styles.ytMoreBtn} onPress={() => openYouTubeSearch(ingredients)}>
+              <Text style={styles.ytHeaderText} numberOfLines={1}>{g.name}</Text>
+              <TouchableOpacity style={styles.ytMoreBtn} onPress={() => openYouTubeByName(g.name)}>
                 <Text style={styles.ytMoreText}>{t('recipe.seeOnYoutube')}</Text>
               </TouchableOpacity>
             </View>
-            {videos.map((v, i) => {
+            {g.videos.map((v, i) => {
               const durationText = v.durationSec ? formatDuration(v.durationSec) : '';
               const dateText = v.publishedAt ? formatRelativeDate(v.publishedAt) : '';
               return (
@@ -708,6 +737,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
                 </View>
               );
             })}
+            </View>
+            ))}
           </View>
         )}
 
@@ -869,7 +900,8 @@ const styles = StyleSheet.create({
 
   // 유튜브
   ytHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 },
-  ytHeaderText: { fontSize: 16, fontWeight: '800', color: Colors.ink },
+  ytHeaderText: { fontSize: 16, fontWeight: '800', color: Colors.ink, flexShrink: 1, marginRight: 8 },
+  ytEmpty: { fontSize: 14, color: Colors.inkMute, textAlign: 'center', marginVertical: 24 },
   ytMoreBtn: { backgroundColor: '#FEE2E2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
   ytMoreText: { fontSize: 12, fontWeight: '700', color: Colors.youtube },
   videoCard: { backgroundColor: Colors.white, borderRadius: 18, marginBottom: 12, overflow: 'hidden', borderWidth: 1, borderColor: Colors.lineSoft, ...shadow.sm },

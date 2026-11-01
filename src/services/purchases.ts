@@ -87,6 +87,26 @@ export async function getOfferingPackages(): Promise<any[]> {
   }
 }
 
+export interface StorePrice {
+  priceString: string;   // 스토어가 사용자 통화로 만든 표시 문자열 (예: "₩4,900", "$2.99")
+  price: number;
+  currencyCode: string;  // "KRW", "USD" …
+}
+
+/** 스토어에 등록된 실제 가격 — 우리 상품ID(leaf_pack_1, quokka_pass_monthly) 기준.
+ *  화면 가격을 코드에 박아두면 스토어 가격을 바꿀 때 표시와 결제가 어긋나므로 이걸로 표시한다.
+ *  미구성·네트워크 실패면 빈 객체 → 화면은 원화 기본값으로 표시. */
+export async function getStorePrices(): Promise<Record<string, StorePrice>> {
+  const out: Record<string, StorePrice> = {};
+  for (const p of await getOfferingPackages()) {
+    const prod = p.product;
+    if (!prod?.identifier || !prod.priceString) continue;
+    // 안드 구독은 'quokka_pass_monthly:monthly' 형식 → 콜론 앞이 상품ID
+    out[prod.identifier.split(':')[0]] = { priceString: prod.priceString, price: prod.price, currencyCode: prod.currencyCode };
+  }
+  return out;
+}
+
 async function purchaseByProductId(productId: string): Promise<boolean> {
   if (!_configured || !Purchases) return false;
   try {
