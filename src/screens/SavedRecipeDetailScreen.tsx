@@ -22,6 +22,7 @@ import { LeafToast } from '../components/LeafToast';
 import { formatRelativeDate } from '../services/youtube';
 import { checkLeafOrAlert } from '../services/leafGate';
 import { AdBanner } from '../components/AdBanner';
+import { useRecipeShare } from '../components/RecipeShareCard';
 import { t } from '../i18n';
 
 const DIFF: Record<string, { label: string; color: string; bg: string }> = {
@@ -153,8 +154,8 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
     }
   };
 
-  const handleShare = async () => {
-    haptic.light();
+  // 이미지 카드 공유가 안 될 때 쓰는 텍스트 공유
+  const shareText = async () => {
     const diffLabel = diff.label;
     const text = [
       `🍽 ${r.name}`,
@@ -173,6 +174,8 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
     ].join('\n');
     try { await Share.share({ message: text }); } catch {}
   };
+  const { share: shareCardImage, card: shareCard } = useRecipeShare(shareText);
+  const handleShare = () => { haptic.light(); shareCardImage(r); };
 
   const handleDeleteQA = (entryId: string) => {
     haptic.warning();
@@ -243,6 +246,7 @@ export default function SavedRecipeDetailScreen({ goBack, navigate, recipe: init
 
   return (
     <View style={styles.root}>
+      {shareCard}
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* 헤더 */}

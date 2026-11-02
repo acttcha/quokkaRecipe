@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 //  op 'ad_reward' → wallet_credit: 보상형 광고 시청 보상 (free_bonus)
 //  op 'merge'     → wallet_merge: 로그인 시 기기(게스트) 지갑 → 계정 지갑 병합
 //  op 'track'     → usage_track: 퍼널 측정용 이벤트 기록 (잎사귀 무관, 잔액 반환 없음)
+//  op 'app_version' → 스토어 업데이트 안내용 최신/최소 버전 (secrets, 신원 불필요)
 //    ⚠️ ad_reward 는 클라 보고 기반 → 추후 AdMob SSV 권장.
 //  신원: x-user-jwt 헤더(로그인 유저의 Supabase JWT)가 있으면 서버가 검증해 uid 확정.
 //        없으면 body.userId(게스트 기기ID) 사용. (계정 지갑은 JWT 검증 필수 → 사칭 방지)
@@ -47,6 +48,18 @@ export default {
     try { body = await req.json(); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }
 
     const op = typeof body.op === "string" ? body.op : "balance";
+
+    // 스토어 업데이트 안내용 버전. 값은 Supabase secrets — 새 버전이 스토어에 "출시된 뒤" 올린다(심사 중엔 올리지 않기).
+    //  APP_LATEST_*: 이보다 낮으면 "새 버전이 나왔어요"(나중에 가능)
+    //  APP_MIN_*   : 이보다 낮으면 업데이트해야만 사용(구버전이 실제로 깨질 때만. 안드 단계적 출시가 100%가 된 뒤에)
+    //  비어 있으면 안내하지 않는다. 신원과 무관하므로 신원 확인 전에 처리한다.
+    if (op === "app_version") {
+      const v = (k: string) => Deno.env.get(k) || null;
+      return Response.json({
+        ios: { latest: v("APP_LATEST_IOS"), min: v("APP_MIN_IOS") },
+        android: { latest: v("APP_LATEST_ANDROID"), min: v("APP_MIN_ANDROID") },
+      });
+    }
 
     // 신원 확정: 로그인=검증된 uid, 게스트=body.userId
     const verified = await verifyUser(req);

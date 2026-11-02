@@ -25,6 +25,7 @@ import { getNickname } from './src/services/stats';
 import { loadChefStyle } from './src/services/chefStyle';
 import { loadPersona } from './src/services/personas';
 import { LeafToast } from './src/components/LeafToast';
+import { UpdateManager } from './src/components/UpdateManager';
 
 // AdMob SDK 초기화 — Expo Go 에선 no-op, 빌드된 앱에서만 실제 초기화
 initAds().catch(() => { /* 무시 — 광고 실패가 앱을 막진 않음 */ });
@@ -144,6 +145,7 @@ export default function App() {
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <AppInner />
       <LeafToast />
+      <UpdateManager />
     </SafeAreaProvider>
   );
 }

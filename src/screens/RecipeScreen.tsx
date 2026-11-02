@@ -20,6 +20,7 @@ import { AdBanner } from '../components/AdBanner';
 import { LeafIcon } from '../components/LeafIcon';
 import { ServingsSlider } from '../components/ServingsSlider';
 import { ChefStyleInput } from '../components/ChefStyleInput';
+import { useRecipeShare } from '../components/RecipeShareCard';
 import YoutubeRecipeScreen from './YoutubeRecipeScreen';
 import { Colors, shadow } from '../constants/colors';
 import { BackButton } from '../components/BackButton';
@@ -267,8 +268,8 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     }
   };
 
-  const shareRecipe = async (r: Recipe) => {
-    haptic.light();
+  // 이미지 카드 공유가 안 될 때 쓰는 텍스트 공유
+  const shareRecipeText = async (r: Recipe) => {
     const diffLabel = DIFF[r.difficulty]?.label ?? r.difficulty;
     const text = [
       `🍽 ${r.name}`,
@@ -287,6 +288,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
     ].join('\n');
     try { await Share.share({ message: text }); } catch {}
   };
+  const { share: shareRecipe, card: shareCard } = useRecipeShare(shareRecipeText);
 
   const reviewSuggestions = filterPopularIngredients(newIng, ingredients);
 
@@ -450,6 +452,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
   // ── 결과 ──
   return (
     <View style={styles.root}>
+      {shareCard}
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <LinearGradient colors={['#F6E0B5', Colors.cream]} locations={[0, 0.7]} style={styles.resultsHero}>
@@ -495,7 +498,7 @@ export default function RecipeScreen({ navigate, goBack, imageBase64, mimeType, 
               {/* 상단 행: 이름 + 공유 + 북마크 */}
               <View style={styles.cardTopRow}>
                 <Text style={styles.recipeName}>{r.name}</Text>
-                <TouchableOpacity style={styles.shareBtn} onPress={() => shareRecipe(r)}>
+                <TouchableOpacity style={styles.shareBtn} onPress={() => { haptic.light(); shareRecipe(r); }}>
                   <Text style={styles.shareBtnText}>{t('recipe.share')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.bookmarkBtn} onPress={() => toggleSave(r)}>
