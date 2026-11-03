@@ -2,6 +2,7 @@
   "expo": {
     "name": "쿼카레시피",
     "slug": "quokka-chef",
+    "platforms": ["ios", "android"],
     "version": "1.0.8",
     "runtimeVersion": {
       "policy": "appVersion"
