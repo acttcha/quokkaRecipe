@@ -23,7 +23,7 @@ export const LEAF_PACKAGES: LeafPackage[] = [
 ];
 
 // 쿼카 패스 원화 가격 — 스토어 가격을 못 받아왔을 때만 표시용으로 쓴다.
-export const PASS_PRICE_KRW = 4900;
+export const PASS_PRICE_KRW = 2900;
 
 export function formatKrw(n: number): string {
   return `₩${n.toLocaleString('ko-KR')}`;

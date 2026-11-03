@@ -88,7 +88,7 @@ export async function getOfferingPackages(): Promise<any[]> {
 }
 
 export interface StorePrice {
-  priceString: string;   // 스토어가 사용자 통화로 만든 표시 문자열 (예: "₩4,900", "$2.99")
+  priceString: string;   // 스토어가 사용자 통화로 만든 표시 문자열 (예: "₩2,900", "$1.99")
   price: number;
   currencyCode: string;  // "KRW", "USD" …
 }
